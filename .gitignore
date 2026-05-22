@@ -1,0 +1,44 @@
+prism-ui-prism-reactjs-lib-master/
+.cursor/
+docs/
+
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtualenvs
+.venv/
+venv/
+env/
+.env
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# uv build artifacts (lockfile and requirements.txt ARE committed)
+.uv-cache/
+
+# --- OS / editor ----------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# --- Runtime cache for prism-mcp (PRD section 5) --------------------------
+# Lives at ~/.cache/prism-mcp by default; ignore any local override too.
+.prism-mcp-cache/

@@ -1,0 +1,55 @@
+name: ci
+
+# CI must-pass loop for the Prism ReactJS MCP server.
+# Per the PRD (docs/prd/prism-reactjs-mcp-server.md) section 8 the inner
+# loop is `pytest -q`; this workflow also runs ruff so style/lint
+# regressions don't slip past review.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+# Cancel in-flight runs for the same ref so we don't burn minutes on
+# superseded commits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: lint + smoke (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Prove we work on the minimum supported version and the one our
+        # contributors run by default. PRD requires Python 3.11+.
+        python-version: ["3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Pin Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Sync dependencies
+        run: uv sync --python ${{ matrix.python-version }}
+
+      - name: Ruff lint
+        run: uv run ruff check src tests
+
+      - name: Ruff format check
+        run: uv run ruff format --check src tests
+
+      - name: Pytest (smoke)
+        run: uv run pytest -q
