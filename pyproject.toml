@@ -19,10 +19,43 @@ dependencies = [
   "mcp>=1.27.0",
   "httpx>=0.27.0",
   "rank-bm25>=0.2.2",
+  # Slice 9: semantic search over example code bodies.
+  # fastembed uses ONNX runtime + a small BGE model (~130MB on first
+  # use); chosen over sentence-transformers to avoid the torch
+  # (~700MB) install on demo machines.
+  "fastembed>=0.4",
+  # numpy already arrives transitively via rank-bm25, but Slice 9's
+  # embeddings module uses numpy directly for cosine math, so we
+  # declare it as a first-class dep.
+  "numpy>=2.0",
+  # Slice 10: composition graph + Louvain community detection.
+  # networkx ships pure-Python Louvain natively (no C extensions),
+  # which keeps the install lean. We deliberately did not add
+  # ``leidenalg`` (Leiden is theoretically stricter than Louvain
+  # per Traag 2019, but requires the python-igraph C build —
+  # not worth the install cost at our scale of ~150 components).
+  "networkx>=3.3",
+  # Slice 12: AlphaCodium-flavored iteration loop. Temporal runs in
+  # dev-server mode (``temporal server start-dev``) so we get real
+  # Workflow / Activity / Update / Query / Worker semantics, the
+  # web UI on :8233 for demos, and durable SQLite persistence —
+  # without the complexity of a self-hosted cluster.
+  "temporalio>=1.10",
+  # Slice 12: SSIM perceptual visual diff for compare_to_figma.
+  # scikit-image keeps us off PyTorch (which LPIPS would require);
+  # SSIM is the right tier for ~150 components per the
+  # screenshot-testing-2026 survey.
+  "scikit-image>=0.24",
+  # Slice 12: image IO for the SSIM compare path. Pillow ships
+  # without native compile and is the reference loader scikit-image
+  # documentation defers to for PNG/JPG.
+  "Pillow>=10.4",
 ]
 
 [project.scripts]
 prism-mcp = "prism_mcp.server:main"
+prism-mcp-worker = "prism_mcp.workflow.worker:main"
+prism-mcp-setup = "prism_mcp.setup_cli:main"
 
 [dependency-groups]
 dev = [

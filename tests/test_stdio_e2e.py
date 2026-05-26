@@ -292,6 +292,19 @@ def test_stdio_initialize_and_list_tools(seeded_cache: Path) -> None:
         "list_entities",
         "get_entity",
         "search_entities",
+        "search_examples",
+        "map_token",
+        "check_contrast",
+        "get_a11y_rules",
+        "related_components",
+        "get_component_cluster",
+        # Slice 12 — AlphaCodium-flavored iteration loop tools.
+        "reflect_on_spec",
+        "compare_to_figma",
+        "start_generate_component",
+        "submit_candidate",
+        "get_component_status",
+        "get_final_artefact",
     }
 
 

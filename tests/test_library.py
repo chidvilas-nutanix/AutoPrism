@@ -2,19 +2,39 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import httpx
+import numpy as np
 import pytest
 
 from prism_mcp.cache import Cache
 from prism_mcp.config import ServerConfig
-from prism_mcp.library import Library, LibraryError
+from prism_mcp.library import EXAMPLES_INDEX_FILENAME, Library, LibraryError
 from prism_mcp.registry import RegistryClient
 from tests.conftest import make_latest_manifest, make_prism_tarball
+
+
+def _stub_encoder():
+    """Deterministic, hash-based unit-norm encoder for Library tests."""
+
+    def encode(texts: list[str]) -> np.ndarray:
+        if not texts:
+            return np.zeros((0, 0), dtype=np.float32)
+        out = np.zeros((len(texts), 16), dtype=np.float32)
+        for i, text in enumerate(texts):
+            digest = hashlib.sha256(text.encode("utf-8")).digest()[:16]
+            raw = np.frombuffer(digest, dtype=np.uint8).astype(np.float32)
+            norm = np.linalg.norm(raw)
+            out[i] = raw / norm if norm > 0 else raw
+        return out
+
+    return encode
+
 
 PACKAGE = "@nutanix-ui/prism-reactjs"
 VERSION = "2.54.0"
@@ -34,7 +54,12 @@ def _config(cache_root: Path) -> ServerConfig:
 
 
 def _library(cache_root: Path, handler: Handler) -> Library:
-    """Build a Library wired against a MockTransport."""
+    """Build a Library wired against a MockTransport.
+
+    A stub encoder is injected by default so any test that touches
+    ``examples_index()`` doesn't trigger the lazy fastembed import
+    (which would download a ~130 MB model on first call).
+    """
     config = _config(cache_root)
     cache = Cache(cache_root)
     client = RegistryClient(
@@ -42,7 +67,12 @@ def _library(cache_root: Path, handler: Handler) -> Library:
         auth_header=config.auth_header,
         transport=httpx.MockTransport(handler),
     )
-    return Library(config=config, registry=client, cache=cache)
+    return Library(
+        config=config,
+        registry=client,
+        cache=cache,
+        encoder=_stub_encoder(),
+    )
 
 
 def _manifest_response(
@@ -392,3 +422,143 @@ def test_acquire_latest_errors_on_manifest_missing_tarball(
     library = _library(cache_root, handler)
     with pytest.raises(LibraryError, match=r"missing dist\.tarball"):
         library.acquire_latest()
+
+
+def test_examples_index_builds_and_persists_npz(
+    cache_root: Path,
+) -> None:
+    """First call builds the index and writes the cache ``.npz``."""
+    tarball = make_prism_tarball(
+        version=VERSION, components=("Button", "Modal")
+    )
+    manifest, etag = _manifest_response(tarball)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == TARBALL_URL:
+            return httpx.Response(200, content=tarball)
+        return httpx.Response(
+            200,
+            headers={"ETag": etag},
+            content=json.dumps(manifest),
+        )
+
+    library = _library(cache_root, handler)
+    library.acquire_latest()
+
+    examples = library.examples_index()
+    assert len(examples) == 4  # 2 components x 2 example blocks each
+    cache_file = (
+        Cache(cache_root).version_dir(VERSION) / EXAMPLES_INDEX_FILENAME
+    )
+    assert cache_file.is_file()
+
+
+def test_examples_index_cached_across_calls(
+    cache_root: Path,
+) -> None:
+    """The second call returns the same instance (no rebuild)."""
+    tarball = make_prism_tarball(version=VERSION)
+    manifest, etag = _manifest_response(tarball)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == TARBALL_URL:
+            return httpx.Response(200, content=tarball)
+        return httpx.Response(
+            200,
+            headers={"ETag": etag},
+            content=json.dumps(manifest),
+        )
+
+    library = _library(cache_root, handler)
+    library.acquire_latest()
+
+    first = library.examples_index()
+    second = library.examples_index()
+
+    assert first is second
+
+
+def test_examples_index_invalidated_on_version_swap(
+    cache_root: Path,
+) -> None:
+    """A version swap drops the cached examples index so the next
+    call rebuilds against the new version.
+    """
+    new_version = "2.55.0"
+    new_tarball_url = (
+        f"https://registry.test/{PACKAGE}/-/prism-reactjs-{new_version}.tgz"
+    )
+    old_tarball = make_prism_tarball(version=VERSION)
+    new_tarball = make_prism_tarball(version=new_version)
+    old_manifest, _ = _manifest_response(old_tarball)
+    new_manifest = make_latest_manifest(
+        package_name=PACKAGE,
+        version=new_version,
+        tarball_url=new_tarball_url,
+        tarball_bytes=new_tarball,
+    )
+
+    state = {"poll": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == TARBALL_URL:
+            return httpx.Response(200, content=old_tarball)
+        if url == new_tarball_url:
+            return httpx.Response(200, content=new_tarball)
+        state["poll"] += 1
+        if state["poll"] == 1:
+            return httpx.Response(
+                200,
+                headers={"ETag": '"v1"'},
+                content=json.dumps(old_manifest),
+            )
+        return httpx.Response(
+            200,
+            headers={"ETag": '"v2"'},
+            content=json.dumps(new_manifest),
+        )
+
+    library = _library(cache_root, handler)
+    library.acquire_latest()
+    old_examples = library.examples_index()
+    assert old_examples.version == VERSION
+
+    library.acquire_latest()  # picks up the new manifest, swaps
+
+    new_examples = library.examples_index()
+    assert new_examples.version == new_version
+    assert new_examples is not old_examples
+
+
+def test_examples_index_reload_from_disk_on_warm_start(
+    cache_root: Path,
+) -> None:
+    """A second Library instance against the same cache reads the
+    ``.npz`` written by the first instead of re-encoding.
+    """
+    tarball = make_prism_tarball(version=VERSION)
+    manifest, etag = _manifest_response(tarball)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == TARBALL_URL:
+            return httpx.Response(200, content=tarball)
+        return httpx.Response(
+            200,
+            headers={"ETag": etag},
+            content=json.dumps(manifest),
+        )
+
+    first = _library(cache_root, handler)
+    first.acquire_latest()
+    first.examples_index()
+    cache_file = (
+        Cache(cache_root).version_dir(VERSION) / EXAMPLES_INDEX_FILENAME
+    )
+    mtime_before = cache_file.stat().st_mtime
+
+    second = _library(cache_root, handler)
+    second.acquire_latest()
+    second.examples_index()
+
+    assert cache_file.stat().st_mtime == mtime_before
