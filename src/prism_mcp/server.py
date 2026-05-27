@@ -32,6 +32,10 @@ from prism_mcp.color import apca_contrast, hex_to_rgb, wcag_contrast_ratio
 from prism_mcp.config import ConfigError, ServerConfig
 from prism_mcp.entities import EntityType
 from prism_mcp.library import Library, LibraryError
+from prism_mcp.library_assets import (
+    find_pwspec_example,
+    find_snapshot_template,
+)
 from prism_mcp.refresh import RefreshLoop, RefreshLoopConfig
 from prism_mcp.registry import RegistryClient
 from prism_mcp.workflow import PRISM_TASK_QUEUE
@@ -41,8 +45,11 @@ from prism_mcp.workflow.contracts import (
     build_delivery_hint,
     build_reflection_prompt,
 )
+from prism_mcp.workflow.figma_mapping import (
+    map_figma_node as _build_figma_node_mapping,
+)
 from prism_mcp.workflow.reflection import build_reflection_context
-from prism_mcp.workflow.ssim import compute_ssim_from_paths
+from prism_mcp.workflow.ssim import compute_ssim_from_paths, materialise_image
 
 logger = logging.getLogger(__name__)
 
@@ -613,9 +620,222 @@ def build_server(
         return context.model_dump()
 
     @server.tool()
+    def map_figma_node(
+        node_name: str,
+        node_type: str | None = None,
+        reference_code: str | None = None,
+        hex_colors: list[str] | None = None,
+        top_k: int = 5,
+    ) -> dict[str, Any]:
+        """Map a Figma node to candidate Prism components in one call.
+
+        Slice 12 composite tool. The Figma-MCP gives Cursor a
+        node's *name*, *type*, *reference React+Tailwind code*,
+        and *variable hex literals*; this tool fans those out
+        across the slice-4 BM25 entity index, the slice-9 hybrid
+        example index, the slice-10 composition graph, the
+        slice-11 color tokens, and the slice-11 a11y rules — and
+        returns a single ranked bundle.
+
+        Why a composite tool
+        --------------------
+
+        The LLM *could* call ``search_entities`` +
+        ``search_examples`` + ``map_token`` + ``related_components``
+        + ``get_a11y_rules`` separately to reach the same answer.
+        That's 5+ tool calls at 200-500ms each + 5 context-token
+        budgets. This tool collapses that to one round-trip
+        with a single opinionated fusion:
+
+        * **Reciprocal Rank Fusion** of the BM25 entity ranks
+          (lexical signal: layer name + JSX tags from reference
+          code) and the hybrid example ranks (semantic signal:
+          intent + code body). RRF without score normalisation
+          per the same ``k=60`` constant the slice-9 hybrid
+          searcher uses internally.
+        * **Per-candidate ``source`` label** so the LLM can
+          weight ``"both"`` rows (BM25 *and* dense agreed)
+          higher than single-source rows.
+        * **Top-candidate anchored** related / a11y /
+          decompositions so the LLM doesn't have to re-call
+          three more tools to flesh out the top match.
+
+        When to use which input granularity
+        ------------------------------------
+
+        Call at **FRAME** or **INSTANCE** granularity, where the
+        node represents one logical UI element. Page-level
+        inputs dilute the signal (a whole screen ≠ one
+        component); leaf-level inputs (rectangles, vectors)
+        rarely have semantic names. The Cursor agent loop
+        should traverse the Figma tree itself and call this
+        mapper on each frame/instance encountered.
+
+        Args:
+            node_name (str): the Figma layer / frame name. The
+                strongest lexical signal — e.g.
+                ``"Confirm Delete Modal"`` produces strong
+                hits on ``Modal`` + ``ConfirmModal`` +
+                ``Button``.
+            node_type (str | None): Figma type (``FRAME``,
+                ``INSTANCE``, ``GROUP``, ``TEXT``, ...).
+                Optional; helps when the layer name is generic.
+            reference_code (str | None): the React+Tailwind
+                snippet from Figma MCP's ``get_design_context``.
+                The semantic ranker keys on it heavily —
+                identifiers like ``<Button variant="primary">``
+                in the code are strong hits.
+            hex_colors (list[str] | None): explicit hex
+                literals. When omitted, this tool extracts hex
+                values from ``reference_code`` (e.g.
+                ``bg-[#1B6BCC]`` arbitrary-value classes).
+            top_k (int): cap on candidate matches returned
+                (default 5).
+
+        Returns:
+            dict: ``FigmaNodeMapping`` shape with fields
+            ``node_name``, ``suggested_component_name``,
+            ``candidates`` (top-``top_k`` Prism components with
+            score + why_matched + source), ``related`` (graph
+            neighbours of the top candidate), ``a11y_blocks``,
+            ``token_mappings`` (one per input hex), ``examples``
+            (top-3 imitation JSX snippets), and
+            ``candidate_decompositions``.
+        """
+        logger.info(
+            "map_figma_node tool invoked node=%s type=%s code_len=%s "
+            "hex_count=%s top_k=%d",
+            node_name,
+            node_type,
+            len(reference_code) if reference_code else 0,
+            len(hex_colors) if hex_colors else 0,
+            top_k,
+        )
+        library = state.library()
+        mapping = _build_figma_node_mapping(
+            node_name=node_name,
+            node_type=node_type,
+            reference_code=reference_code,
+            hex_colors=hex_colors,
+            index=library.index(),
+            hybrid_searcher=library.hybrid_searcher(),
+            composition_graph=library.composition_graph(),
+            color_token_index=library.color_token_index(),
+            a11y_rules=library.a11y_rules(),
+            top_k=top_k,
+        )
+        return mapping.model_dump()
+
+    @server.tool()
+    def get_pwspec_example(
+        component_name: str,
+        services_root: str,
+    ) -> dict[str, Any]:
+        """Return the existing Prism ``<Name>.pwspec.ts`` source.
+
+        The Prism npm tarball *excludes* ``.pwspec.ts`` files
+        (see ``services/package.json`` ``files`` field's
+        ``!**/*.pwspec.ts`` exclusion), so the slice-1..11
+        indices never see them. But those pwspecs are the
+        **canonical Playwright + axe-core pattern** the
+        AlphaCodium AI-test stage should imitate when writing
+        a companion pwspec for a candidate.
+
+        We read directly from the operator-supplied
+        ``services_root`` instead of the tarball cache. The
+        glob walks
+        ``services/src/components/v2/<group>/<Name>.pwspec.ts``
+        for any group; the first match wins.
+
+        Caveat surfaced in the response's ``note`` field: the
+        library pwspecs use Prism's ``playwright-util``
+        helpers (``visitPage``, ``themes``, ``auditScreenshotHelper``)
+        which assume the styleguide build at ``services/www``.
+        Candidate pwspecs cannot use those helpers — they
+        must mount the component directly. The structure
+        (test.describe per theme, locator + visual + axe in
+        one spec) is what the agent should copy.
+
+        Args:
+            component_name (str): the Prism component
+                identifier (PascalCase, case-sensitive).
+            services_root (str): absolute path to the Prism
+                library's ``services/`` directory.
+
+        Returns:
+            dict: ``PwspecExample`` shape with ``component_name``,
+            ``found``, ``path``, ``code`` (capped at 6 KB), and
+            ``note``.
+        """
+        logger.info(
+            "get_pwspec_example tool invoked component=%s services_root=%s",
+            component_name,
+            services_root,
+        )
+        return find_pwspec_example(
+            services_root=services_root,
+            component_name=component_name,
+        ).model_dump()
+
+    @server.tool()
+    def get_snapshot_template(
+        component_name: str,
+        services_root: str,
+    ) -> dict[str, Any]:
+        """Return the existing Jest ``<Name>.spec.tsx.snap`` excerpt.
+
+        Same rationale as :func:`get_pwspec_example`: ``.snap``
+        files are explicitly excluded from the npm tarball, so
+        the index doesn't carry them. We read from
+        ``<services_root>/src/components/v2/<group>/__snapshots__/<Name>.spec.tsx.snap``
+        directly.
+
+        Why this is useful for the iteration loop
+        -----------------------------------------
+
+        Jest snapshots are *serialised rendered DOM* — every
+        element, class name, ``data-*`` attribute, and child
+        node the component produces in the tested state. They
+        give the LLM a structural ground truth: a candidate
+        component that wraps a Prism primitive should produce
+        DOM whose class hierarchy and data attributes mirror
+        the snapshot, modulo whatever the candidate adds on
+        top.
+
+        The returned ``content`` is capped at 4 KB (Jest snaps
+        for many-variant components like ``Icons`` blow past
+        50 KB total); the cap holds the *first*
+        ``exports[...]`` block, which is typically the default
+        / canonical-state render.
+
+        Args:
+            component_name (str): the Prism component
+                identifier.
+            services_root (str): absolute path to the Prism
+                library's ``services/`` directory.
+
+        Returns:
+            dict: ``SnapshotTemplate`` shape with
+            ``component_name``, ``found``, ``path``, ``content``
+            (capped), ``block_count`` (total variants in the
+            file), and ``note``.
+        """
+        logger.info(
+            "get_snapshot_template tool invoked component=%s services_root=%s",
+            component_name,
+            services_root,
+        )
+        return find_snapshot_template(
+            services_root=services_root,
+            component_name=component_name,
+        ).model_dump()
+
+    @server.tool()
     def compare_to_figma(
-        figma_png_path: str,
         rendered_png_path: str,
+        figma_png_path: str | None = None,
+        figma_png_url: str | None = None,
+        figma_png_base64: str | None = None,
     ) -> dict[str, Any]:
         """Compute SSIM between a Figma export and a rendered screenshot.
 
@@ -626,30 +846,65 @@ def build_server(
         granularity visual regression; LPIPS / DINOv2 add a 200MB+
         torch dep for marginal accuracy gain at our scale.
 
+        Figma source flexibility
+        ------------------------
+
+        The Figma MCP returns screenshots as **short-lived signed
+        URLs** by default (lowest token cost) and only emits inline
+        base64 when the agent explicitly sets
+        ``enableBase64Response: true``. Neither is a path. We accept
+        all three input shapes so the LLM can forward whichever
+        Figma MCP gave it without an intermediate "download to disk"
+        step:
+
+        * ``figma_png_path`` — pre-existing local PNG (back-compat).
+        * ``figma_png_url`` — Figma signed URL; downloaded with
+          a 30s timeout into a temp file before SSIM.
+        * ``figma_png_base64`` — raw base64 PNG OR an RFC-2397
+          ``data:image/png;base64,...`` data URL. Decoded into
+          a temp file.
+
+        Exactly one of the three Figma inputs must be set.
+
         Args:
-            figma_png_path (str): absolute path to the design
-                reference PNG.
             rendered_png_path (str): absolute path to the rendered
-                screenshot PNG.
+                screenshot PNG (produced by Playwright, on disk).
+            figma_png_path (str | None): pre-existing local PNG.
+            figma_png_url (str | None): HTTPS URL returned by the
+                Figma MCP ``get_screenshot`` tool.
+            figma_png_base64 (str | None): inline base64 / data URL.
 
         Returns:
-            dict: ``{"score", "region", "bucket", "ok"}``.
-            ``region`` is the 3x3 cell label of where the SSIM
-            map is weakest (e.g. ``"top-left"``), or ``None``
-            when the score is already in the ``pass`` bucket.
+            dict: ``{"score", "region", "bucket", "ok",
+            "figma_png_resolved_path"}``. ``region`` is the 3x3 cell
+            label of where the SSIM map is weakest (e.g.
+            ``"top-left"``), or ``None`` when the score is already
+            in the ``pass`` bucket. ``figma_png_resolved_path``
+            echoes the on-disk path that was actually compared so
+            the agent can re-use it (e.g. to feed
+            ``start_generate_component(figma_png_path=...)``
+            without re-downloading).
         """
         logger.info(
-            "compare_to_figma tool invoked figma=%s rendered=%s",
+            "compare_to_figma tool invoked path=%s url=%s base64=%s rendered=%s",
             figma_png_path,
+            "<set>" if figma_png_url else None,
+            "<set>" if figma_png_base64 else None,
             rendered_png_path,
         )
+        figma_resolved = materialise_image(
+            path=figma_png_path,
+            url=figma_png_url,
+            base64_data=figma_png_base64,
+        )
         verdict = compute_ssim_from_paths(
-            figma_png=Path(figma_png_path),
+            figma_png=figma_resolved,
             rendered_png=Path(rendered_png_path),
         )
         payload = verdict.model_dump()
         payload["bucket"] = verdict.bucket
         payload["ok"] = verdict.ok
+        payload["figma_png_resolved_path"] = str(figma_resolved)
         return payload
 
     @server.tool()

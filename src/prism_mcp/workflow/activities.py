@@ -677,6 +677,21 @@ async def run_playwright_axe(ctx: ServicesContext) -> ValidatorResult:
     Skips Prism's full styleguide rebuild — pwspec authors are
     expected to either mount the component themselves or point at
     an already-built styleguide URL via ``baseURL``.
+
+    Passing ``--pass-with-no-tests``
+    --------------------------------
+
+    The AlphaCodium AI-test stage is *optional* — early iterations
+    often produce JSX without a companion ``pwspec.ts``. Without
+    the flag, Playwright exits non-zero on "no tests found" and
+    short-circuits the iteration on a non-actionable error: the
+    LLM cannot iterate its way out of "no tests" because writing
+    tests is a separate concern from fixing the component. With
+    ``--pass-with-no-tests`` (built-in since Playwright 1.43) the
+    Playwright run becomes benign in that case — the validator
+    panel still has a fresh row, but the LLM is free to push
+    typecheck/eslint/jest fixes first and add pwspec content in a
+    later round.
     """
     scratch = _scratch_dir_rel(ctx.component_name)
     return await _run_validator(
@@ -685,6 +700,7 @@ async def run_playwright_axe(ctx: ServicesContext) -> ValidatorResult:
             _bin(ctx.services_root, "playwright"),
             "test",
             scratch,
+            "--pass-with-no-tests",
         ],
         cwd=ctx.services_root,
     )

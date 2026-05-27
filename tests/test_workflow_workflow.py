@@ -299,17 +299,27 @@ async def test_workflow_dependencies_failure_short_circuits_chain(
 
 
 # --------------------------------------------------------------------------
-# Fail-fast: a failing typecheck must skip the later validators.
+# Informational tier: a failing typecheck must NOT skip the other
+# Tier-2 validators. SOTA AlphaCodium pattern is to collect the full
+# panel of errors per iteration so the reflection prompt aggregates
+# every independent signal.
 # --------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_workflow_fail_fast_stops_after_first_failure(env) -> None:
-    """A typecheck failure must short-circuit the chain.
+async def test_workflow_collects_all_informational_validator_signals(
+    env,
+) -> None:
+    """A typecheck failure still lets eslint / jest / playwright run.
 
-    The reflection prompt relies on the failing validator being
-    the last entry in ``validators`` — that's the LLM's
-    diagnostic anchor.
+    The reflection prompt iterates every failing validator (see
+    :func:`build_reflection_prompt`), so the LLM gets independent
+    type / style / runtime / a11y signals in a single iteration
+    instead of one-per-round-trip.
+
+    Strict fail-fast (the older behaviour) starved the LLM of
+    those independent signals; the new two-tier chain runs every
+    Tier-2 validator regardless of any one's outcome.
     """
     async with _build_worker(
         env,
@@ -317,7 +327,10 @@ async def test_workflow_fail_fast_stops_after_first_failure(env) -> None:
             _stub_write_candidate_files(),
             _ok_validator(ValidatorKind.dependencies),
             _failing_validator(ValidatorKind.typecheck, "TS2339"),
-            _ok_validator(ValidatorKind.eslint),
+            _failing_validator(
+                ValidatorKind.eslint,
+                "no-unused-vars",
+            ),
             _ok_validator(ValidatorKind.jest),
             _ok_validator(ValidatorKind.playwright_axe),
         ],
@@ -334,13 +347,20 @@ async def test_workflow_fail_fast_stops_after_first_failure(env) -> None:
         )
 
         assert result.all_passed is False
-        # Dependencies passed, then typecheck failed; eslint /
-        # jest / playwright skipped by the fail-fast loop.
+        # All five validators ran despite typecheck failing —
+        # informational tier collects every signal.
         assert [v.kind for v in result.validators] == [
             ValidatorKind.dependencies,
             ValidatorKind.typecheck,
+            ValidatorKind.eslint,
+            ValidatorKind.jest,
+            ValidatorKind.playwright_axe,
         ]
-        assert "TS2339" in result.validators[-1].stdout_tail
+        # Both failing signals surface in the same iteration.
+        assert "TS2339" in result.validators[1].stdout_tail
+        assert "no-unused-vars" in result.validators[2].stdout_tail
+        assert "typecheck" in result.failing_kinds
+        assert "eslint" in result.failing_kinds
 
 
 # --------------------------------------------------------------------------

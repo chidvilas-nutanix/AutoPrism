@@ -149,7 +149,15 @@ def _structured_dict(structured: object) -> dict:
 
 @pytest.mark.asyncio
 async def test_listed_tools_include_slice_12_surface() -> None:
-    """Slice 12 + the 12.5 delivery tool — all 6 must be registered."""
+    """Slice-12 surface + slice-12 design-to-code helpers must all register.
+
+    The base slice-12 set is the 5 generation/reflection tools plus
+    ``get_final_artefact`` (the 12.5 delivery hop). The design-to-
+    code additions are ``map_figma_node`` (composite Figma → Prism
+    mapper) and the two library-asset readers
+    (``get_pwspec_example`` / ``get_snapshot_template``) that surface
+    the source-tree-only assets that don't ship in the npm tarball.
+    """
     server = build_server()
 
     tools = await server.list_tools()
@@ -162,6 +170,9 @@ async def test_listed_tools_include_slice_12_surface() -> None:
         "submit_candidate",
         "get_component_status",
         "get_final_artefact",
+        "map_figma_node",
+        "get_pwspec_example",
+        "get_snapshot_template",
     } <= names
 
 

@@ -21,6 +21,10 @@ math itself; this module's value-add is:
 * a textual ``region`` hint computed from the SSIM "gradient"
   image so the LLM's reflection prompt can be specific about
   where the visual mismatch lives
+* input flexibility: the Figma MCP returns short-lived URLs or
+  base64 PNGs, *not* on-disk paths. The :func:`materialise_image`
+  helper accepts ``path`` / ``url`` / ``base64`` and produces a
+  :class:`pathlib.Path` the rest of the pipeline can consume.
 
 Why this is a separate module from the activity
 -----------------------------------------------
@@ -35,9 +39,13 @@ without spinning up a workflow.
 
 from __future__ import annotations
 
+import base64
 import logging
+import re
+import tempfile
 from pathlib import Path
 
+import httpx
 import numpy as np
 from PIL import Image
 from skimage.metrics import structural_similarity
@@ -45,6 +53,161 @@ from skimage.metrics import structural_similarity
 from prism_mcp.workflow.contracts import SsimVerdict
 
 logger = logging.getLogger(__name__)
+
+
+# --------------------------------------------------------------------------
+# Image source materialisation. The Figma MCP returns screenshots as
+# short-lived signed URLs (preferred — fewer tokens) or, optionally,
+# inline base64 PNG. Neither is a path SSIM can read directly, so we
+# normalise to "PNG bytes on disk" up front and reuse the existing
+# path-based math unchanged.
+# --------------------------------------------------------------------------
+
+
+_DATA_URL_RE = re.compile(r"^data:image/(?P<fmt>[a-zA-Z0-9+]+);base64,(?P<b64>.+)$")
+"""Match an RFC-2397 data URL with a base64 image payload.
+
+The Figma MCP ``enableBase64Response: true`` response embeds the
+PNG as a data URL. We split the prefix so the body can be fed to
+:func:`base64.b64decode` directly.
+"""
+
+
+_DOWNLOAD_TIMEOUT_SECONDS = 30.0
+"""HTTP timeout for the Figma signed-URL download.
+
+Figma's signed URLs serve fast (sub-second on the happy path), but
+the timeout protects against a hung connection wedging the
+workflow on a transient CDN outage. Generous enough that a
+slow corporate proxy still completes; short enough that the
+workflow doesn't sit silent for minutes.
+"""
+
+
+def materialise_image(
+    *,
+    path: str | Path | None = None,
+    url: str | None = None,
+    base64_data: str | None = None,
+    suffix: str = ".png",
+) -> Path:
+    """Resolve *any one* of three input shapes to an on-disk path.
+
+    Exactly one of ``path`` / ``url`` / ``base64_data`` must be
+    set. The Figma MCP gives us URLs by default and base64 only on
+    explicit opt-in; this helper papers over both so the rest of
+    the SSIM pipeline can keep its existing path-based contract.
+
+    Args:
+        path (str | Path | None): pre-existing local file. Returned
+            verbatim as a :class:`pathlib.Path` after an existence
+            check (so callers can't accidentally pass a typo through).
+        url (str | None): HTTPS URL (typically a Figma signed link).
+            Downloaded to a temp file and returned. Raises
+            :class:`httpx.HTTPError` on transport/status errors so
+            the workflow's activity-retry layer can react.
+        base64_data (str | None): raw base64 PNG bytes (no header)
+            *or* an RFC-2397 ``data:image/png;base64,...`` data URL.
+            Decoded into a temp file.
+        suffix (str): file extension used when materialising a temp
+            file. Defaults to ``.png`` since both Figma exports and
+            Playwright screenshots are PNG.
+
+    Returns:
+        Path: a file that exists on disk and contains the image
+        bytes. For the URL / base64 inputs, the file lives under
+        ``tempfile.gettempdir()`` and is the caller's responsibility
+        to clean up *if* they care — the OS purges ``/tmp`` on
+        reboot, and our workflow life-cycle is short enough that
+        leaking a few hundred KB per run is acceptable.
+
+    Raises:
+        ValueError: when zero or multiple input modes are set.
+        FileNotFoundError: when ``path`` is set but the file is
+            missing — surfaced eagerly instead of letting Pillow
+            fail later with a less helpful message.
+    """
+    provided = sum(
+        x is not None for x in (path, url, base64_data)
+    )
+    if provided != 1:
+        raise ValueError(
+            "materialise_image() requires exactly one of path / url "
+            f"/ base64_data; got {provided}"
+        )
+
+    if path is not None:
+        resolved = Path(path)
+        if not resolved.exists():
+            raise FileNotFoundError(f"image path not found: {resolved}")
+        return resolved
+
+    if base64_data is not None:
+        return _materialise_from_base64(base64_data, suffix=suffix)
+
+    assert url is not None
+    return _materialise_from_url(url, suffix=suffix)
+
+
+def _materialise_from_url(url: str, *, suffix: str) -> Path:
+    """Download ``url`` synchronously and return the temp file path.
+
+    Uses :mod:`httpx` (already a project dep via the registry
+    client) so we keep the dependency surface tight. Synchronous
+    because this is called from the SSIM ``compare_to_figma`` tool
+    handler — that handler is itself async, but the download is a
+    one-shot blocking operation and pulling in ``asyncio`` here
+    would force every test caller to await it.
+    """
+    logger.info("downloading image url=%s", url)
+    response = httpx.get(
+        url, timeout=_DOWNLOAD_TIMEOUT_SECONDS, follow_redirects=True
+    )
+    response.raise_for_status()
+    # ``delete=False`` so the file outlives this function — the
+    # caller (SSIM compare) needs to open it by path. The ``with``
+    # block closes the file handle on exit but leaves the bytes
+    # on disk; ``tmp.name`` survives the close.
+    with tempfile.NamedTemporaryFile(
+        prefix="prism-mcp-figma-",
+        suffix=suffix,
+        delete=False,
+    ) as tmp:
+        tmp.write(response.content)
+    logger.info(
+        "materialised image from url path=%s bytes=%d",
+        tmp.name,
+        len(response.content),
+    )
+    return Path(tmp.name)
+
+
+def _materialise_from_base64(payload: str, *, suffix: str) -> Path:
+    """Decode a base64 (or data-URL) payload to a temp file."""
+    match = _DATA_URL_RE.match(payload)
+    body = match.group("b64") if match else payload
+    try:
+        raw = base64.b64decode(body, validate=True)
+    except ValueError as exc:
+        raise ValueError(
+            "materialise_image() base64_data is not valid base64; "
+            "expected raw base64 PNG bytes or a "
+            "'data:image/...;base64,...' data URL"
+        ) from exc
+    # See _materialise_from_url for the rationale on
+    # ``delete=False`` + ``with``.
+    with tempfile.NamedTemporaryFile(
+        prefix="prism-mcp-figma-",
+        suffix=suffix,
+        delete=False,
+    ) as tmp:
+        tmp.write(raw)
+    logger.info(
+        "materialised image from base64 path=%s bytes=%d",
+        tmp.name,
+        len(raw),
+    )
+    return Path(tmp.name)
 
 _MIN_WINDOW = 7
 """SSIM's default Gaussian window size.

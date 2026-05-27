@@ -99,23 +99,57 @@ _SSIM_TIMEOUT = timedelta(seconds=60)
 
 
 # --------------------------------------------------------------------------
-# Subprocess validator chain. Single list keeps the fail-fast order
-# explicit and machine-checkable in tests.
+# Two-tier validator chain (SOTA "collect all feedback per iteration").
 #
-# The leading ``dependencies`` entry is the slice-12 gap-closing
-# preflight: it's just a handful of filesystem stat() calls, so it
-# runs in well under a second when ``node_modules`` is in place, and
-# surfaces an actionable "run npm install" message when it isn't —
-# instead of letting every downstream validator fail with ENOENT.
+# Tier 1 — Hard gates: must pass before the rest of the chain runs at
+# all. Today the only member is ``dependencies``, which is a few
+# filesystem stat()s and surfaces an actionable "run npm install"
+# remediation. Without it, every downstream subprocess would fail
+# with ``ENOENT`` and the LLM would get a confusing "tsc not found"
+# instead of "install the JS deps".
+#
+# Tier 2 — Informational validators: typecheck, eslint, jest,
+# playwright + axe. The SOTA AlphaCodium pattern is to **run them all
+# regardless of any one's outcome** so the LLM sees the full panel of
+# errors in a single iteration. Strict fail-fast (the old behaviour)
+# starved the LLM of independent signals — e.g. an eslint formatting
+# issue would never surface until after typecheck went green, costing
+# an extra iteration round-trip per validator. The new policy
+# trades a small amount of wasted compute (running jest/playwright
+# against syntactically broken code is mostly noise) for far fewer
+# iteration cycles in practice.
+#
+# Why keep ``dependencies`` as a hard gate and demote ``typecheck``?
+# Because ``dependencies`` failures produce *cascading binary-not-found*
+# errors that are not actionable feedback (the LLM cannot ``npm install``
+# from inside its own generated code). Typecheck failures, on the other
+# hand, produce TS error messages the LLM *can* act on — and eslint /
+# jest / playwright add orthogonal signals (style, runtime, a11y) that
+# are useful even when types are broken.
+#
+# SSIM gating is unchanged: it only runs when *every* Tier-2 validator
+# passes (a broken render is meaningless to visually diff).
 # --------------------------------------------------------------------------
 
 
-_SUBPROCESS_CHAIN: list[tuple[ValidatorKind, object, timedelta]] = [
+_HARD_GATE_VALIDATORS: list[tuple[ValidatorKind, object, timedelta]] = [
     (
         ValidatorKind.dependencies,
         check_dependencies_installed,
         _DEPENDENCIES_TIMEOUT,
     ),
+]
+"""Validators whose failure short-circuits the iteration immediately.
+
+Order is execution order. The chain stops at the first non-zero
+exit so the LLM gets the *most-actionable* error without noise
+from the rest. Today only ``dependencies`` qualifies; future
+candidates could be a binary-version-mismatch probe or a license
+check.
+"""
+
+
+_INFORMATIONAL_VALIDATORS: list[tuple[ValidatorKind, object, timedelta]] = [
     (ValidatorKind.typecheck, run_typecheck, _FAST_VALIDATOR_TIMEOUT),
     (ValidatorKind.eslint, run_eslint, _FAST_VALIDATOR_TIMEOUT),
     (ValidatorKind.jest, run_jest, _FAST_VALIDATOR_TIMEOUT),
@@ -125,6 +159,14 @@ _SUBPROCESS_CHAIN: list[tuple[ValidatorKind, object, timedelta]] = [
         _SLOW_VALIDATOR_TIMEOUT,
     ),
 ]
+"""Validators that always run when the hard gates passed.
+
+Each contributes an independent error signal (types / style /
+runtime / a11y+visual). All four run regardless of any one's
+outcome so the reflection prompt aggregates *all* findings into
+a single LLM round. This is the AlphaCodium ``Iterate on tests``
+shape applied to a multi-validator chain.
+"""
 
 
 @workflow.defn
@@ -237,9 +279,21 @@ class GenerateComponentWorkflow:
     async def _run_subprocess_chain(
         self, ctx: ServicesContext
     ) -> list[ValidatorResult]:
-        """Run the four subprocess validators in fail-fast order."""
+        """Run validators with two-tier semantics (hard gates + informational).
+
+        Phase 1 — Hard gates. Each runs sequentially; the first
+        failure short-circuits the entire iteration so the LLM
+        gets a single, actionable remediation hint instead of a
+        wall of cascading ``ENOENT`` errors.
+
+        Phase 2 — Informational validators. Every validator runs
+        regardless of its predecessors' outcome. This is the SOTA
+        AlphaCodium-flavoured pattern: surface the *full* panel of
+        errors per iteration so the LLM can fix multiple
+        orthogonal issues in a single regeneration step.
+        """
         validators: list[ValidatorResult] = []
-        for _kind, activity_fn, timeout in _SUBPROCESS_CHAIN:
+        for _kind, activity_fn, timeout in _HARD_GATE_VALIDATORS:
             result = await workflow.execute_activity(
                 activity_fn,
                 ctx,
@@ -247,9 +301,22 @@ class GenerateComponentWorkflow:
             )
             validators.append(result)
             if not result.ok:
-                # AlphaCodium fail-fast: don't burn time on later
-                # validators when an earlier one already failed.
-                break
+                # Hard-gate failure aborts the iteration. The LLM
+                # cannot fix a missing ``node_modules`` from inside
+                # its own JSX, so running downstream validators
+                # would just produce noise.
+                return validators
+
+        for _kind, activity_fn, timeout in _INFORMATIONAL_VALIDATORS:
+            result = await workflow.execute_activity(
+                activity_fn,
+                ctx,
+                start_to_close_timeout=timeout,
+            )
+            validators.append(result)
+            # Intentionally no ``break`` here — collect every
+            # validator's signal so the reflection prompt
+            # aggregates them.
         return validators
 
     async def _maybe_run_ssim(
