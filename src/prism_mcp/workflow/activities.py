@@ -62,7 +62,10 @@ from prism_mcp.workflow.contracts import (
     ValidatorKind,
     ValidatorResult,
 )
-from prism_mcp.workflow.ssim import compute_ssim_from_paths
+from prism_mcp.workflow.ssim import (
+    compute_ssim_from_paths,
+    materialise_image,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +167,149 @@ Playwright-only types that need a separate compile context.
 
 
 # --------------------------------------------------------------------------
+# Auto-scaffolded test-file templates. The slice-12 hybrid strategy:
+# the workflow always writes a minimal pwspec + jest spec at iteration 1
+# so Playwright + Jest have something to run regardless of whether the
+# LLM authored companion tests. The LLM can refine these via the
+# ``update_companion_tests`` tool when behaviour-specific assertions
+# are needed.
+# --------------------------------------------------------------------------
+
+
+_PWSPEC_SCAFFOLD_MARKER = "// prism-mcp:auto-scaffolded-pwspec"
+"""Sentinel comment in the auto-scaffolded pwspec body.
+
+Future tooling can grep for this marker to know whether the
+pwspec is the workflow's own scaffold or one the LLM has
+already refined. We never depend on the marker for behaviour —
+the existence-check in :func:`write_candidate_files` is the
+real gate — but the marker is a free debugging breadcrumb.
+"""
+
+
+_SPEC_SCAFFOLD_MARKER = "// prism-mcp:auto-scaffolded-spec"
+"""Sentinel comment in the auto-scaffolded jest spec body.
+
+See :data:`_PWSPEC_SCAFFOLD_MARKER`.
+"""
+
+
+def _scaffold_pwspec(component_name: str) -> str:
+    """Return a minimal Playwright pwspec for a scratch component.
+
+    The scaffold deliberately avoids assuming a pre-built
+    styleguide route or harness page (Prism's own pwspecs use
+    ``playwright-util.visitPage`` which depends on the
+    ``services/www`` styleguide build — unavailable for
+    scratch components). Instead we ship a single passing
+    smoke test so:
+
+    * ``run_playwright_axe`` finds at least one test and exits 0
+      cleanly (no ``--pass-with-no-tests`` workaround needed).
+    * The LLM has a working starting point to refine via
+      ``update_companion_tests`` when behaviour-specific axe
+      or visual assertions are warranted.
+
+    The scaffold is intentionally a smoke test: it asserts a
+    tautology so the playwright_axe validator passes from
+    iteration 1. Crucially, **the smoke test does NOT write a
+    screenshot**, which means SSIM is skipped on iteration 1 with
+    ``ssim_skip_reason="rendered_unavailable"`` — the workflow's
+    pre-check activity (``check_rendered_exists``) detects the
+    missing PNG and converts what used to be a
+    ``FileNotFoundError`` crash into a clean reflection-prompt
+    nudge. The nudge tells the LLM to refine this scaffold via
+    ``update_companion_tests`` once it knows how to mount the
+    component, so the next iteration emits a real screenshot at
+    the path the SSIM stage expects.
+
+    The embedded ``REFINEMENT TEMPLATE`` block is the literal
+    snippet the LLM should swap in when it has a working mount
+    pattern. Keeping it inside the scaffold (as a comment) means
+    Cursor can grep the just-written file for guidance without
+    needing additional tool calls.
+    """
+    return f"""\
+import {{ test, expect }} from '@playwright/test';
+
+{_PWSPEC_SCAFFOLD_MARKER}
+// Auto-scaffolded by prism-mcp's `start_generate_component` workflow.
+// SMOKE TEST ONLY — does not capture pixels, so SSIM will be skipped
+// with ssim_skip_reason="rendered_unavailable" on iteration 1.
+//
+// Refine via the `update_companion_tests` MCP tool once you know
+// how to mount {component_name}. The validator-side contract is:
+//
+//   - Save a Playwright screenshot at:
+//     services/playwright-output/{component_name}.png
+//   - The path is relative to services_root the workflow received.
+//
+// REFINEMENT TEMPLATE (copy into update_companion_tests.pwspec_code):
+// ----------------------------------------------------------------
+//   import {{ test, expect }} from '@playwright/test';
+//   import AxeBuilder from '@axe-core/playwright';
+//
+//   test('{component_name} renders + axe + screenshot', async ({{ page }}) => {{
+//     await page.goto('http://localhost:5173/scratch/{component_name}');
+//     // ^ replace with your project's harness URL.
+//     const axe = await new AxeBuilder({{ page }}).analyze();
+//     expect(axe.violations).toEqual([]);
+//     await page.screenshot({{
+//       path: 'playwright-output/{component_name}.png',
+//       fullPage: false,
+//     }});
+//   }});
+// ----------------------------------------------------------------
+
+test.describe('{component_name} scaffolded suite', () => {{
+  test('scaffold smoke', () => {{
+    expect(true).toBe(true);
+  }});
+}});
+"""
+
+
+def _scaffold_spec(component_name: str) -> str:
+    """Return a minimal Jest spec.tsx for a scratch component.
+
+    The scaffold imports the candidate via its default export
+    (Prism's repo-wide convention; see e.g.
+    ``services/src/components/v2/Alert/Alert.spec.tsx``) and
+    asserts that the import resolves to a defined value.
+    Catches:
+
+    * Missing/typo'd default export (LLM forgot ``export default``).
+    * Syntax errors at module load time (would crash the import).
+
+    We deliberately *don't* call ``render(<Component />)``: many
+    Prism components have required props, and a default-render
+    test would fail noisily on those without giving the LLM
+    actionable feedback. The LLM upgrades this scaffold via
+    ``update_companion_tests`` when it knows the prop shape.
+    """
+    return f"""\
+import React from 'react';
+import {component_name} from './{component_name}';
+
+{_SPEC_SCAFFOLD_MARKER}
+// Auto-scaffolded by prism-mcp's `start_generate_component` workflow.
+// Refine via the `update_companion_tests` MCP tool to add
+// behaviour-specific render + assertion patterns once {component_name}'s
+// prop shape is stable.
+
+describe('{component_name} scaffolded suite', () => {{
+  it('module exports the component', () => {{
+    expect({component_name}).toBeDefined();
+  }});
+}});
+
+// React import is intentional: the scaffold may grow into a JSX-using
+// render call when the LLM refines it via update_companion_tests.
+void React;
+"""
+
+
+# --------------------------------------------------------------------------
 # Activity input models. Each activity takes exactly one Pydantic
 # argument so Temporal's data converter has a single schema to
 # serialise (mixing positional args + kwargs is supported but harder
@@ -181,9 +327,16 @@ class CandidateInput(BaseModel):
             file stem we write to disk).
         jsx_code (str): the candidate component's JSX body.
             Written verbatim — no syntax/imports massaging here.
-        companion_test_code (str | None): optional pwspec.ts body
-            produced by the AlphaCodium AI-test stage. ``None``
-            skips writing the test file.
+        companion_test_code (str | None): optional pwspec.ts body.
+            When supplied, it overwrites whatever pwspec was on
+            disk (scaffolded or LLM-authored). When ``None``, the
+            activity falls back to the auto-scaffold *only if*
+            no pwspec exists yet (preserving any earlier
+            LLM-supplied content across iterations).
+        companion_spec_code (str | None): optional jest spec.tsx body.
+            Same write-once semantics as ``companion_test_code``:
+            supplied content overwrites; ``None`` triggers the
+            scaffold only on the first iteration.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -192,6 +345,7 @@ class CandidateInput(BaseModel):
     component_name: str
     jsx_code: str
     companion_test_code: str | None = None
+    companion_spec_code: str | None = None
 
 
 class ServicesContext(BaseModel):
@@ -226,6 +380,85 @@ class SsimInput(BaseModel):
     rendered_png_path: str
 
 
+class RenderedExistsInput(BaseModel):
+    """Inputs for :func:`check_rendered_exists`.
+
+    Args:
+        rendered_png_path (str): the path the workflow templated
+            for Playwright to write the screenshot to. The
+            activity does not validate format or readability —
+            only existence.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    rendered_png_path: str
+
+
+class RenderedExistsResult(BaseModel):
+    """Output of :func:`check_rendered_exists`.
+
+    Args:
+        rendered_png_path (str): the path the activity inspected.
+            Echoed back so workflow logs include both the path and
+            the verdict on a single line.
+        exists (bool): ``True`` iff the path resolved to an
+            existing file (not just the parent directory). The
+            workflow uses this to decide between calling
+            :func:`run_ssim_compare` and recording an
+            ``ssim_skip_reason`` of ``"rendered_unavailable"``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    rendered_png_path: str
+    exists: bool
+
+
+class FigmaReferenceInput(BaseModel):
+    """Inputs for :func:`materialise_figma_reference`.
+
+    Exactly one of the three optional fields is expected to be
+    set (the workflow's ``WorkflowStartInput.has_figma_reference``
+    gate ensures we never call the activity with all three
+    ``None``). When more than one is set, ``figma_png_path`` wins
+    over ``figma_png_url`` wins over ``figma_png_base64`` —
+    matching :func:`prism_mcp.workflow.ssim.materialise_image`.
+
+    Args:
+        figma_png_path (str | None): pre-existing on-disk PNG.
+        figma_png_url (str | None): HTTPS URL to download.
+        figma_png_base64 (str | None): inline base64 PNG body
+            (raw or RFC-2397 ``data:`` URL).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    figma_png_path: str | None = None
+    figma_png_url: str | None = None
+    figma_png_base64: str | None = None
+
+
+class FigmaReferenceResult(BaseModel):
+    """Result of :func:`materialise_figma_reference`.
+
+    Args:
+        path (str | None): absolute path to the on-disk PNG, or
+            ``None`` when no input field was supplied (caller
+            should not invoke the activity in that case, but the
+            field exists for symmetry).
+        source (str): which input branch the activity took —
+            ``"path"``, ``"url"``, ``"base64"``, or ``"none"``.
+            Echoed back so the workflow can log a clear "we
+            downloaded from URL X to path Y" line.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str | None
+    source: str
+
+
 # --------------------------------------------------------------------------
 # Filesystem activity — writes generated code to the scratch tree.
 # --------------------------------------------------------------------------
@@ -233,19 +466,38 @@ class SsimInput(BaseModel):
 
 @activity.defn
 async def write_candidate_files(input: CandidateInput) -> ServicesContext:
-    """Materialise ``input.jsx_code`` (and optional pwspec) on disk.
+    """Materialise the candidate JSX + auto-scaffolded test files on disk.
 
     The destination layout matches the slice-12 design decision:
 
-    ``services/src/scratch/Generated/<Name>/<Name>.jsx``
-    ``services/src/scratch/Generated/<Name>/<Name>.pwspec.ts`` (optional)
-    ``services/src/scratch/Generated/<Name>/tsconfig.json`` (always)
+    ``services/src/scratch/Generated/<Name>/<Name>.jsx``         (always)
+    ``services/src/scratch/Generated/<Name>/<Name>.pwspec.ts``    (always)
+    ``services/src/scratch/Generated/<Name>/<Name>.spec.tsx``     (always)
+    ``services/src/scratch/Generated/<Name>/tsconfig.json``       (always)
 
     The scoped ``tsconfig.json`` is what lets :func:`run_typecheck`
     invoke ``tsc -p <scratch>/tsconfig.json`` and only see this
     candidate's files. Without it tsc would pick up the project-wide
     ``services/tsconfig.json`` and surface every pre-existing error
     in the Prism codebase on top of the candidate's own errors.
+
+    Test-file write semantics
+    -------------------------
+
+    The pwspec and spec.tsx files use **write-once-then-preserve**
+    semantics so the workflow's auto-scaffold seeds iteration 1 but
+    later iterations don't clobber LLM-refined content:
+
+    * If ``companion_test_code`` / ``companion_spec_code`` is
+      supplied, it overwrites whatever was on disk. This is the
+      ``update_companion_tests`` tool's path.
+    * If the param is ``None`` and no test file exists yet (first
+      iteration), the activity writes the auto-scaffold from
+      :func:`_scaffold_pwspec` / :func:`_scaffold_spec`.
+    * If the param is ``None`` and a test file already exists
+      (subsequent iterations), the activity leaves it alone —
+      preserving any refinement the LLM has made via
+      ``update_companion_tests`` against an earlier iteration.
 
     Args:
         input (CandidateInput): see the class docstring.
@@ -268,17 +520,178 @@ async def write_candidate_files(input: CandidateInput) -> ServicesContext:
     tsconfig_path.write_text(_SCRATCH_TSCONFIG_TEMPLATE, encoding="utf-8")
     logger.info("wrote scoped tsconfig path=%s", tsconfig_path)
 
-    if input.companion_test_code is not None:
-        pwspec_path = dest_dir / f"{input.component_name}.pwspec.ts"
-        pwspec_path.write_text(input.companion_test_code, encoding="utf-8")
-        logger.info(
-            "wrote companion pwspec path=%s bytes=%d",
-            pwspec_path,
-            len(input.companion_test_code),
-        )
+    pwspec_path = dest_dir / f"{input.component_name}.pwspec.ts"
+    _materialise_companion_file(
+        path=pwspec_path,
+        supplied_body=input.companion_test_code,
+        scaffold_factory=lambda: _scaffold_pwspec(input.component_name),
+        kind="pwspec",
+    )
+
+    spec_path = dest_dir / f"{input.component_name}.spec.tsx"
+    _materialise_companion_file(
+        path=spec_path,
+        supplied_body=input.companion_spec_code,
+        scaffold_factory=lambda: _scaffold_spec(input.component_name),
+        kind="spec",
+    )
+
     return ServicesContext(
         services_root=input.services_root,
         component_name=input.component_name,
+    )
+
+
+class UpdateCompanionFilesInput(BaseModel):
+    """Inputs for :func:`update_companion_test_files`.
+
+    Mirror of :class:`prism_mcp.workflow.contracts.UpdateCompanionTestsInput`,
+    but materialised at the activity boundary so Temporal's data
+    converter has its usual single-Pydantic-arg shape.
+
+    Args:
+        services_root (str): same as :class:`CandidateInput`.
+        component_name (str): same as :class:`CandidateInput`.
+        pwspec_code (str | None): when set, overwrite the pwspec
+            file. ``None`` is a no-op for that file.
+        spec_code (str | None): when set, overwrite the spec.tsx
+            file. ``None`` is a no-op.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    services_root: str
+    component_name: str
+    pwspec_code: str | None = None
+    spec_code: str | None = None
+
+
+class UpdateCompanionFilesResult(BaseModel):
+    """Result of :func:`update_companion_test_files`.
+
+    Mirror of :class:`prism_mcp.workflow.contracts.UpdateCompanionTestsResult`
+    but without the prose ``next_step_hint`` (the workflow layer
+    composes that from ``component_name``).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    component_name: str
+    wrote_pwspec: bool
+    wrote_spec: bool
+    pwspec_path: str
+    spec_path: str
+
+
+@activity.defn
+async def update_companion_test_files(
+    input: UpdateCompanionFilesInput,
+) -> UpdateCompanionFilesResult:
+    """Overwrite the candidate's pwspec and/or jest spec.
+
+    This is the LLM's path for refining the auto-scaffolded test
+    files. Differs from :func:`write_candidate_files` in two ways:
+
+    * It does **not** touch the JSX or tsconfig — those are owned
+      by the ``submit_candidate`` flow.
+    * Either input field can be ``None`` to leave that test file
+      alone; only the supplied fields are overwritten.
+
+    The activity raises :class:`FileNotFoundError` if the scratch
+    dir doesn't exist yet — the LLM must have called
+    ``submit_candidate`` at least once to seed the scratch tree
+    before refining tests.
+
+    Args:
+        input (UpdateCompanionFilesInput): see the class docstring.
+
+    Returns:
+        UpdateCompanionFilesResult: which files were actually
+        written, plus their absolute paths.
+    """
+    services_root = Path(input.services_root)
+    dest_dir = _scratch_dir(services_root, input.component_name)
+    if not dest_dir.is_dir():
+        raise FileNotFoundError(
+            f"scratch dir {dest_dir} does not exist; call "
+            "submit_candidate at least once before refining tests"
+        )
+
+    pwspec_path = dest_dir / f"{input.component_name}.pwspec.ts"
+    wrote_pwspec = False
+    if input.pwspec_code is not None:
+        pwspec_path.write_text(input.pwspec_code, encoding="utf-8")
+        wrote_pwspec = True
+        logger.info(
+            "refined pwspec path=%s bytes=%d",
+            pwspec_path,
+            len(input.pwspec_code),
+        )
+
+    spec_path = dest_dir / f"{input.component_name}.spec.tsx"
+    wrote_spec = False
+    if input.spec_code is not None:
+        spec_path.write_text(input.spec_code, encoding="utf-8")
+        wrote_spec = True
+        logger.info(
+            "refined jest spec path=%s bytes=%d",
+            spec_path,
+            len(input.spec_code),
+        )
+
+    return UpdateCompanionFilesResult(
+        component_name=input.component_name,
+        wrote_pwspec=wrote_pwspec,
+        wrote_spec=wrote_spec,
+        pwspec_path=str(pwspec_path),
+        spec_path=str(spec_path),
+    )
+
+
+def _materialise_companion_file(
+    *,
+    path: Path,
+    supplied_body: str | None,
+    scaffold_factory: object,
+    kind: str,
+) -> None:
+    """Write a companion test file with write-once-then-preserve semantics.
+
+    Three branches:
+
+    1. ``supplied_body`` is non-None → overwrite. The LLM (via
+       ``update_companion_tests`` or by submitting candidate
+       inputs with companion code) gets the final word.
+    2. ``supplied_body`` is None and ``path`` doesn't exist → write
+       the scaffold. First-iteration default.
+    3. ``supplied_body`` is None and ``path`` exists → no-op.
+       Preserves prior LLM refinement across iterations.
+
+    ``scaffold_factory`` is a zero-arg callable so the (potentially
+    expensive-string) scaffold isn't built when we hit the no-op
+    branch. ``kind`` is a short label used only in the log line.
+    """
+    if supplied_body is not None:
+        path.write_text(supplied_body, encoding="utf-8")
+        logger.info(
+            "wrote llm-supplied %s path=%s bytes=%d",
+            kind,
+            path,
+            len(supplied_body),
+        )
+        return
+    if path.exists():
+        logger.info(
+            "preserved existing %s path=%s bytes=%d",
+            kind,
+            path,
+            path.stat().st_size,
+        )
+        return
+    body = scaffold_factory()  # type: ignore[operator]
+    path.write_text(body, encoding="utf-8")
+    logger.info(
+        "wrote scaffold %s path=%s bytes=%d", kind, path, len(body)
     )
 
 
@@ -669,29 +1082,21 @@ async def run_jest(ctx: ServicesContext) -> ValidatorResult:
 async def run_playwright_axe(ctx: ServicesContext) -> ValidatorResult:
     """Run Playwright tests scoped to the candidate directory.
 
-    A pwspec written by the AlphaCodium AI-test stage typically
-    pairs ``@axe-core/playwright`` assertions with visual /
-    interaction expectations, so a single Playwright run covers
-    both the a11y panel and the per-component behaviour.
+    The :func:`write_candidate_files` activity always seeds a
+    pwspec at iteration 1 (auto-scaffold) so Playwright's "no
+    tests found" failure mode is no longer reachable —
+    accordingly we no longer pass ``--pass-with-no-tests``. If
+    the LLM later refines the pwspec via ``update_companion_tests``
+    and introduces real axe-core / visual assertions, those
+    failures bubble up as actionable feedback the LLM can act
+    on without needing the no-tests safety net.
 
-    Skips Prism's full styleguide rebuild — pwspec authors are
-    expected to either mount the component themselves or point at
-    an already-built styleguide URL via ``baseURL``.
-
-    Passing ``--pass-with-no-tests``
-    --------------------------------
-
-    The AlphaCodium AI-test stage is *optional* — early iterations
-    often produce JSX without a companion ``pwspec.ts``. Without
-    the flag, Playwright exits non-zero on "no tests found" and
-    short-circuits the iteration on a non-actionable error: the
-    LLM cannot iterate its way out of "no tests" because writing
-    tests is a separate concern from fixing the component. With
-    ``--pass-with-no-tests`` (built-in since Playwright 1.43) the
-    Playwright run becomes benign in that case — the validator
-    panel still has a fresh row, but the LLM is free to push
-    typecheck/eslint/jest fixes first and add pwspec content in a
-    later round.
+    A pwspec typically pairs ``@axe-core/playwright`` assertions
+    with visual / interaction expectations, so a single
+    Playwright run covers both the a11y panel and the
+    per-component behaviour. Auto-scaffolds start with a smoke
+    test only; real axe checks come once the LLM upgrades the
+    pwspec.
     """
     scratch = _scratch_dir_rel(ctx.component_name)
     return await _run_validator(
@@ -700,7 +1105,6 @@ async def run_playwright_axe(ctx: ServicesContext) -> ValidatorResult:
             _bin(ctx.services_root, "playwright"),
             "test",
             scratch,
-            "--pass-with-no-tests",
         ],
         cwd=ctx.services_root,
     )
@@ -712,6 +1116,63 @@ async def run_playwright_axe(ctx: ServicesContext) -> ValidatorResult:
 
 
 @activity.defn
+async def materialise_figma_reference(
+    input: FigmaReferenceInput,
+) -> FigmaReferenceResult:
+    """Resolve a Figma PNG reference to an on-disk path **once per workflow**.
+
+    Called from the workflow's ``run`` entrypoint *before* the
+    first ``submit_candidate`` lands. The result path is cached
+    on the workflow instance and reused by every iteration's SSIM
+    activity, so the network/decode cost is paid at most once
+    per workflow regardless of how many iterations run.
+
+    Branches:
+
+    * ``figma_png_path`` set → returns it verbatim. No I/O.
+    * ``figma_png_url`` set → :func:`materialise_image` downloads
+      to ``tempfile.gettempdir()`` and we return that path.
+    * ``figma_png_base64`` set → :func:`materialise_image`
+      decodes to ``tempfile.gettempdir()``.
+    * Nothing set → returns ``path=None``, ``source="none"``.
+      The workflow should never invoke the activity in this
+      branch (the ``has_figma_reference`` gate prevents it),
+      but we handle it defensively so a stray call surfaces
+      cleanly instead of as an unhandled exception.
+
+    Args:
+        input (FigmaReferenceInput): one of three input shapes.
+
+    Returns:
+        FigmaReferenceResult: the resolved path + which input
+        branch was used (for logging and the ``source`` field
+        the workflow surfaces in its status snapshot).
+    """
+    if input.figma_png_path is not None:
+        return FigmaReferenceResult(
+            path=input.figma_png_path,
+            source="path",
+        )
+    if input.figma_png_url is not None:
+        resolved = materialise_image(url=input.figma_png_url)
+        logger.info(
+            "materialised figma reference url=%s path=%s",
+            input.figma_png_url,
+            resolved,
+        )
+        return FigmaReferenceResult(path=str(resolved), source="url")
+    if input.figma_png_base64 is not None:
+        resolved = materialise_image(base64_data=input.figma_png_base64)
+        logger.info(
+            "materialised figma reference base64 bytes=%d path=%s",
+            len(input.figma_png_base64),
+            resolved,
+        )
+        return FigmaReferenceResult(path=str(resolved), source="base64")
+    return FigmaReferenceResult(path=None, source="none")
+
+
+@activity.defn
 async def run_ssim_compare(input: SsimInput) -> SsimVerdict:
     """Compute the SSIM verdict for two PNG paths on disk.
 
@@ -719,8 +1180,48 @@ async def run_ssim_compare(input: SsimInput) -> SsimVerdict:
     the workflow can ``await`` it like any other activity. The
     SSIM math is CPU-bound and quick (~50ms on a 1280x800 image),
     so we don't bother offloading to a thread pool.
+
+    Both paths must exist before this activity is invoked. The
+    workflow gates the call on :func:`check_rendered_exists` so
+    a missing ``rendered_png_path`` yields a clean
+    ``ssim_skip_reason`` instead of an unhandled
+    :class:`FileNotFoundError`.
     """
     return compute_ssim_from_paths(
         figma_png=Path(input.figma_png_path),
         rendered_png=Path(input.rendered_png_path),
+    )
+
+
+@activity.defn
+async def check_rendered_exists(
+    input: RenderedExistsInput,
+) -> RenderedExistsResult:
+    """Verify the templated rendered PNG exists before SSIM runs.
+
+    The Slice 12 SSIM stage assumes Playwright wrote a screenshot
+    at ``{services_root}/playwright-output/{component_name}.png``
+    by the time all subprocess validators have passed. The
+    auto-scaffolded pwspec is a smoke test that doesn't navigate
+    or capture, so on iteration 1 the file is typically absent.
+    Without this gate, :func:`run_ssim_compare` raises
+    :class:`FileNotFoundError` and the workflow crashes — robbing
+    the LLM of any actionable signal. This pre-check converts the
+    crash into a clean ``ssim_skip_reason="rendered_unavailable"``
+    that the reflection prompt can act on.
+
+    The activity is deliberately tiny (single ``Path.exists()``
+    call) so it pays its registration cost without adding
+    measurable latency. Wrapping it in an activity rather than
+    inlining a check at workflow scope is required by Temporal's
+    sandbox: workflow code can't touch the filesystem directly.
+    """
+    target = Path(input.rendered_png_path)
+    exists = target.is_file()
+    logger.info(
+        "checked rendered png path=%s exists=%s", input.rendered_png_path, exists
+    )
+    return RenderedExistsResult(
+        rendered_png_path=input.rendered_png_path,
+        exists=exists,
     )

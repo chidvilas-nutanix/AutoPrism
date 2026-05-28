@@ -42,13 +42,20 @@ from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 from prism_mcp.workflow import PRISM_TASK_QUEUE
 from prism_mcp.workflow.activities import (
     CandidateInput,
+    FigmaReferenceInput,
+    FigmaReferenceResult,
+    RenderedExistsInput,
+    RenderedExistsResult,
     ServicesContext,
     SsimInput,
+    UpdateCompanionFilesInput,
+    UpdateCompanionFilesResult,
 )
 from prism_mcp.workflow.contracts import (
     CandidateResult,
     SsimVerdict,
     SubmitInput,
+    UpdateCompanionTestsInput,
     ValidatorKind,
     ValidatorResult,
     WorkflowStartInput,
@@ -119,6 +126,79 @@ def _stub_ssim(score: float):
     return stub
 
 
+def _stub_check_rendered_exists(*, exists: bool = True):
+    """Build a stub for the rendered-PNG existence pre-check.
+
+    The workflow gates SSIM on this activity so a missing
+    screenshot yields a clean ``ssim_skip_reason``. Default
+    ``exists=True`` mirrors the happy path; tests that exercise
+    the new ``rendered_unavailable`` skip branch override with
+    ``exists=False``.
+    """
+
+    @activity.defn(name="check_rendered_exists")
+    async def stub(input: RenderedExistsInput) -> RenderedExistsResult:
+        return RenderedExistsResult(
+            rendered_png_path=input.rendered_png_path,
+            exists=exists,
+        )
+
+    return stub
+
+
+def _stub_materialise_figma_reference(
+    *, returned_path: str = "/tmp/materialised-figma.png"
+):
+    """Stub for :func:`materialise_figma_reference`.
+
+    Returns a fixed path and synthesises the ``source`` label from
+    whichever input field was set (path > url > base64). Real
+    activity downloads/decodes; the stub is purely deterministic
+    so the workflow's branching on ``has_figma_reference`` can be
+    asserted without standing up an HTTP server.
+    """
+
+    @activity.defn(name="materialise_figma_reference")
+    async def stub(input: FigmaReferenceInput) -> FigmaReferenceResult:
+        if input.figma_png_path is not None:
+            return FigmaReferenceResult(
+                path=input.figma_png_path,
+                source="path",
+            )
+        if input.figma_png_url is not None:
+            return FigmaReferenceResult(path=returned_path, source="url")
+        if input.figma_png_base64 is not None:
+            return FigmaReferenceResult(
+                path=returned_path,
+                source="base64",
+            )
+        return FigmaReferenceResult(path=None, source="none")
+
+    return stub
+
+
+def _stub_update_companion_test_files():
+    """Stub for :func:`update_companion_test_files`.
+
+    Echoes the inputs back so the test can assert which fields
+    actually fired without needing real filesystem writes.
+    """
+
+    @activity.defn(name="update_companion_test_files")
+    async def stub(
+        input: UpdateCompanionFilesInput,
+    ) -> UpdateCompanionFilesResult:
+        return UpdateCompanionFilesResult(
+            component_name=input.component_name,
+            wrote_pwspec=input.pwspec_code is not None,
+            wrote_spec=input.spec_code is not None,
+            pwspec_path=f"/scratch/{input.component_name}.pwspec.ts",
+            spec_path=f"/scratch/{input.component_name}.spec.tsx",
+        )
+
+    return stub
+
+
 def _ok_validator(kind: ValidatorKind):
     return _stub_validator(kind=kind, exit_code=0)
 
@@ -173,12 +253,16 @@ def _start_input(
     *,
     max_iterations: int = 3,
     figma_png_path: str | None = None,
+    figma_png_url: str | None = None,
+    figma_png_base64: str | None = None,
 ) -> WorkflowStartInput:
     return WorkflowStartInput(
         component_name="ConfirmationModal",
         services_root="/tmp/fake-services",
         max_iterations=max_iterations,
         figma_png_path=figma_png_path,
+        figma_png_url=figma_png_url,
+        figma_png_base64=figma_png_base64,
     )
 
 
@@ -371,7 +455,16 @@ async def test_workflow_collects_all_informational_validator_signals(
 
 @pytest.mark.asyncio
 async def test_workflow_skips_ssim_when_no_figma_png(env) -> None:
-    """``figma_png_path=None`` → ssim activity never invoked."""
+    """All three Figma reference channels ``None`` → SSIM never invoked.
+
+    Also verifies that ``materialise_figma_reference`` is *not*
+    called when no reference is supplied — the workflow's
+    ``has_figma_reference`` gate keeps the activity off the
+    happy path entirely. The materialise stub is intentionally
+    omitted from the worker's activity list to make the
+    assertion airtight: if the workflow tried to call it the
+    test would fail with ``ActivityNotFoundError``.
+    """
     async with _build_worker(
         env,
         [*_all_ok_subprocess_validators(), _stub_ssim(score=0.0)],
@@ -390,6 +483,7 @@ async def test_workflow_skips_ssim_when_no_figma_png(env) -> None:
         # it was never called (the workflow still passes).
         assert result.ssim is None
         assert result.all_passed is True
+        assert result.figma_reference_present is False
 
 
 @pytest.mark.asyncio
@@ -397,7 +491,12 @@ async def test_workflow_runs_ssim_when_figma_png_set(env) -> None:
     """``figma_png_path`` set → SSIM result attached to the candidate."""
     async with _build_worker(
         env,
-        [*_all_ok_subprocess_validators(), _stub_ssim(score=0.97)],
+        [
+            *_all_ok_subprocess_validators(),
+            _stub_materialise_figma_reference(),
+            _stub_check_rendered_exists(exists=True),
+            _stub_ssim(score=0.97),
+        ],
     ):
         handle = await env.client.start_workflow(
             GenerateComponentWorkflow.run,
@@ -412,13 +511,133 @@ async def test_workflow_runs_ssim_when_figma_png_set(env) -> None:
         assert result.ssim is not None
         assert result.ssim.bucket == "pass"
         assert result.all_passed is True
+        assert result.figma_reference_present is True
+
+
+@pytest.mark.asyncio
+async def test_workflow_runs_ssim_when_figma_png_url_set(env) -> None:
+    """``figma_png_url`` set → ``materialise_figma_reference`` runs once,
+    SSIM uses the materialised path on every iteration.
+
+    Slice 12.x: the Figma MCP almost always hands the agent a URL,
+    not a path. The workflow must materialise it once at start and
+    reuse the cached path for each iteration's SSIM.
+    """
+    async with _build_worker(
+        env,
+        [
+            *_all_ok_subprocess_validators(),
+            _stub_materialise_figma_reference(
+                returned_path="/tmp/dl-figma.png"
+            ),
+            _stub_check_rendered_exists(exists=True),
+            _stub_ssim(score=0.99),
+        ],
+    ):
+        handle = await env.client.start_workflow(
+            GenerateComponentWorkflow.run,
+            _start_input(figma_png_url="https://figma.example/x.png"),
+            id=f"wf-{uuid.uuid4()}",
+            task_queue=PRISM_TASK_QUEUE,
+        )
+        result = await handle.execute_update(
+            GenerateComponentWorkflow.submit_candidate,
+            SubmitInput(jsx_code="<x/>"),
+        )
+        assert result.ssim is not None
+        assert result.all_passed is True
+        assert result.figma_reference_present is True
+
+
+@pytest.mark.asyncio
+async def test_workflow_runs_ssim_when_figma_png_base64_set(env) -> None:
+    """``figma_png_base64`` set → activity decodes once, SSIM picks up the
+    materialised path.
+    """
+    async with _build_worker(
+        env,
+        [
+            *_all_ok_subprocess_validators(),
+            _stub_materialise_figma_reference(),
+            _stub_check_rendered_exists(exists=True),
+            _stub_ssim(score=0.95),
+        ],
+    ):
+        handle = await env.client.start_workflow(
+            GenerateComponentWorkflow.run,
+            _start_input(figma_png_base64="aGVsbG8="),
+            id=f"wf-{uuid.uuid4()}",
+            task_queue=PRISM_TASK_QUEUE,
+        )
+        result = await handle.execute_update(
+            GenerateComponentWorkflow.submit_candidate,
+            SubmitInput(jsx_code="<x/>"),
+        )
+        assert result.ssim is not None
+        assert result.all_passed is True
+        assert result.figma_reference_present is True
+
+
+@pytest.mark.asyncio
+async def test_workflow_skips_ssim_when_rendered_png_missing(env) -> None:
+    """Validators all pass + Figma reference loaded, but the pwspec
+    didn't write the rendered PNG → SSIM is skipped cleanly with
+    ``ssim_skip_reason="rendered_unavailable"`` instead of crashing.
+
+    This is the regression for the May-2026 bug where the auto-
+    scaffolded smoke pwspec produced no screenshot, so
+    :func:`run_ssim_compare` raised
+    :class:`FileNotFoundError` and wedged the workflow on its
+    first iteration. The pre-flight :func:`check_rendered_exists`
+    activity now intercepts the missing path; ``run_ssim_compare``
+    is never invoked, and the :class:`CandidateResult` carries the
+    reason for downstream reflection-prompt rendering.
+    """
+    async with _build_worker(
+        env,
+        [
+            *_all_ok_subprocess_validators(),
+            _stub_materialise_figma_reference(),
+            _stub_check_rendered_exists(exists=False),
+            # SSIM stub registered to prove it is NEVER called when
+            # the existence check fails — score=0 would otherwise
+            # produce a fail-bucket verdict.
+            _stub_ssim(score=0.0),
+        ],
+    ):
+        handle = await env.client.start_workflow(
+            GenerateComponentWorkflow.run,
+            _start_input(figma_png_url="https://figma.example/x.png"),
+            id=f"wf-{uuid.uuid4()}",
+            task_queue=PRISM_TASK_QUEUE,
+        )
+        result = await handle.execute_update(
+            GenerateComponentWorkflow.submit_candidate,
+            SubmitInput(jsx_code="<x/>"),
+        )
+        assert result.ssim is None
+        assert result.ssim_skip_reason == "rendered_unavailable"
+        assert result.figma_reference_present is True
+        # rendered_unavailable demotes all_passed so the workflow
+        # iterates instead of declaring victory while skipping
+        # visual validation.
+        assert result.all_passed is False
+        # Failing-kinds list surfaces "ssim" so the LLM panel
+        # prints a single skipped-SSIM row.
+        assert "ssim" in result.failing_kinds
 
 
 @pytest.mark.asyncio
 async def test_workflow_skips_ssim_when_subprocess_validator_failed(
     env,
 ) -> None:
-    """Don't waste time on visual diff when typecheck already failed."""
+    """Don't waste time on visual diff when typecheck already failed.
+
+    The materialise stub is registered because the workflow does
+    eagerly resolve the Figma reference at start (before any
+    submission lands). It's only the SSIM stage that's gated on
+    validator outcomes.
+    """
     async with _build_worker(
         env,
         [
@@ -428,6 +647,7 @@ async def test_workflow_skips_ssim_when_subprocess_validator_failed(
             _ok_validator(ValidatorKind.eslint),
             _ok_validator(ValidatorKind.jest),
             _ok_validator(ValidatorKind.playwright_axe),
+            _stub_materialise_figma_reference(),
             _stub_ssim(score=0.99),
         ],
     ):
@@ -443,6 +663,9 @@ async def test_workflow_skips_ssim_when_subprocess_validator_failed(
         )
         assert result.ssim is None
         assert result.all_passed is False
+        # Reference *was* present — the SSIM gate is on validator
+        # ok-ness, not on reference availability.
+        assert result.figma_reference_present is True
 
 
 # --------------------------------------------------------------------------
@@ -597,3 +820,129 @@ async def test_workflow_status_query_reflects_iteration(env) -> None:
         assert after.last_result is not None
 
         await handle.result()
+
+
+# --------------------------------------------------------------------------
+# Slice-12.x: update_companion_tests workflow update.
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_workflow_update_companion_tests_during_iteration(env) -> None:
+    """``update_companion_tests`` refines pwspec + spec mid-iteration.
+
+    The activity stub echoes which fields were supplied; the
+    workflow update returns the same shape as the activity result
+    enriched with a ``next_step_hint``.
+    """
+    async with _build_worker(
+        env,
+        [
+            _stub_write_candidate_files(),
+            _ok_validator(ValidatorKind.dependencies),
+            _failing_validator(ValidatorKind.typecheck, "TS2339"),
+            _ok_validator(ValidatorKind.eslint),
+            _ok_validator(ValidatorKind.jest),
+            _ok_validator(ValidatorKind.playwright_axe),
+            _stub_update_companion_test_files(),
+        ],
+    ):
+        handle = await env.client.start_workflow(
+            GenerateComponentWorkflow.run,
+            _start_input(max_iterations=3),
+            id=f"wf-{uuid.uuid4()}",
+            task_queue=PRISM_TASK_QUEUE,
+        )
+        # First iteration fails (typecheck stub returns non-ok)
+        # so the workflow stays 'running' under max_iterations=3.
+        await handle.execute_update(
+            GenerateComponentWorkflow.submit_candidate,
+            SubmitInput(jsx_code="<x/>"),
+        )
+        result = await handle.execute_update(
+            GenerateComponentWorkflow.update_companion_tests,
+            UpdateCompanionTestsInput(
+                pwspec_code="// pwspec body",
+                spec_code="// spec body",
+            ),
+        )
+        assert result.wrote_pwspec is True
+        assert result.wrote_spec is True
+        assert result.component_name == "ConfirmationModal"
+        assert result.next_step_hint
+
+
+@pytest.mark.asyncio
+async def test_workflow_update_companion_tests_partial_supply(env) -> None:
+    """Supplying only ``pwspec_code`` leaves the spec untouched."""
+    async with _build_worker(
+        env,
+        [
+            _stub_write_candidate_files(),
+            _ok_validator(ValidatorKind.dependencies),
+            _failing_validator(ValidatorKind.typecheck),
+            _ok_validator(ValidatorKind.eslint),
+            _ok_validator(ValidatorKind.jest),
+            _ok_validator(ValidatorKind.playwright_axe),
+            _stub_update_companion_test_files(),
+        ],
+    ):
+        handle = await env.client.start_workflow(
+            GenerateComponentWorkflow.run,
+            _start_input(max_iterations=3),
+            id=f"wf-{uuid.uuid4()}",
+            task_queue=PRISM_TASK_QUEUE,
+        )
+        await handle.execute_update(
+            GenerateComponentWorkflow.submit_candidate,
+            SubmitInput(jsx_code="<x/>"),
+        )
+        result = await handle.execute_update(
+            GenerateComponentWorkflow.update_companion_tests,
+            UpdateCompanionTestsInput(pwspec_code="// only pwspec"),
+        )
+        assert result.wrote_pwspec is True
+        assert result.wrote_spec is False
+
+
+@pytest.mark.asyncio
+async def test_workflow_update_companion_tests_rejected_after_terminal(
+    env,
+) -> None:
+    """Once the workflow has terminated, refinements are rejected.
+
+    Mirrors the contract for ``submit_candidate``: a workflow that
+    already passed/failed/cancelled is no longer accepting any
+    update. The LLM should start a fresh ``start_generate_component``
+    call instead of trying to keep refining a closed workflow.
+    """
+    async with _build_worker(
+        env,
+        [
+            *_all_ok_subprocess_validators(),
+            _stub_update_companion_test_files(),
+        ],
+    ):
+        handle = await env.client.start_workflow(
+            GenerateComponentWorkflow.run,
+            _start_input(),
+            id=f"wf-{uuid.uuid4()}",
+            task_queue=PRISM_TASK_QUEUE,
+        )
+        # Drive to terminal-passed.
+        await handle.execute_update(
+            GenerateComponentWorkflow.submit_candidate,
+            SubmitInput(jsx_code="<x/>"),
+        )
+        # The follow-up update must reject — workflow's `_final_state`
+        # is no longer 'running'. Either the workflow is already
+        # terminated (RPCError on a closed workflow) or the update
+        # arrives just-in-time and is refused (WorkflowUpdateFailedError).
+        with pytest.raises((WorkflowUpdateFailedError, RPCError)):
+            await handle.execute_update(
+                GenerateComponentWorkflow.update_companion_tests,
+                UpdateCompanionTestsInput(pwspec_code="// late"),
+            )
+
+        await handle.result()
+

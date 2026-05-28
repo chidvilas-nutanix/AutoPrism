@@ -23,11 +23,14 @@ import pytest
 from prism_mcp.workflow import PRISM_TASK_QUEUE
 from prism_mcp.workflow.activities import (
     check_dependencies_installed,
+    check_rendered_exists,
+    materialise_figma_reference,
     run_eslint,
     run_jest,
     run_playwright_axe,
     run_ssim_compare,
     run_typecheck,
+    update_companion_test_files,
     write_candidate_files,
 )
 from prism_mcp.workflow.worker import (
@@ -51,25 +54,42 @@ def test_workflow_set_includes_generate_component_workflow() -> None:
     assert build_workflow_set() == [GenerateComponentWorkflow]
 
 
-def test_activity_set_includes_all_seven_workflow_activities() -> None:
-    """The workflow invokes seven activities — every one must be registered.
+def test_activity_set_includes_all_workflow_activities() -> None:
+    """Every activity the workflow invokes must be registered.
 
     A missing activity would manifest as a runtime
     ``ActivityNotFoundError`` minutes into a real workflow run;
-    the smoke test here catches the omission at boot. The
-    ``check_dependencies_installed`` activity is the slice-12
-    gap-closing preflight added after the initial slice-12 work
-    revealed that pure ``npm run X`` invocations validated the
-    whole library instead of just the candidate.
+    the smoke test here catches the omission at boot.
+
+    The set has grown beyond the original seven slice-12
+    activities:
+
+    * ``check_dependencies_installed`` — the slice-12
+      gap-closing preflight that probes ``node_modules`` before
+      any subprocess validator runs.
+    * ``update_companion_test_files`` — refines the auto-
+      scaffolded pwspec / spec.tsx via the
+      ``update_companion_tests`` MCP tool.
+    * ``materialise_figma_reference`` — resolves
+      ``figma_png_url`` / ``figma_png_base64`` to an on-disk
+      path once at workflow start, cached for every SSIM
+      iteration.
+    * ``check_rendered_exists`` — pre-flight probe the workflow
+      runs before SSIM so a missing rendered PNG yields a
+      clean ``ssim_skip_reason="rendered_unavailable"`` instead
+      of a ``FileNotFoundError`` from the SSIM math.
     """
     activities = build_activity_set()
     expected = {
         write_candidate_files,
+        update_companion_test_files,
         check_dependencies_installed,
+        materialise_figma_reference,
         run_typecheck,
         run_eslint,
         run_jest,
         run_playwright_axe,
+        check_rendered_exists,
         run_ssim_compare,
     }
     assert set(activities) == expected

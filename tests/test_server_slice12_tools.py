@@ -1,21 +1,24 @@
 """Tests for the slice-12 MCP tools.
 
-Five tools are introduced this slice; we focus the test surface on
-the load-bearing wiring:
+The slice-12 surface bridges the MCP server to the Temporal
+workflow that runs the AlphaCodium iteration loop. We focus the
+test surface on the load-bearing wiring:
 
-* ``reflect_on_spec`` — pre-process scaffold; fans out to the
-  library's slice-9/10/11 indices and returns a structured
-  :class:`ReflectionContext`-style dict.
 * ``compare_to_figma`` — ad-hoc SSIM compare (no workflow);
   reuses the pure :func:`compute_ssim_from_paths` helper.
 * ``start_generate_component`` — bridges the MCP request to a
-  Temporal workflow start.
+  Temporal workflow start. Now accepts ``figma_png_url`` /
+  ``figma_png_base64`` so Figma MCP's URL-shaped payloads land
+  in the workflow without an extra agent round-trip.
 * ``submit_candidate`` — bridges to a workflow Update, and
   importantly *attaches the ReflexiCoder reflection prompt* to
   failing candidates so Cursor has structured introspection.
-* ``get_component_status`` — bridges to a workflow Query.
+* ``update_companion_tests`` — refines the auto-scaffolded
+  pwspec / spec.tsx mid-iteration.
+* ``get_component_status`` — operator/demo-UI snapshot of
+  workflow state.
 
-For the three Temporal-touching tools we use a stub
+For the Temporal-touching tools we use a stub
 :class:`temporalio.client.Client`-shaped object that records calls
 and returns canned responses. The actual workflow mechanics are
 already locked down by ``test_workflow_workflow.py``; here we're
@@ -49,7 +52,6 @@ from prism_mcp.workflow.contracts import (
     ValidatorResult,
     WorkflowStatus,
 )
-from tests.conftest import make_latest_manifest, make_prism_tarball
 
 # --------------------------------------------------------------------------
 # Reused stubs from the existing slice-9 tests (kept local so each
@@ -163,65 +165,37 @@ async def test_listed_tools_include_slice_12_surface() -> None:
     tools = await server.list_tools()
     names = {tool.name for tool in tools}
 
+    # The post-consolidation slice-12 surface (10 LLM-facing
+    # tools + 3 marked INTERNAL via docstring prefix). The
+    # asserted set is the *minimum* — extra tools registered by
+    # later slices are tolerated.
     assert {
-        "reflect_on_spec",
         "compare_to_figma",
         "start_generate_component",
         "submit_candidate",
+        "update_companion_tests",
         "get_component_status",
         "get_final_artefact",
         "map_figma_node",
         "get_pwspec_example",
-        "get_snapshot_template",
     } <= names
 
-
-# --------------------------------------------------------------------------
-# reflect_on_spec — end-to-end via real Library + stub encoder.
-# --------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_reflect_on_spec_returns_structured_context(
-    cache_root: Path,
-) -> None:
-    """The tool fans out to the four slice-9/10/11 indices."""
-    tarball = make_prism_tarball(version=VERSION)
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root,
-            _registry_handler(tarball, document),
-            encoder=_stub_encoder(),
-            reranker=_stub_reranker(),
-        )
-    )
-
-    _, structured = await server.call_tool(
+    # Tools removed in the slice-12.x consolidation must NOT be
+    # registered — guards against an accidental re-introduction.
+    for removed in (
+        "list_entities",
+        "check_contrast",
+        "get_component_cluster",
+        "get_snapshot_template",
+        "map_token",
+        "related_components",
+        "get_a11y_rules",
         "reflect_on_spec",
-        {
-            "component_name": "Modal",
-            "spec_text": "modal that submits a form, primary is #1B6BCC",
-        },
-    )
-
-    body = _structured_dict(structured)
-    assert body["component_name"] == "Modal"
-    # All five list slots present even if some are empty for this fixture.
-    for key in (
-        "examples",
-        "related",
-        "token_hints",
-        "a11y_blocks",
-        "candidate_decompositions",
     ):
-        assert key in body
-        assert isinstance(body[key], list)
+        assert removed not in names, (
+            f"{removed!r} was consolidated out — re-registering it "
+            "violates the post-consolidation tool budget"
+        )
 
 
 # --------------------------------------------------------------------------
@@ -366,6 +340,172 @@ async def test_start_generate_component_returns_workflow_id() -> None:
     client.start_workflow.assert_awaited_once()
 
 
+@pytest.mark.asyncio
+async def test_start_generate_component_forwards_figma_png_url() -> None:
+    """``figma_png_url`` arg lands on ``WorkflowStartInput`` verbatim.
+
+    This is the load-bearing change for the Figma MCP integration:
+    Figma returns URLs, not paths, and the workflow's
+    ``materialise_figma_reference`` activity is what makes that
+    work. The tool must forward the URL untouched so the activity
+    can download it.
+    """
+    client = _stub_temporal_client(workflow_id="wf-url-1")
+    server = build_server(
+        temporal_client_factory=AsyncMock(return_value=client)
+    )
+
+    await server.call_tool(
+        "start_generate_component",
+        {
+            "component_name": "Modal",
+            "services_root": "/srv/prism/services",
+            "figma_png_url": "https://figma.example/x.png",
+        },
+    )
+
+    client.start_workflow.assert_awaited_once()
+    call = client.start_workflow.await_args
+    # The second positional arg is the WorkflowStartInput payload.
+    start_input = call.args[1]
+    assert start_input.figma_png_url == "https://figma.example/x.png"
+    assert start_input.figma_png_path is None
+    assert start_input.figma_png_base64 is None
+    assert start_input.has_figma_reference is True
+
+
+@pytest.mark.asyncio
+async def test_start_generate_component_forwards_figma_png_base64() -> None:
+    """``figma_png_base64`` is forwarded so the activity can decode it."""
+    client = _stub_temporal_client(workflow_id="wf-b64-1")
+    server = build_server(
+        temporal_client_factory=AsyncMock(return_value=client)
+    )
+
+    await server.call_tool(
+        "start_generate_component",
+        {
+            "component_name": "Modal",
+            "services_root": "/srv/prism/services",
+            "figma_png_base64": "aGVsbG8=",
+        },
+    )
+
+    start_input = client.start_workflow.await_args.args[1]
+    assert start_input.figma_png_base64 == "aGVsbG8="
+    assert start_input.has_figma_reference is True
+
+
+@pytest.mark.asyncio
+async def test_start_generate_component_returns_context_bundle_on_fallback() -> (
+    None
+):
+    """Library acquisition failure → ``context`` bundle is empty but
+    schema-stable.
+
+    Without a configured library_factory the slice-9..11 indices are
+    unreachable; the helper must catch the failure and return an
+    empty-list shape so the LLM still sees a parseable response.
+    The ``imitation_pwspec`` sub-dict is always present and reports
+    ``found=False`` when no services_root pwspec matches.
+    """
+    client = _stub_temporal_client(workflow_id="wf-ctx-fallback")
+    server = build_server(
+        temporal_client_factory=AsyncMock(return_value=client)
+    )
+
+    _, structured = await server.call_tool(
+        "start_generate_component",
+        {
+            "component_name": "Modal",
+            "services_root": "/nonexistent/services",
+        },
+    )
+    body = _structured_dict(structured)
+    assert "context" in body
+    ctx = body["context"]
+    assert ctx["component_name"] == "Modal"
+    assert ctx["examples"] == []
+    assert ctx["related"] == []
+    assert ctx["a11y_blocks"] == []
+    assert ctx["token_hints"] == []
+    pwspec = ctx["imitation_pwspec"]
+    assert pwspec["found"] is False
+    assert pwspec["component_name"] == "Modal"
+
+
+@pytest.mark.asyncio
+async def test_start_generate_component_returns_imitation_pwspec_when_present(
+    tmp_path: Path,
+) -> None:
+    """An existing ``services/src/components/v2/<X>/<X>.pwspec.ts`` is
+    surfaced via the ``imitation_pwspec`` sub-dict so the LLM has a
+    concrete authoring template at iteration 1.
+
+    Regression for the May-2026 testing report where iteration 1
+    produced thin smoke tests because the LLM had no model of what
+    a real Prism pwspec looks like.
+    """
+    services = tmp_path / "services"
+    component_dir = services / "src" / "components" / "v2" / "Modal"
+    component_dir.mkdir(parents=True)
+    pwspec_path = component_dir / "Modal.pwspec.ts"
+    pwspec_path.write_text(
+        "import { test } from '@playwright/test';\n"
+        "test('Modal visual', async () => {});\n",
+        encoding="utf-8",
+    )
+
+    client = _stub_temporal_client(workflow_id="wf-ctx-pwspec")
+    server = build_server(
+        temporal_client_factory=AsyncMock(return_value=client)
+    )
+
+    _, structured = await server.call_tool(
+        "start_generate_component",
+        {
+            "component_name": "Modal",
+            "services_root": str(services),
+        },
+    )
+    body = _structured_dict(structured)
+    pwspec = body["context"]["imitation_pwspec"]
+    assert pwspec["found"] is True
+    assert pwspec["path"] == str(pwspec_path)
+    assert "test('Modal visual'" in pwspec["code"]
+
+
+@pytest.mark.asyncio
+async def test_start_generate_component_accepts_spec_text() -> None:
+    """``spec_text`` is plumbed through without breaking the response shape.
+
+    The helper uses it as the searcher query when present; when
+    omitted it falls back to ``component_name``. Either way, the
+    response must still carry ``workflow_id`` + ``context``.
+    """
+    client = _stub_temporal_client(workflow_id="wf-spec-1")
+    server = build_server(
+        temporal_client_factory=AsyncMock(return_value=client)
+    )
+
+    _, structured = await server.call_tool(
+        "start_generate_component",
+        {
+            "component_name": "Modal",
+            "services_root": "/srv/prism/services",
+            "spec_text": "Confirmation modal with destructive primary button #DC2626",
+        },
+    )
+
+    body = _structured_dict(structured)
+    assert body["workflow_id"] == "wf-spec-1"
+    assert "context" in body
+    # The workflow ID round-trip is the spine the rest of the agent
+    # loop hangs off of; the call must not silently drop it when
+    # context-building takes a fallback path.
+    client.start_workflow.assert_awaited_once()
+
+
 # --------------------------------------------------------------------------
 # submit_candidate
 # --------------------------------------------------------------------------
@@ -441,6 +581,84 @@ async def test_submit_candidate_attaches_reflection_prompt_on_failure() -> None:
     prompt = body["reflection_prompt"]
     assert "What was your assumption" in prompt
     assert "UNIQUE_LINT_ERROR" in prompt
+
+
+# --------------------------------------------------------------------------
+# update_companion_tests
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_update_companion_tests_forwards_pwspec_and_spec() -> None:
+    """The tool wraps the workflow update's :class:`UpdateCompanionTestsInput`.
+
+    Smoke test that both companion-file slots make it from the
+    MCP tool surface through to the workflow update handler.
+    """
+    from prism_mcp.workflow.contracts import UpdateCompanionTestsResult
+
+    update_result = UpdateCompanionTestsResult(
+        component_name="Modal",
+        wrote_pwspec=True,
+        wrote_spec=True,
+        pwspec_path="/scratch/Modal/Modal.pwspec.ts",
+        spec_path="/scratch/Modal/Modal.spec.tsx",
+    )
+    client = _stub_temporal_client()
+    client.get_workflow_handle.return_value.execute_update = AsyncMock(
+        return_value=update_result
+    )
+    server = build_server(
+        temporal_client_factory=AsyncMock(return_value=client)
+    )
+
+    _, structured = await server.call_tool(
+        "update_companion_tests",
+        {
+            "workflow_id": "wf-1",
+            "pwspec_code": "// pwspec body",
+            "spec_code": "// spec body",
+        },
+    )
+
+    body = _structured_dict(structured)
+    assert body["wrote_pwspec"] is True
+    assert body["wrote_spec"] is True
+    assert body["component_name"] == "Modal"
+    assert "submit_candidate" in body["next_step_hint"]
+
+
+@pytest.mark.asyncio
+async def test_update_companion_tests_optional_args_default_to_none() -> None:
+    """Calling with neither arg is allowed; the workflow rejects it
+    on its own (covered by ``test_workflow_workflow``). Here we
+    just verify the MCP tool layer doesn't gate on either arg
+    being supplied.
+    """
+    from prism_mcp.workflow.contracts import UpdateCompanionTestsResult
+
+    update_result = UpdateCompanionTestsResult(
+        component_name="Modal",
+        wrote_pwspec=False,
+        wrote_spec=False,
+        pwspec_path="/scratch/Modal/Modal.pwspec.ts",
+        spec_path="/scratch/Modal/Modal.spec.tsx",
+    )
+    client = _stub_temporal_client()
+    client.get_workflow_handle.return_value.execute_update = AsyncMock(
+        return_value=update_result
+    )
+    server = build_server(
+        temporal_client_factory=AsyncMock(return_value=client)
+    )
+
+    _, structured = await server.call_tool(
+        "update_companion_tests",
+        {"workflow_id": "wf-noop"},
+    )
+    body = _structured_dict(structured)
+    assert body["wrote_pwspec"] is False
+    assert body["wrote_spec"] is False
 
 
 # --------------------------------------------------------------------------

@@ -45,17 +45,25 @@ import pytest
 from PIL import Image
 
 from prism_mcp.workflow.activities import (
+    _PWSPEC_SCAFFOLD_MARKER,
     _REQUIRED_PLAYWRIGHT_BROWSERS,
+    _SPEC_SCAFFOLD_MARKER,
     CandidateInput,
+    FigmaReferenceInput,
+    RenderedExistsInput,
     ServicesContext,
     SsimInput,
+    UpdateCompanionFilesInput,
     check_dependencies_installed,
+    check_rendered_exists,
+    materialise_figma_reference,
     playwright_browsers_dir,
     run_eslint,
     run_jest,
     run_playwright_axe,
     run_ssim_compare,
     run_typecheck,
+    update_companion_test_files,
     write_candidate_files,
 )
 from prism_mcp.workflow.contracts import (
@@ -307,6 +315,343 @@ async def test_write_candidate_files_overwrites_previous_iteration(
     body = jsx_path.read_text(encoding="utf-8")
     assert "second" in body
     assert "first" not in body
+
+
+# --------------------------------------------------------------------------
+# Auto-scaffold semantics: pwspec + spec.tsx are seeded at iteration 1
+# and preserved across later iterations unless explicitly overwritten.
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_write_candidate_files_scaffolds_pwspec_when_absent(
+    tmp_path: Path,
+) -> None:
+    """Iteration 1 with no companion code → scaffold pwspec written."""
+    services_root = tmp_path / "services"
+    services_root.mkdir()
+
+    await write_candidate_files(
+        CandidateInput(
+            services_root=str(services_root),
+            component_name="X",
+            jsx_code="// jsx\n",
+        )
+    )
+
+    pwspec_path = (
+        services_root / "src" / "scratch" / "Generated" / "X" / "X.pwspec.ts"
+    )
+    assert pwspec_path.is_file()
+    body = pwspec_path.read_text(encoding="utf-8")
+    assert _PWSPEC_SCAFFOLD_MARKER in body
+    # Mentions component name + Playwright fixture.
+    assert "X scaffolded suite" in body
+    assert "@playwright/test" in body
+
+
+@pytest.mark.asyncio
+async def test_write_candidate_files_scaffolds_jest_spec_when_absent(
+    tmp_path: Path,
+) -> None:
+    """Iteration 1 with no companion code → scaffold spec.tsx written."""
+    services_root = tmp_path / "services"
+    services_root.mkdir()
+
+    await write_candidate_files(
+        CandidateInput(
+            services_root=str(services_root),
+            component_name="X",
+            jsx_code="// jsx\n",
+        )
+    )
+
+    spec_path = (
+        services_root / "src" / "scratch" / "Generated" / "X" / "X.spec.tsx"
+    )
+    assert spec_path.is_file()
+    body = spec_path.read_text(encoding="utf-8")
+    assert _SPEC_SCAFFOLD_MARKER in body
+    # Imports the candidate as a default export (Prism convention).
+    assert "import X from './X'" in body
+
+
+@pytest.mark.asyncio
+async def test_write_candidate_files_preserves_existing_pwspec(
+    tmp_path: Path,
+) -> None:
+    """Subsequent iteration with no companion code → existing pwspec
+    is preserved, not overwritten with a fresh scaffold.
+
+    This is the load-bearing invariant for the
+    ``update_companion_tests`` workflow: an LLM-refined pwspec
+    must survive the next ``submit_candidate`` round.
+    """
+    services_root = tmp_path / "services"
+    services_root.mkdir()
+    scratch_dir = services_root / "src" / "scratch" / "Generated" / "X"
+    scratch_dir.mkdir(parents=True)
+    pwspec_path = scratch_dir / "X.pwspec.ts"
+    pwspec_path.write_text("// LLM-refined pwspec\n", encoding="utf-8")
+
+    await write_candidate_files(
+        CandidateInput(
+            services_root=str(services_root),
+            component_name="X",
+            jsx_code="// jsx iter 2\n",
+        )
+    )
+
+    # Pwspec body stays as the LLM left it.
+    assert (
+        "LLM-refined pwspec" in pwspec_path.read_text(encoding="utf-8")
+    )
+
+
+@pytest.mark.asyncio
+async def test_write_candidate_files_overwrites_pwspec_when_supplied(
+    tmp_path: Path,
+) -> None:
+    """Supplied ``companion_test_code`` always overwrites — the LLM's
+    explicit refinement wins over both the scaffold and any prior
+    body on disk.
+    """
+    services_root = tmp_path / "services"
+    services_root.mkdir()
+    scratch_dir = services_root / "src" / "scratch" / "Generated" / "X"
+    scratch_dir.mkdir(parents=True)
+    (scratch_dir / "X.pwspec.ts").write_text(
+        "// stale\n", encoding="utf-8"
+    )
+
+    await write_candidate_files(
+        CandidateInput(
+            services_root=str(services_root),
+            component_name="X",
+            jsx_code="// jsx\n",
+            companion_test_code="// fresh from LLM\n",
+        )
+    )
+
+    body = (scratch_dir / "X.pwspec.ts").read_text(encoding="utf-8")
+    assert "fresh from LLM" in body
+    assert "stale" not in body
+
+
+# --------------------------------------------------------------------------
+# update_companion_test_files: refines pwspec / spec.tsx, leaving JSX
+# untouched. Mirrors the slice-12.x ``update_companion_tests`` MCP tool.
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_update_companion_test_files_writes_both_when_supplied(
+    tmp_path: Path,
+) -> None:
+    """Both fields supplied → both files written; flags reflect that."""
+    services_root = tmp_path / "services"
+    services_root.mkdir()
+    # The activity requires the scratch dir to exist (workflow
+    # guarantee — submit_candidate seeds it before any refinement).
+    (services_root / "src" / "scratch" / "Generated" / "X").mkdir(
+        parents=True
+    )
+
+    result = await update_companion_test_files(
+        UpdateCompanionFilesInput(
+            services_root=str(services_root),
+            component_name="X",
+            pwspec_code="// pwspec\n",
+            spec_code="// spec\n",
+        )
+    )
+
+    assert result.wrote_pwspec is True
+    assert result.wrote_spec is True
+    pwspec = (
+        services_root / "src" / "scratch" / "Generated" / "X" / "X.pwspec.ts"
+    )
+    spec = services_root / "src" / "scratch" / "Generated" / "X" / "X.spec.tsx"
+    assert pwspec.read_text(encoding="utf-8") == "// pwspec\n"
+    assert spec.read_text(encoding="utf-8") == "// spec\n"
+
+
+@pytest.mark.asyncio
+async def test_update_companion_test_files_skips_omitted_fields(
+    tmp_path: Path,
+) -> None:
+    """``pwspec_code=None`` → pwspec untouched, only ``spec_code`` writes."""
+    services_root = tmp_path / "services"
+    services_root.mkdir()
+    scratch_dir = services_root / "src" / "scratch" / "Generated" / "X"
+    scratch_dir.mkdir(parents=True)
+    (scratch_dir / "X.pwspec.ts").write_text(
+        "// existing pwspec\n", encoding="utf-8"
+    )
+
+    result = await update_companion_test_files(
+        UpdateCompanionFilesInput(
+            services_root=str(services_root),
+            component_name="X",
+            spec_code="// fresh spec\n",
+        )
+    )
+
+    assert result.wrote_pwspec is False
+    assert result.wrote_spec is True
+    # Existing pwspec preserved.
+    body = (scratch_dir / "X.pwspec.ts").read_text(encoding="utf-8")
+    assert "existing pwspec" in body
+
+
+@pytest.mark.asyncio
+async def test_update_companion_test_files_raises_when_scratch_missing(
+    tmp_path: Path,
+) -> None:
+    """Calling before ``submit_candidate`` seeded the scratch dir
+    raises :class:`FileNotFoundError` — the contract requires the
+    scratch dir to exist.
+    """
+    services_root = tmp_path / "services"
+    services_root.mkdir()
+    # Scratch dir intentionally NOT created.
+
+    with pytest.raises(FileNotFoundError, match="scratch dir"):
+        await update_companion_test_files(
+            UpdateCompanionFilesInput(
+                services_root=str(services_root),
+                component_name="Missing",
+                pwspec_code="// would-be body\n",
+            )
+        )
+
+
+# --------------------------------------------------------------------------
+# materialise_figma_reference: the slice-12.x activity that resolves
+# any-of-three Figma reference channels to a single on-disk path.
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_materialise_figma_reference_returns_path_verbatim(
+    tmp_path: Path,
+) -> None:
+    """``figma_png_path`` set → returned verbatim with source='path'."""
+    fake = tmp_path / "figma.png"
+    Image.new("RGB", (16, 16), (200, 200, 200)).save(fake)
+
+    result = await materialise_figma_reference(
+        FigmaReferenceInput(figma_png_path=str(fake))
+    )
+
+    assert result.source == "path"
+    assert result.path == str(fake)
+
+
+@pytest.mark.asyncio
+async def test_materialise_figma_reference_handles_base64() -> None:
+    """``figma_png_base64`` set → activity decodes via materialise_image
+    and returns the temp-file path.
+    """
+    import base64
+
+    img_bytes = (
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+        b"\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00"
+        b"\x00\x0cIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe\xa3"
+        b"\x9b\xb1\x91\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+    payload = base64.b64encode(img_bytes).decode("ascii")
+
+    result = await materialise_figma_reference(
+        FigmaReferenceInput(figma_png_base64=payload)
+    )
+
+    assert result.source == "base64"
+    assert result.path is not None
+    assert Path(result.path).is_file()
+
+
+@pytest.mark.asyncio
+async def test_materialise_figma_reference_returns_none_when_unset() -> None:
+    """All three input fields ``None`` → ``path=None``, ``source='none'``.
+
+    The workflow's ``has_figma_reference`` gate normally prevents
+    this branch from being reached, but the activity handles it
+    defensively.
+    """
+    result = await materialise_figma_reference(FigmaReferenceInput())
+    assert result.path is None
+    assert result.source == "none"
+
+
+# --------------------------------------------------------------------------
+# check_rendered_exists: the slice-12.x preflight that gates SSIM on the
+# rendered PNG actually existing on disk. Without this, a missing
+# screenshot produces a FileNotFoundError deep inside the SSIM math
+# instead of a clean ssim_skip_reason="rendered_unavailable".
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_check_rendered_exists_true_when_path_is_a_real_file(
+    tmp_path: Path,
+) -> None:
+    """A regular PNG file at the path → ``exists=True``."""
+    png = tmp_path / "rendered.png"
+    Image.new("RGB", (8, 8), (10, 20, 30)).save(png)
+
+    result = await check_rendered_exists(
+        RenderedExistsInput(rendered_png_path=str(png))
+    )
+
+    assert result.rendered_png_path == str(png)
+    assert result.exists is True
+
+
+@pytest.mark.asyncio
+async def test_check_rendered_exists_false_when_path_is_missing(
+    tmp_path: Path,
+) -> None:
+    """No file at the path → ``exists=False``.
+
+    Regression for the May-2026 crash where the auto-scaffolded
+    smoke pwspec passed without writing a screenshot, so the
+    workflow's downstream SSIM stage exploded with
+    :class:`FileNotFoundError`. The activity converts the missing
+    file into a clean boolean the workflow can branch on.
+    """
+    missing = tmp_path / "never-written.png"
+    assert not missing.exists()
+
+    result = await check_rendered_exists(
+        RenderedExistsInput(rendered_png_path=str(missing))
+    )
+
+    assert result.rendered_png_path == str(missing)
+    assert result.exists is False
+
+
+@pytest.mark.asyncio
+async def test_check_rendered_exists_false_when_path_is_a_directory(
+    tmp_path: Path,
+) -> None:
+    """A directory at the path → ``exists=False``.
+
+    The activity uses ``Path.is_file()``, not ``Path.exists()``,
+    so a stray directory or symlink-to-directory at the path
+    short-circuits the same way as a missing path. SSIM cannot
+    open a directory, and we'd rather skip cleanly than crash on
+    the next ``Image.open`` call.
+    """
+    not_a_file = tmp_path / "subdir"
+    not_a_file.mkdir()
+
+    result = await check_rendered_exists(
+        RenderedExistsInput(rendered_png_path=str(not_a_file))
+    )
+
+    assert result.exists is False
 
 
 # --------------------------------------------------------------------------
@@ -672,6 +1017,11 @@ async def test_run_playwright_axe_invokes_scoped_playwright(
 ) -> None:
     """Playwright runs against the scratch dir directly — no
     full styleguide rebuild, no project-wide pwspec sweep.
+
+    With the slice-12.x auto-scaffold, the pwspec is always
+    seeded at iteration 1, so ``--pass-with-no-tests`` is no
+    longer needed. The test asserts the flag is absent — its
+    presence would mean the scaffold wasn't trusted.
     """
     services_root = tmp_path / "services"
     services_root.mkdir()
@@ -686,6 +1036,7 @@ async def test_run_playwright_axe_invokes_scoped_playwright(
     assert args[0] == "./node_modules/.bin/playwright"
     assert "test" in args
     assert _SCRATCH_REL in args
+    assert "--pass-with-no-tests" not in args
     assert result.kind == ValidatorKind.playwright_axe
 
 

@@ -286,26 +286,32 @@ def test_stdio_initialize_and_list_tools(seeded_cache: Path) -> None:
 
     assert "result" in tools_response
     tool_names = {tool["name"] for tool in tools_response["result"]["tools"]}
+    # Post slice-12.x consolidation: 13 registered tools (10 LLM-facing
+    # + 3 marked INTERNAL via docstring prefix). The exact set is
+    # asserted to lock the surface against accidental re-introduction
+    # of pruned tools.
     assert tool_names == {
-        "echo",
+        # LLM-facing core.
         "get_library_meta",
-        "list_entities",
         "get_entity",
         "search_entities",
         "search_examples",
-        "map_token",
-        "check_contrast",
-        "get_a11y_rules",
-        "related_components",
-        "get_component_cluster",
-        # Slice 12 — AlphaCodium-flavored iteration loop tools.
-        "reflect_on_spec",
+        "map_figma_node",
+        # Slice-12 AlphaCodium iteration loop.
         "compare_to_figma",
         "start_generate_component",
         "submit_candidate",
-        "get_component_status",
+        "update_companion_tests",
         "get_final_artefact",
-    }
+        # Operator-only / demo-UI (kept registered, marked INTERNAL).
+        "echo",
+        "get_component_status",
+        "get_pwspec_example",
+    }, (
+        "registered tool surface diverged from the post-consolidation "
+        "snapshot; if this is intentional, update the assertion + "
+        "the SERVER_INSTRUCTIONS doc together."
+    )
 
 
 def test_stdio_call_get_library_meta_against_cached_version(
@@ -345,10 +351,15 @@ def test_stdio_call_get_library_meta_against_cached_version(
     )
 
 
-def test_stdio_call_list_entities_returns_seeded_components(
+def test_stdio_call_search_entities_returns_seeded_components(
     seeded_cache: Path,
 ) -> None:
-    """``list_entities`` over real stdio returns rows from the cache."""
+    """``search_entities`` over real stdio returns rows from the cache.
+
+    Replaces the slice-1 ``list_entities`` smoke check (the tool was
+    pruned in the slice-12.x consolidation; ``search_entities``
+    covers its functionality with a richer ranking signal).
+    """
     env = _server_env(seeded_cache)
 
     with _spawn_server(env) as client:
@@ -357,8 +368,12 @@ def test_stdio_call_list_entities_returns_seeded_components(
         response = client.request(
             "tools/call",
             params={
-                "name": "list_entities",
-                "arguments": {"type": "component"},
+                "name": "search_entities",
+                "arguments": {
+                    "query": "Button or Modal component",
+                    "type": "component",
+                    "top_k": 5,
+                },
             },
         )
 
@@ -367,7 +382,7 @@ def test_stdio_call_list_entities_returns_seeded_components(
     )
     structured = response["result"].get("structuredContent") or {}
     assert structured.get("version") == VERSION
-    names = {row["name"] for row in structured.get("entities", [])}
+    names = {row["name"] for row in structured.get("results", [])}
     # The default ``make_prism_tarball`` ships Button + Modal.
     assert {"Button", "Modal"} <= names, (
         f"unexpected component set; stderr:\n{client.stderr()}"

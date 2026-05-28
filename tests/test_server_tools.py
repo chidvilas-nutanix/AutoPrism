@@ -224,26 +224,43 @@ async def test_get_library_meta_returns_resolved_state(
 
 
 @pytest.mark.asyncio
-async def test_listed_tools_include_slice_4_surface() -> None:
-    """The v1 tool surface (Slice 4) + Slice 9 + Slice 11."""
+async def test_listed_tools_include_post_consolidation_surface() -> None:
+    """The post-slice-12.x tool surface.
+
+    The slice-12.x consolidation pruned 8 low-signal tools
+    (``list_entities``, ``map_token``, ``check_contrast``,
+    ``get_a11y_rules``, ``related_components``,
+    ``get_component_cluster``, ``reflect_on_spec``,
+    ``get_snapshot_template``). What remains is the canonical
+    Figma->Prism flow plus ``echo`` (operator-only).
+    """
     server = build_server()
 
     tools = await server.list_tools()
     names = {tool.name for tool in tools}
 
+    # Public LLM-facing slice-1..11 tools (the survivors).
     assert {
         "echo",
         "get_library_meta",
-        "list_entities",
         "get_entity",
         "search_entities",
         "search_examples",
+    } <= names
+
+    # The pruned tools must not be re-introduced.
+    for removed in (
+        "list_entities",
         "map_token",
         "check_contrast",
         "get_a11y_rules",
         "related_components",
         "get_component_cluster",
-    } <= names
+    ):
+        assert removed not in names, (
+            f"{removed!r} was pruned in the slice-12.x consolidation; "
+            "do not re-register without revisiting the tool budget"
+        )
 
 
 @pytest.mark.asyncio
@@ -280,40 +297,6 @@ async def test_get_entity_returns_design_token_value(
     assert payload["category"] == "color"
     assert payload["value"] == "#1B6BCC"
     assert payload["source_file"] == "src/styles/v2/Colors.less"
-
-
-@pytest.mark.asyncio
-async def test_list_entities_filters_to_tokens(
-    cache_root: Path,
-) -> None:
-    """``list_entities(type='token')`` returns only tokens."""
-    tarball = make_prism_tarball(version=VERSION)
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        if str(request.url) == TARBALL_URL:
-            return httpx.Response(200, content=tarball)
-        return httpx.Response(
-            200,
-            headers={"ETag": '"v1"'},
-            content=json.dumps(document),
-        )
-
-    server = build_server(library_factory=_library_factory(cache_root, handler))
-
-    _, payload = await server.call_tool(
-        "list_entities", arguments={"type": "token"}
-    )
-
-    types = {row["type"] for row in payload["entities"]}
-    assert types == {"token"}
-    names = {row["name"] for row in payload["entities"]}
-    assert "color-primary" in names
 
 
 @pytest.mark.asyncio
@@ -407,49 +390,6 @@ async def test_search_entities_ranks_components_by_query(
     assert results[0]["name"] == "Button"
     assert "button" in results[0]["why_matched"]
     assert results[0]["score"] > 0
-
-
-@pytest.mark.asyncio
-async def test_list_entities_returns_summary_projection(
-    cache_root: Path,
-) -> None:
-    """``list_entities`` returns a compact projection grouped by version."""
-    tarball = make_prism_tarball(
-        version=VERSION, components=("Button", "Modal")
-    )
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        if str(request.url) == TARBALL_URL:
-            return httpx.Response(200, content=tarball)
-        return httpx.Response(
-            200,
-            headers={"ETag": '"v1"'},
-            content=json.dumps(document),
-        )
-
-    server = build_server(library_factory=_library_factory(cache_root, handler))
-
-    _, structured = await server.call_tool(
-        "list_entities", arguments={"type": "component"}
-    )
-
-    assert structured["version"] == VERSION
-    names = {row["name"] for row in structured["entities"]}
-    assert {"Button", "Modal"} <= names
-    for row in structured["entities"]:
-        assert set(row) == {
-            "name",
-            "type",
-            "summary",
-            "category",
-            "deprecated",
-        }
 
 
 @pytest.mark.asyncio
@@ -795,478 +735,3 @@ async def test_search_examples_reranker_param_bypasses_rerank(
     assert payload["version"] == VERSION
     assert isinstance(payload["results"], list)
 
-
-# --------------------------------------------------------------------------
-# Slice 11 — map_token / check_contrast / get_a11y_rules tool surface tests.
-# --------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_map_token_returns_matches_shape(cache_root: Path) -> None:
-    """``map_token`` returns ``{version, matches=[TokenMatch...]}``.
-
-    Uses the synthetic Colors.less in the conftest fixture which
-    ships ``#1B6BCC`` as ``@color-primary``.
-    """
-    tarball = make_prism_tarball(version=VERSION)
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    _, payload = await server.call_tool(
-        "map_token",
-        arguments={"hex": "#1B6BCC", "top_k": 1},
-    )
-
-    assert payload["version"] == VERSION
-    assert len(payload["matches"]) == 1
-    match = payload["matches"][0]
-    assert match["name"] == "color-primary"
-    assert match["hex"] == "#1b6bcc"
-    assert match["distance_oklab"] == pytest.approx(0.0, abs=1e-9)
-    assert match["distance_de2000"] == pytest.approx(0.0, abs=1e-9)
-    assert match["bucket"] == "exact"
-
-
-@pytest.mark.asyncio
-async def test_map_token_buckets_far_targets_as_no_match(
-    cache_root: Path,
-) -> None:
-    """A hex far from every palette token gets bucket=no-match."""
-    tarball = make_prism_tarball(version=VERSION)
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    _, payload = await server.call_tool(
-        "map_token",
-        arguments={"hex": "#FF00FF", "top_k": 1},
-    )
-
-    assert payload["matches"][0]["bucket"] == "no-match"
-
-
-@pytest.mark.asyncio
-async def test_check_contrast_returns_both_wcag_and_apca(
-    cache_root: Path,
-) -> None:
-    """``check_contrast`` returns WCAG 2.1 ratio + APCA Lc + pass flags."""
-    tarball = make_prism_tarball(version=VERSION)
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    _, payload = await server.call_tool(
-        "check_contrast",
-        arguments={"fg_hex": "#000000", "bg_hex": "#FFFFFF"},
-    )
-
-    assert payload["wcag_21_ratio"] == pytest.approx(21.0, abs=0.01)
-    assert payload["wcag_aaa_normal_text"] is True
-    assert payload["apca_lc"] > 100
-    assert payload["apca_passes_body_text"] is True
-
-
-@pytest.mark.asyncio
-async def test_check_contrast_polarity_sign_flips_when_reversed(
-    cache_root: Path,
-) -> None:
-    """APCA Lc flips sign when fg/bg swap; WCAG ratio stays equal."""
-    tarball = make_prism_tarball(version=VERSION)
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    _, normal = await server.call_tool(
-        "check_contrast",
-        arguments={"fg_hex": "#000000", "bg_hex": "#FFFFFF"},
-    )
-    _, reverse = await server.call_tool(
-        "check_contrast",
-        arguments={"fg_hex": "#FFFFFF", "bg_hex": "#000000"},
-    )
-
-    assert normal["apca_lc"] > 0
-    assert reverse["apca_lc"] < 0
-    assert normal["wcag_21_ratio"] == pytest.approx(
-        reverse["wcag_21_ratio"], rel=1e-9
-    )
-
-
-@pytest.mark.asyncio
-async def test_get_a11y_rules_returns_global_and_per_component(
-    cache_root: Path,
-) -> None:
-    """``get_a11y_rules`` returns LLMS.md sections + per-component blocks."""
-    llms_md = (
-        "# LLM Instructions for @nutanix-ui/prism-reactjs\n"
-        "\n"
-        "## Source Priority\n"
-        "1. Use examples.md.\n"
-        "2. Use .d.ts as the API source of truth.\n"
-    )
-    modal_examples = (
-        "## Basic Example\n"
-        "```jsx\n"
-        "import { Modal } from '@nutanix-ui/prism-reactjs';\n"
-        "<Modal>x</Modal>\n"
-        "```\n"
-        "\n"
-        "## Accessibility\n"
-        "```jsx noeditor\n"
-        "// Return focus to the trigger when the modal closes.\n"
-        "<Modal ariaLabelledBy='title' />\n"
-        "```\n"
-    )
-    tarball = make_prism_tarball(
-        version=VERSION,
-        components=("Button",),
-        extra_files={
-            "LLMS.md": llms_md,
-            "src/components/v2/Modal/Modal.examples.md": modal_examples,
-        },
-    )
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    _, payload = await server.call_tool("get_a11y_rules", arguments={})
-
-    assert payload["title"] == "LLM Instructions for @nutanix-ui/prism-reactjs"
-    assert [s["heading"] for s in payload["global_rules"]] == [
-        "Source Priority"
-    ]
-    assert "Modal" in {
-        row["component_name"] for row in payload["per_component"]
-    }
-
-
-@pytest.mark.asyncio
-async def test_get_a11y_rules_narrows_per_component_by_name(
-    cache_root: Path,
-) -> None:
-    """``component_name='X'`` keeps globals; narrows per_component to X."""
-    modal_examples = (
-        "## Basic Example\n"
-        "```jsx\n"
-        "import { Modal } from '@nutanix-ui/prism-reactjs';\n"
-        "<Modal />\n"
-        "```\n"
-        "\n"
-        "## Accessibility\n"
-        "```jsx noeditor\n"
-        "<Modal ariaLabel='m' />\n"
-        "```\n"
-    )
-    tarball = make_prism_tarball(
-        version=VERSION,
-        components=("Button",),
-        extra_files={
-            "src/components/v2/Modal/Modal.examples.md": modal_examples,
-            "LLMS.md": "## Only One\nbody\n",
-        },
-    )
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    _, payload = await server.call_tool(
-        "get_a11y_rules", arguments={"component_name": "Modal"}
-    )
-
-    assert len(payload["global_rules"]) == 1
-    assert len(payload["per_component"]) == 1
-    assert payload["per_component"][0]["component_name"] == "Modal"
-
-
-@pytest.mark.asyncio
-async def test_get_a11y_rules_unknown_component_returns_empty_per_component(
-    cache_root: Path,
-) -> None:
-    """Unknown ``component_name`` returns empty per_component (no error).
-
-    Globals are still returned because they apply to every component.
-    """
-    tarball = make_prism_tarball(
-        version=VERSION,
-        extra_files={"LLMS.md": "## G\nbody\n"},
-    )
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    _, payload = await server.call_tool(
-        "get_a11y_rules", arguments={"component_name": "DoesNotExist"}
-    )
-
-    assert payload["per_component"] == []
-    assert len(payload["global_rules"]) == 1
-
-
-# --------------------------------------------------------------------------
-# Slice 10 — related_components / get_component_cluster tool surface tests.
-#
-# These tests inject custom ``*.examples.md`` files with multi-import
-# fences so the composition graph has real edges to query. The default
-# tarball fixture only ships one-import-per-fence examples (the synthetic
-# Button.examples.md), which would produce isolated nodes.
-# --------------------------------------------------------------------------
-
-
-def _multi_import_examples() -> dict[str, str]:
-    """Two extra examples.md files that produce co-import edges.
-
-    The shape mirrors real Prism examples: a Modal example that
-    co-imports Button + StackingLayout, and a Form example that
-    co-imports FormItemInput + Button. Twice-repeated Modal+Button
-    co-occurrence lifts that edge's weight to 2 so the ``related``
-    ranking has a clear winner.
-    """
-    modal_examples = (
-        "## Basic Example\n"
-        "```jsx\n"
-        "import { Modal, Button } from '@nutanix-ui/prism-reactjs';\n"
-        "<Modal><Button>OK</Button></Modal>\n"
-        "```\n"
-        "\n"
-        "## With Layout\n"
-        "```jsx\n"
-        "import { Modal, Button, StackingLayout } "
-        "from '@nutanix-ui/prism-reactjs';\n"
-        "<Modal><StackingLayout><Button /></StackingLayout></Modal>\n"
-        "```\n"
-    )
-    form_examples = (
-        "## Basic\n"
-        "```jsx\n"
-        "import { FormItemInput, Button } from '@nutanix-ui/prism-reactjs';\n"
-        "<FormItemInput /> <Button>Submit</Button>\n"
-        "```\n"
-    )
-    return {
-        "src/components/v2/Modal/Modal.examples.md": modal_examples,
-        "src/components/v2/Form/Form.examples.md": form_examples,
-    }
-
-
-@pytest.mark.asyncio
-async def test_related_components_ranks_by_edge_weight(
-    cache_root: Path,
-) -> None:
-    """``related_components("Modal")`` returns Button first (weight=2),
-    then StackingLayout (weight=1).
-    """
-    tarball = make_prism_tarball(
-        version=VERSION,
-        components=("Button",),
-        extra_files=_multi_import_examples(),
-    )
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    _, payload = await server.call_tool(
-        "related_components",
-        arguments={"name": "Modal", "top_k": 5},
-    )
-
-    assert payload["version"] == VERSION
-    assert payload["name"] == "Modal"
-    related = payload["related"]
-    assert [r["name"] for r in related] == ["Button", "StackingLayout"]
-    assert related[0]["weight"] == 2
-    assert related[1]["weight"] == 1
-
-
-@pytest.mark.asyncio
-async def test_related_components_respects_top_k(cache_root: Path) -> None:
-    """``top_k`` caps the result list size."""
-    tarball = make_prism_tarball(
-        version=VERSION,
-        components=("Button",),
-        extra_files=_multi_import_examples(),
-    )
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    _, payload = await server.call_tool(
-        "related_components",
-        arguments={"name": "Modal", "top_k": 1},
-    )
-
-    assert len(payload["related"]) == 1
-
-
-@pytest.mark.asyncio
-async def test_related_components_unknown_name_surfaces_error(
-    cache_root: Path,
-) -> None:
-    """Unknown component name surfaces as an MCP tool error.
-
-    The agent should hear "your name was wrong", not "no related
-    components" — those answers should look different.
-    """
-    tarball = make_prism_tarball(
-        version=VERSION,
-        components=("Button",),
-        extra_files=_multi_import_examples(),
-    )
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    with pytest.raises(Exception, match="not in composition graph"):
-        await server.call_tool(
-            "related_components",
-            arguments={"name": "NotAComponent", "top_k": 3},
-        )
-
-
-@pytest.mark.asyncio
-async def test_get_component_cluster_returns_full_payload(
-    cache_root: Path,
-) -> None:
-    """``get_component_cluster("Modal")`` returns cluster_id + members
-    + central_members + label.
-    """
-    tarball = make_prism_tarball(
-        version=VERSION,
-        components=("Button",),
-        extra_files=_multi_import_examples(),
-    )
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    _, payload = await server.call_tool(
-        "get_component_cluster",
-        arguments={"name": "Modal"},
-    )
-
-    assert payload["version"] == VERSION
-    assert payload["name"] == "Modal"
-    assert isinstance(payload["cluster_id"], int)
-    assert isinstance(payload["label"], str)
-    assert "Modal" in payload["members"]
-    assert len(payload["central_members"]) <= 3
-    # Modal has the highest weighted degree in this fixture so it
-    # should appear in central_members.
-    assert "Modal" in payload["central_members"]
-
-
-@pytest.mark.asyncio
-async def test_get_component_cluster_unknown_name_surfaces_error(
-    cache_root: Path,
-) -> None:
-    """Unknown component name surfaces as an MCP tool error."""
-    tarball = make_prism_tarball(
-        version=VERSION,
-        components=("Button",),
-        extra_files=_multi_import_examples(),
-    )
-    document = make_latest_manifest(
-        package_name=PACKAGE,
-        version=VERSION,
-        tarball_url=TARBALL_URL,
-        tarball_bytes=tarball,
-    )
-    server = build_server(
-        library_factory=_library_factory(
-            cache_root, _examples_handler(tarball, document)
-        )
-    )
-
-    with pytest.raises(Exception, match="not in composition graph"):
-        await server.call_tool(
-            "get_component_cluster",
-            arguments={"name": "Ghost"},
-        )

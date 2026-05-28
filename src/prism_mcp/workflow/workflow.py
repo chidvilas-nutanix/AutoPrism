@@ -63,20 +63,29 @@ with workflow.unsafe.imports_passed_through():
     # third-party packages and slow down imports).
     from prism_mcp.workflow.activities import (
         CandidateInput,
+        FigmaReferenceInput,
+        RenderedExistsInput,
         ServicesContext,
         SsimInput,
+        UpdateCompanionFilesInput,
         check_dependencies_installed,
+        check_rendered_exists,
+        materialise_figma_reference,
         run_eslint,
         run_jest,
         run_playwright_axe,
         run_ssim_compare,
         run_typecheck,
+        update_companion_test_files,
         write_candidate_files,
     )
     from prism_mcp.workflow.contracts import (
         CandidateResult,
+        SsimSkipReason,
         SsimVerdict,
         SubmitInput,
+        UpdateCompanionTestsInput,
+        UpdateCompanionTestsResult,
         ValidatorKind,
         ValidatorResult,
         WorkflowStartInput,
@@ -96,6 +105,22 @@ _DEPENDENCIES_TIMEOUT = timedelta(seconds=15)
 _FAST_VALIDATOR_TIMEOUT = timedelta(minutes=2)
 _SLOW_VALIDATOR_TIMEOUT = timedelta(minutes=15)
 _SSIM_TIMEOUT = timedelta(seconds=60)
+_FIGMA_MATERIALISE_TIMEOUT = timedelta(seconds=60)
+"""How long to wait for a Figma reference download/decode.
+
+Generous because Figma signed URLs can be slow on first hit
+(the CDN serves them cold) and base64 payloads can be several
+MB. We retry the activity (Temporal's default policy) on
+transient failures.
+"""
+
+_RENDERED_EXISTS_TIMEOUT = timedelta(seconds=10)
+"""How long to wait for a single ``Path.is_file()`` check.
+
+Tight because the activity does one filesystem stat. Generous
+enough to absorb a slow worker startup or a contended disk; not
+so long that a wedged check would mask a real bug.
+"""
 
 
 # --------------------------------------------------------------------------
@@ -178,6 +203,7 @@ class GenerateComponentWorkflow:
         self._iteration: int = 0
         self._last_result: CandidateResult | None = None
         self._final_state: str = "running"
+        self._materialised_figma_path: str | None = None
 
     # ------------------------------------------------------------------
     # Workflow entrypoint.
@@ -190,8 +216,28 @@ class GenerateComponentWorkflow:
         We use :func:`workflow.wait_condition` so updates to
         ``self._final_state`` from inside :meth:`submit_candidate`
         immediately wake up this coroutine.
+
+        Before waiting, if the start input carries any of the
+        three Figma reference channels (path, URL, or base64),
+        we materialise the PNG to disk via the
+        ``materialise_figma_reference`` activity and cache the
+        result path on ``self._materialised_figma_path``. Every
+        SSIM iteration reuses that cached path — pay the
+        download/decode cost once per workflow, not once per
+        iteration.
         """
         self._input = input
+        if input.has_figma_reference:
+            ref_result = await workflow.execute_activity(
+                materialise_figma_reference,
+                FigmaReferenceInput(
+                    figma_png_path=input.figma_png_path,
+                    figma_png_url=input.figma_png_url,
+                    figma_png_base64=input.figma_png_base64,
+                ),
+                start_to_close_timeout=_FIGMA_MATERIALISE_TIMEOUT,
+            )
+            self._materialised_figma_path = ref_result.path
         try:
             await workflow.wait_condition(
                 lambda: self._final_state != "running",
@@ -235,17 +281,71 @@ class GenerateComponentWorkflow:
         self._iteration += 1
         ctx = await self._write_candidate(input)
         validators = await self._run_subprocess_chain(ctx)
-        ssim = await self._maybe_run_ssim(validators)
+        ssim, ssim_skip_reason = await self._maybe_run_ssim(validators)
 
         result = CandidateResult(
             iteration=self._iteration,
             component_name=self._input.component_name,
             validators=validators,
             ssim=ssim,
+            ssim_skip_reason=ssim_skip_reason,
+            figma_reference_present=self._materialised_figma_path is not None,
         )
         self._last_result = result
         self._update_final_state(result)
         return result
+
+    # ------------------------------------------------------------------
+    # Update handler — Cursor's update_companion_tests.
+    # ------------------------------------------------------------------
+
+    @workflow.update
+    async def update_companion_tests(
+        self, input: UpdateCompanionTestsInput
+    ) -> UpdateCompanionTestsResult:
+        """Refine the auto-scaffolded pwspec and/or jest spec.
+
+        Used after the LLM has stabilised a component's behaviour
+        and wants to upgrade the workflow's auto-scaffolds with
+        real assertions (axe checks, visual regression, prop-driven
+        renders). The refined tests take effect on the next
+        ``submit_candidate`` call.
+
+        This update *does not* re-run the validator chain — it
+        just writes files to disk. That keeps each update's
+        responsibility narrow: ``submit_candidate`` runs
+        validators, ``update_companion_tests`` adjusts the test
+        bodies they validate.
+
+        Raises:
+            ApplicationError: if the workflow has no input yet
+                (called before ``submit_candidate`` seeded the
+                scratch tree) or has already terminated.
+        """
+        await workflow.wait_condition(lambda: self._input is not None)
+        assert self._input is not None
+        if self._final_state != "running":
+            raise ApplicationError(
+                f"workflow already {self._final_state!r}; cannot accept "
+                "more test refinements"
+            )
+        result = await workflow.execute_activity(
+            update_companion_test_files,
+            UpdateCompanionFilesInput(
+                services_root=self._input.services_root,
+                component_name=self._input.component_name,
+                pwspec_code=input.pwspec_code,
+                spec_code=input.spec_code,
+            ),
+            start_to_close_timeout=_FILE_IO_TIMEOUT,
+        )
+        return UpdateCompanionTestsResult(
+            component_name=result.component_name,
+            wrote_pwspec=result.wrote_pwspec,
+            wrote_spec=result.wrote_spec,
+            pwspec_path=result.pwspec_path,
+            spec_path=result.spec_path,
+        )
 
     # ------------------------------------------------------------------
     # Query handler — read-only status snapshot.
@@ -263,7 +363,13 @@ class GenerateComponentWorkflow:
     # ------------------------------------------------------------------
 
     async def _write_candidate(self, input: SubmitInput) -> ServicesContext:
-        """Write the JSX + (optional) pwspec to the scratch tree."""
+        """Write the JSX + (optional) pwspec/spec to the scratch tree.
+
+        The activity auto-scaffolds pwspec + jest spec at iteration
+        1 if neither ``companion_test_code`` nor ``companion_spec_code``
+        are supplied; subsequent iterations preserve any LLM
+        refinements written via ``update_companion_tests``.
+        """
         assert self._input is not None
         return await workflow.execute_activity(
             write_candidate_files,
@@ -272,6 +378,7 @@ class GenerateComponentWorkflow:
                 component_name=self._input.component_name,
                 jsx_code=input.jsx_code,
                 companion_test_code=input.companion_test_code,
+                companion_spec_code=input.companion_spec_code,
             ),
             start_to_close_timeout=_FILE_IO_TIMEOUT,
         )
@@ -321,31 +428,65 @@ class GenerateComponentWorkflow:
 
     async def _maybe_run_ssim(
         self, validators: list[ValidatorResult]
-    ) -> SsimVerdict | None:
+    ) -> tuple[SsimVerdict | None, SsimSkipReason | None]:
         """Invoke SSIM only when:
 
         * every subprocess validator passed (otherwise the visual
           diff is meaningless — the component might not even render);
-        * the start input included a ``figma_png_path`` (otherwise
-          there's nothing to compare to).
+        * the workflow has a materialised Figma reference path
+          (resolved at workflow start from any of
+          ``figma_png_path`` / ``figma_png_url`` / ``figma_png_base64``);
+        * the templated rendered PNG actually exists on disk
+          (verified via :func:`check_rendered_exists` so a missing
+          screenshot becomes a clean
+          ``ssim_skip_reason="rendered_unavailable"`` instead of a
+          ``FileNotFoundError`` from inside the SSIM math).
+
+        The Figma reference is resolved exactly once per workflow
+        in :meth:`run` and cached on ``self._materialised_figma_path``,
+        so this method never pays the download/decode cost itself.
+
+        Returns:
+            tuple[SsimVerdict | None, SsimSkipReason | None]: a
+            two-tuple where exactly one element is non-``None``
+            unless SSIM was bypassed for an existing reason:
+
+            * ``(verdict, None)`` — SSIM ran, see ``verdict``.
+            * ``(None, "rendered_unavailable")`` — SSIM was
+              attempted but the rendered PNG was missing.
+            * ``(None, None)`` — SSIM was not attempted at all
+              (no Figma reference, or an earlier validator failed).
+              The workflow already conveys "no Figma reference"
+              via ``CandidateResult.figma_reference_present``;
+              an earlier validator failure is encoded directly in
+              ``CandidateResult.validators``. Neither needs its
+              own skip reason today.
         """
         assert self._input is not None
-        if self._input.figma_png_path is None:
-            return None
+        if self._materialised_figma_path is None:
+            return None, None
         if not all(v.ok for v in validators):
-            return None
+            return None, None
         rendered_png_path = self._input.rendered_png_path_template.format(
             services_root=self._input.services_root,
             component_name=self._input.component_name,
         )
-        return await workflow.execute_activity(
+        exists_result = await workflow.execute_activity(
+            check_rendered_exists,
+            RenderedExistsInput(rendered_png_path=rendered_png_path),
+            start_to_close_timeout=_RENDERED_EXISTS_TIMEOUT,
+        )
+        if not exists_result.exists:
+            return None, "rendered_unavailable"
+        verdict = await workflow.execute_activity(
             run_ssim_compare,
             SsimInput(
-                figma_png_path=self._input.figma_png_path,
+                figma_png_path=self._materialised_figma_path,
                 rendered_png_path=rendered_png_path,
             ),
             start_to_close_timeout=_SSIM_TIMEOUT,
         )
+        return verdict, None
 
     def _update_final_state(self, result: CandidateResult) -> None:
         """Promote ``_final_state`` after a candidate evaluation."""

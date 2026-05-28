@@ -43,11 +43,14 @@ from temporalio.worker import Worker
 from prism_mcp.workflow import PRISM_TASK_QUEUE
 from prism_mcp.workflow.activities import (
     check_dependencies_installed,
+    check_rendered_exists,
+    materialise_figma_reference,
     run_eslint,
     run_jest,
     run_playwright_axe,
     run_ssim_compare,
     run_typecheck,
+    update_companion_test_files,
     write_candidate_files,
 )
 from prism_mcp.workflow.workflow import GenerateComponentWorkflow
@@ -146,11 +149,14 @@ def build_activity_set() -> list[object]:
     """
     return [
         write_candidate_files,
+        update_companion_test_files,
         check_dependencies_installed,
+        materialise_figma_reference,
         run_typecheck,
         run_eslint,
         run_jest,
         run_playwright_axe,
+        check_rendered_exists,
         run_ssim_compare,
     ]
 

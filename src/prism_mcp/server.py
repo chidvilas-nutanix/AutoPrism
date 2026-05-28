@@ -26,21 +26,17 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from prism_mcp.a11y import get_a11y_for_component
 from prism_mcp.cache import Cache
-from prism_mcp.color import apca_contrast, hex_to_rgb, wcag_contrast_ratio
 from prism_mcp.config import ConfigError, ServerConfig
 from prism_mcp.entities import EntityType
 from prism_mcp.library import Library, LibraryError
-from prism_mcp.library_assets import (
-    find_pwspec_example,
-    find_snapshot_template,
-)
+from prism_mcp.library_assets import find_pwspec_example
 from prism_mcp.refresh import RefreshLoop, RefreshLoopConfig
 from prism_mcp.registry import RegistryClient
 from prism_mcp.workflow import PRISM_TASK_QUEUE
 from prism_mcp.workflow.contracts import (
     SubmitInput,
+    UpdateCompanionTestsInput,
     WorkflowStartInput,
     build_delivery_hint,
     build_reflection_prompt,
@@ -55,6 +51,86 @@ logger = logging.getLogger(__name__)
 
 SERVER_NAME = "prism-mcp"
 ECHO_REPLY = "prism-mcp: alive"
+
+
+SERVER_INSTRUCTIONS = """\
+prism-mcp turns Figma designs into validated Prism React components from
+the @nutanix-ui/prism-reactjs library. Read this once, then follow the
+canonical flow.
+
+CANONICAL FIGMA -> PRISM FLOW
+
+1. For each non-trivial frame/instance from Figma MCP:
+   call `map_figma_node(node_name, node_type?, reference_code?, hex_colors?)`
+   to get a ranked list of Prism components, related/co-imported components,
+   matching design tokens, and imitation JSX examples in one round-trip.
+   Always pick from the returned `candidates` list -- never invent a
+   component name.
+
+2. For composed components (multi-element, a11y matters, visual fidelity
+   required), kick off the AlphaCodium iteration loop:
+   call `start_generate_component(component_name, services_root,
+   figma_png_url=..., spec_text=...)`. ALWAYS pass `figma_png_url`
+   (or `figma_png_base64`) when Figma MCP gave you one -- the workflow
+   uses it for SSIM visual diffing on every iteration. Pass `spec_text`
+   (the Figma layer dump or a 1-2 sentence brief) so the searcher's
+   retrieval is targeted; defaults to `component_name`.
+
+   READ THE RESPONSE'S `context` FIELD BEFORE WRITING ANY CODE. It
+   bundles imitation examples, related components, a11y guidance, and
+   the closest existing pwspec.ts the lib ships -- everything you need
+   to author iteration-1 JSX AND a meaningful companion pwspec in a
+   single shot. Skipping it produces thin, smoke-only tests that the
+   workflow then has to nudge you to refine.
+
+3. Iterate: call `submit_candidate(workflow_id, jsx_code,
+   companion_test_code=..., companion_spec_code=...)`. Author the
+   pwspec from iteration 1 by imitating `context.imitation_pwspec.code`
+   -- but mount the candidate directly (the lib's `playwright-util.visitPage`
+   helper depends on the styleguide build at services/www and is NOT
+   available for scratch components). End the pwspec with a
+   `await page.screenshot({ path: 'playwright-output/<Name>.png',
+   fullPage: false })` so SSIM can run.
+
+   Read the returned validator panel; on failure, follow
+   `reflection_prompt` verbatim before regenerating. Use
+   `update_companion_tests` only when behaviour evolves and the existing
+   companion tests need new assertions.
+
+4. When a candidate passes, the response carries a `delivery_hint`.
+   ALWAYS honour it: call `get_final_artefact(workflow_id)` and write
+   the bytes into the user's actual project tree. The workflow's
+   `services/src/scratch/Generated/` directory is the validator's cache,
+   not the destination.
+
+IMPORT STYLE -- USE THE PACKAGE NAME, NOT RELATIVE PATHS
+
+Generated JSX must use consumer-style imports:
+
+  import { Button, Modal, FlexLayout } from '@nutanix-ui/prism-reactjs';
+
+The validator's jest config self-resolves `@nutanix-ui/prism-reactjs`
+to the lib's local source, so package-name imports work in BOTH the
+client app you're delivering to AND the validator's test environment.
+Do NOT switch to relative imports like `../../components/v2/Button/Button`
+inside scratch components -- that breaks the artefact for the client.
+
+WHEN TO SKIP THE WORKFLOW
+
+Trivial single-element components (a Button wrapper, an Icon swap, a
+single-prop StatTile) don't need the iteration loop. Use `search_examples`
++ `get_entity` directly and return the JSX. The workflow adds 1-3 minutes
+of wall time per component for tsc + eslint + jest + playwright + axe +
+SSIM; that cost is justified for non-trivial work and overkill for
+one-off wrappers.
+
+ATOMIC TOOLS FOR DRILL-DOWN
+
+`search_entities` (BM25 lexical), `search_examples` (semantic JSX
+retrieval), `get_entity` (full record with signature + examples), and
+`get_library_meta` (version + index status) cover the cases where
+`map_figma_node` returned thin results.
+"""
 
 
 def build_server(
@@ -120,11 +196,20 @@ def build_server(
             if loop is not None:
                 await loop.stop()
 
-    server = FastMCP(SERVER_NAME, lifespan=lifespan)
+    server = FastMCP(
+        SERVER_NAME,
+        instructions=SERVER_INSTRUCTIONS,
+        lifespan=lifespan,
+    )
 
     @server.tool()
     def echo() -> str:
-        """Return a fixed liveness string.
+        """INTERNAL (operator/health-check only). Return a liveness string.
+
+        Not part of the canonical Figma->Prism flow. Used by
+        ``prism-mcp-setup`` and the dev-server smoke check to
+        prove that the stdio transport is alive. The LLM should
+        ignore this tool when planning code-gen tasks.
 
         Returns:
             str: the constant defined by :data:`ECHO_REPLY`.
@@ -149,49 +234,6 @@ def build_server(
         library = state.library()
         meta = library.acquire_latest()
         return meta.to_dict()
-
-    @server.tool()
-    def list_entities(
-        type: EntityType | None = None,
-        include_deprecated: bool = False,
-    ) -> dict[str, Any]:
-        """List indexed Prism entities, optionally filtered by ``type``.
-
-        Args:
-            type (EntityType | None): when set, restrict to
-                ``"component"`` / ``"hook"`` / ``"manager"`` /
-                ``"util"`` / ``"token"``. Slice 3 only populates
-                components; later slices add the rest.
-            include_deprecated (bool): include entities flagged
-                ``deprecated``. Default ``False`` because LLMs rarely
-                want those.
-
-        Returns:
-            dict: ``{"entities": [{"name": ..., "type": ...,
-            "summary": ..., "deprecated": ...}, ...], "version": ...}``.
-            The list is a *summary* projection — call ``get_entity`` for
-            the full signature and examples.
-        """
-        logger.info(
-            "list_entities tool invoked type=%s deprecated=%s",
-            type,
-            include_deprecated,
-        )
-        index = state.library().index()
-        entries = index.list(type=type, include_deprecated=include_deprecated)
-        return {
-            "version": index.version,
-            "entities": [
-                {
-                    "name": entity.name,
-                    "type": entity.type,
-                    "summary": entity.summary,
-                    "category": entity.category,
-                    "deprecated": entity.deprecated,
-                }
-                for entity in entries
-            ],
-        }
 
     @server.tool()
     def search_entities(
@@ -324,300 +366,9 @@ def build_server(
             )
         return entity.model_dump()
 
-    @server.tool()
-    def map_token(
-        hex: str,
-        top_k: int = 3,
-        role: str | None = None,
-    ) -> dict[str, Any]:
-        """Find the closest Prism color tokens to ``hex`` (slice 11 SOTA).
-
-        Slice 11 SOTA: perceptual color-distance search over the
-        ``Colors.less`` palette. Used by the agent loop when Cursor
-        sees a hex from Figma and needs to know which design-system
-        token to reference instead of inlining the literal.
-
-        Ranking:
-
-        * **Primary**: Oklab Euclidean distance (Ottosson 2020,
-          screen-tuned, the same metric Tailwind v4 / Radix Colors /
-          shadcn/ui use).
-        * **Tiebreak**: CIEDE2000 ΔE in CIE Lab (industry-standard
-          25-year-old perceptual threshold metric).
-        * **Bucket**: the ΔE2000 distance is bucketed as
-          ``exact`` (≤2) / ``near`` (≤5) / ``loose`` (≤10) /
-          ``no-match`` (>10).
-
-        Optional ``role`` narrows the candidate set to tokens whose
-        name contains the role's keywords (surface, text, interactive,
-        success, warning, danger, focus). If the narrowed set's best
-        ΔE > 5 we fall back to the global ranking — the LLM is never
-        left empty-handed by an unhelpful role hint.
-
-        Args:
-            hex (str): target color, e.g. ``"#1B6BCC"``.
-            top_k (int): max matches to return (default 3).
-            role (str | None): optional semantic-role hint.
-
-        Returns:
-            dict: ``{"version": ..., "matches": [{...}]}`` where each
-            match carries ``name``, ``hex``, ``source_file``,
-            ``distance_oklab``, ``distance_de2000``, ``bucket``.
-        """
-        logger.info(
-            "map_token tool invoked hex=%s top_k=%d role=%s",
-            hex,
-            top_k,
-            role,
-        )
-        index = state.library().color_token_index()
-        matches = index.query(target_hex=hex, top_k=top_k, role=role)
-        return {
-            "version": index.version,
-            "matches": [m.model_dump() for m in matches],
-        }
-
-    @server.tool()
-    def check_contrast(fg_hex: str, bg_hex: str) -> dict[str, Any]:
-        """Return WCAG 2.1 + APCA Lc contrast for a fg/bg color pair.
-
-        Slice 11 SOTA: the accessibility guardrail. Returns both
-        metrics in one call so Cursor's generation loop can pick the
-        right one:
-
-        * **WCAG 2.1 ratio** (1..21) — what axe-core, Lighthouse, and
-          most current CI a11y validators check against. Reports
-          ``aa_normal_text`` (≥4.5:1) and ``aa_large_text`` (≥3:1).
-        * **APCA Lc** (~-108..+106, polarity-sensitive) — the
-          modern WCAG 3 draft metric. Recommended thresholds:
-          ``|Lc| >= 75`` body text, ``>= 60`` headlines,
-          ``>= 45`` fluent, ``>= 30`` non-content / icons.
-
-        APCA's polarity (positive = dark text on light bg, negative
-        = light text on dark bg) means the same pair gets two
-        different magnitudes when reversed — that's intentional;
-        the eye reads dark-on-light differently from light-on-dark
-        at small sizes.
-
-        Args:
-            fg_hex (str): foreground color (text, icon).
-            bg_hex (str): background color (panel, page).
-
-        Returns:
-            dict: contrast metrics and pass/fail flags.
-        """
-        logger.info(
-            "check_contrast tool invoked fg=%s bg=%s",
-            fg_hex,
-            bg_hex,
-        )
-        fg = hex_to_rgb(fg_hex)
-        bg = hex_to_rgb(bg_hex)
-        ratio = float(wcag_contrast_ratio(fg, bg))
-        lc = float(apca_contrast(fg, bg))
-        return {
-            "fg_hex": fg_hex,
-            "bg_hex": bg_hex,
-            "wcag_21_ratio": round(ratio, 4),
-            "wcag_aa_normal_text": ratio >= 4.5,
-            "wcag_aa_large_text": ratio >= 3.0,
-            "wcag_aaa_normal_text": ratio >= 7.0,
-            "wcag_aaa_large_text": ratio >= 4.5,
-            "apca_lc": round(lc, 2),
-            "apca_passes_body_text": abs(lc) >= 75.0,
-            "apca_passes_headline": abs(lc) >= 60.0,
-            "apca_passes_fluent": abs(lc) >= 45.0,
-            "apca_passes_non_content": abs(lc) >= 30.0,
-        }
-
-    @server.tool()
-    def get_a11y_rules(
-        component_name: str | None = None,
-    ) -> dict[str, Any]:
-        """Return a11y guidance for the library or a specific component.
-
-        Slice 11: surfaces both layers of Prism's a11y prose so the
-        LLM can read them as input context before generating code:
-
-        * **Global rules** parsed from ``package/LLMS.md`` — H2/H3
-          sections, in document order.
-        * **Per-component blocks** extracted from
-          ``*.examples.md`` chunks flagged ``is_a11y_block`` (the
-          slice-9 parser already marked them).
-
-        Args:
-            component_name (str | None): when supplied, narrow the
-                ``per_component`` slice to just that component. The
-                ``global_rules`` are always returned (they apply to
-                every component). Case-sensitive — matches Prism's
-                identifier convention.
-
-        Returns:
-            dict: ``{"title", "global_rules", "per_component"}``.
-        """
-        logger.info("get_a11y_rules tool invoked component=%s", component_name)
-        rules = state.library().a11y_rules()
-        if component_name is None:
-            return rules.model_dump()
-        match = get_a11y_for_component(component_name, rules)
-        return {
-            "title": rules.title,
-            "global_rules": [s.model_dump() for s in rules.global_rules],
-            "per_component": (
-                [match.model_dump()] if match is not None else []
-            ),
-        }
-
-    @server.tool()
-    def related_components(
-        name: str,
-        top_k: int = 5,
-    ) -> dict[str, Any]:
-        """Return components most often co-imported with ``name``.
-
-        Slice 10 SOTA — the *local* half of dual-level (LightRAG-
-        flavored) retrieval. The composition graph counts how often
-        any two components appear together in a single ``*.examples.md``
-        ``jsx`` fence; this tool returns the top-``k`` neighbours
-        of ``name`` ranked by that co-occurrence weight.
-
-        Use this when the agent has chosen one component and needs
-        to know the canonical partners — e.g. "I picked ``Modal``;
-        what does Prism's example corpus show me to compose with
-        it?" → ``Button``, ``StackingLayout``, ``FormItemInput``.
-
-        Ranking:
-
-        * **Primary**: edge weight (the count of example chunks
-          co-importing both ``name`` and the neighbour).
-        * **Tiebreak**: alphabetical, for deterministic output.
-
-        Args:
-            name (str): the component identifier to anchor the
-                query on (case-sensitive, must match a Prism
-                exported name).
-            top_k (int): maximum neighbours to return (default 5).
-
-        Returns:
-            dict: ``{"version", "name", "related": [{name, weight}]}``.
-
-        Raises:
-            GraphError: when ``name`` is not present in the
-                composition graph or ``top_k <= 0``. Surfaced to
-                the client as an MCP tool error.
-        """
-        logger.info(
-            "related_components tool invoked name=%s top_k=%d",
-            name,
-            top_k,
-        )
-        graph = state.library().composition_graph()
-        neighbours = graph.related(name=name, top_k=top_k)
-        return {
-            "version": graph.version,
-            "name": name,
-            "related": [n.model_dump() for n in neighbours],
-        }
-
-    @server.tool()
-    def get_component_cluster(name: str) -> dict[str, Any]:
-        """Return the Louvain community ``name`` belongs to.
-
-        Slice 10 SOTA — the *global* half of dual-level retrieval.
-        Louvain (with ``seed=42`` for determinism) partitions the
-        composition graph into communities of components that
-        frequently compose with one another. This tool returns
-        ``name``'s community: full member list, the up-to-three
-        most-central members (highest weighted degree inside the
-        community), and a one-string ``label`` that's the single
-        most-central member.
-
-        Use this when the agent wants context about what *kind* of
-        component family ``name`` belongs to — e.g. "is ``Modal``
-        in the form-composition family or the navigation family?".
-
-        The ``central_members`` are the LLM's hook for narrating
-        the cluster ("the form-composition layer: ``FormItemInput``,
-        ``Button``, ``StackingLayout``") without us paying the cost
-        of an LLM call at index time.
-
-        Args:
-            name (str): the component identifier (case-sensitive).
-
-        Returns:
-            dict: ``{"version", "name", "cluster_id", "label",
-            "central_members", "members"}``.
-
-        Raises:
-            GraphError: when ``name`` is not in the composition
-                graph. Surfaced to the client as an MCP tool error.
-        """
-        logger.info("get_component_cluster tool invoked name=%s", name)
-        graph = state.library().composition_graph()
-        info = graph.cluster(name)
-        return {
-            "version": graph.version,
-            "name": name,
-            "cluster_id": info.cluster_id,
-            "label": info.label,
-            "central_members": info.central_members,
-            "members": info.members,
-        }
-
     # ------------------------------------------------------------------
     # Slice 12 — AlphaCodium iteration loop on Temporal.
     # ------------------------------------------------------------------
-
-    @server.tool()
-    def reflect_on_spec(
-        component_name: str,
-        spec_text: str,
-        hex_colors: list[str] | None = None,
-    ) -> dict[str, Any]:
-        """Pre-process scaffold for AlphaCodium-style code generation.
-
-        Slice 12. Fans out to the existing slice-9 hybrid searcher,
-        slice-10 composition graph, and slice-11 color-token +
-        a11y indices to build a structured
-        :class:`ReflectionContext` the LLM reads *before*
-        generating JSX. Per the AlphaCodium paper, this self-
-        reflection stage is one of the two largest contributors
-        to the iteration loop's pass@k gain (along with
-        AI-generated tests).
-
-        Args:
-            component_name (str): the spec's target component
-                (PascalCase, case-sensitive).
-            spec_text (str): the free-form spec body. Used as the
-                hybrid-searcher query and as the source of hex
-                literals for token hinting when ``hex_colors``
-                isn't supplied.
-            hex_colors (list[str] | None): explicit hex colours.
-                When supplied this overrides ``spec_text`` hex
-                extraction — useful when Cursor has already
-                parsed a Figma export and knows the exact
-                colours up front.
-
-        Returns:
-            dict: ``{"component_name", "examples", "related",
-            "token_hints", "a11y_blocks", "candidate_decompositions"}``.
-        """
-        logger.info(
-            "reflect_on_spec tool invoked name=%s spec_len=%d",
-            component_name,
-            len(spec_text),
-        )
-        library = state.library()
-        context = build_reflection_context(
-            component_name=component_name,
-            spec_text=spec_text,
-            hybrid_searcher=library.hybrid_searcher(),
-            composition_graph=library.composition_graph(),
-            color_token_index=library.color_token_index(),
-            a11y_rules=library.a11y_rules(),
-            hex_colors=hex_colors,
-        )
-        return context.model_dump()
 
     @server.tool()
     def map_figma_node(
@@ -731,7 +482,14 @@ def build_server(
         component_name: str,
         services_root: str,
     ) -> dict[str, Any]:
-        """Return the existing Prism ``<Name>.pwspec.ts`` source.
+        """INTERNAL (operator/debug only). Return the Prism ``<Name>.pwspec.ts``.
+
+        Not part of the canonical Figma->Prism flow — the
+        ``start_generate_component`` workflow auto-scaffolds a
+        pwspec at iteration 1, so the LLM doesn't need to read
+        the library's existing pwspec to imitate it. This tool
+        is kept for human operators inspecting the test
+        patterns the workflow's scaffold is based on.
 
         The Prism npm tarball *excludes* ``.pwspec.ts`` files
         (see ``services/package.json`` ``files`` field's
@@ -773,59 +531,6 @@ def build_server(
             services_root,
         )
         return find_pwspec_example(
-            services_root=services_root,
-            component_name=component_name,
-        ).model_dump()
-
-    @server.tool()
-    def get_snapshot_template(
-        component_name: str,
-        services_root: str,
-    ) -> dict[str, Any]:
-        """Return the existing Jest ``<Name>.spec.tsx.snap`` excerpt.
-
-        Same rationale as :func:`get_pwspec_example`: ``.snap``
-        files are explicitly excluded from the npm tarball, so
-        the index doesn't carry them. We read from
-        ``<services_root>/src/components/v2/<group>/__snapshots__/<Name>.spec.tsx.snap``
-        directly.
-
-        Why this is useful for the iteration loop
-        -----------------------------------------
-
-        Jest snapshots are *serialised rendered DOM* — every
-        element, class name, ``data-*`` attribute, and child
-        node the component produces in the tested state. They
-        give the LLM a structural ground truth: a candidate
-        component that wraps a Prism primitive should produce
-        DOM whose class hierarchy and data attributes mirror
-        the snapshot, modulo whatever the candidate adds on
-        top.
-
-        The returned ``content`` is capped at 4 KB (Jest snaps
-        for many-variant components like ``Icons`` blow past
-        50 KB total); the cap holds the *first*
-        ``exports[...]`` block, which is typically the default
-        / canonical-state render.
-
-        Args:
-            component_name (str): the Prism component
-                identifier.
-            services_root (str): absolute path to the Prism
-                library's ``services/`` directory.
-
-        Returns:
-            dict: ``SnapshotTemplate`` shape with
-            ``component_name``, ``found``, ``path``, ``content``
-            (capped), ``block_count`` (total variants in the
-            file), and ``note``.
-        """
-        logger.info(
-            "get_snapshot_template tool invoked component=%s services_root=%s",
-            component_name,
-            services_root,
-        )
-        return find_snapshot_template(
             services_root=services_root,
             component_name=component_name,
         ).model_dump()
@@ -913,17 +618,72 @@ def build_server(
         services_root: str,
         max_iterations: int = 3,
         figma_png_path: str | None = None,
+        figma_png_url: str | None = None,
+        figma_png_base64: str | None = None,
+        spec_text: str | None = None,
     ) -> dict[str, Any]:
         """Kick off a Temporal workflow for the AlphaCodium iteration loop.
 
         Slice 12. Returns the workflow ID so subsequent
-        ``submit_candidate`` / ``get_component_status`` calls can
-        reference the same execution. Cursor's typical flow:
+        ``submit_candidate`` calls can reference the same
+        execution. Canonical Figma->Prism flow:
 
-        1. ``reflect_on_spec`` → get retrieved context.
-        2. ``start_generate_component`` → reserve a workflow ID.
+        1. ``map_figma_node`` → get candidate Prism components.
+        2. ``start_generate_component`` (this tool) → reserve a
+           workflow ID. **Always pass ``figma_png_url`` (or
+           ``figma_png_base64``) when Figma MCP gave you one** —
+           the workflow uses it for SSIM visual diffing on every
+           iteration.
         3. ``submit_candidate`` repeatedly until ``all_passed``
            or ``max_iterations`` exhausted.
+        4. On pass, honour the ``delivery_hint`` and call
+           ``get_final_artefact``.
+
+        Figma reference channels (any one works)
+        ----------------------------------------
+
+        Pass at most one of these (priority order: path > url >
+        base64). When all three are ``None`` the workflow skips
+        the SSIM stage entirely and the reflection prompt nudges
+        the LLM to supply a reference on the next start.
+
+        * ``figma_png_path`` — local PNG already on disk. Cheapest.
+        * ``figma_png_url`` — HTTPS URL (Figma signed link).
+          Downloaded once at workflow start, cached for every
+          iteration's SSIM. **This is the typical Figma MCP shape.**
+        * ``figma_png_base64`` — inline base64 PNG. Decoded once
+          at workflow start. Useful when Figma MCP returned the
+          raw image bytes.
+
+        Up-front context (``context`` field in the response)
+        ----------------------------------------------------
+
+        The response carries a ``context`` bundle the LLM should
+        read **before** generating iteration-1 code. It is built
+        synchronously from the slice-9..11 indices that already
+        sit on the Library:
+
+        * ``examples`` — top-3 imitation JSX snippets retrieved
+          via the hybrid (BM25 + dense) searcher.
+        * ``related`` — composition-graph neighbours so the LLM
+          knows which sibling components the design system
+          typically composes alongside ``component_name``.
+        * ``token_hints`` — design-token hints for any hex
+          literals in ``spec_text``.
+        * ``a11y_blocks`` — per-component a11y guidance pulled
+          from the colocated ``.examples.md`` file.
+        * ``imitation_pwspec`` — the closest-matching existing
+          pwspec from the lib (``services/src/components/v2/<X>/<X>.pwspec.ts``)
+          including its truncated body. Use this as the
+          authoring template when refining the auto-scaffold via
+          ``update_companion_tests`` — note its ``visitPage``
+          helper does NOT work for scratch components and the
+          scaffold must mount directly.
+
+        Surfacing this at workflow start eliminates the
+        previous "iteration-1 had no a11y context, scaffolds
+        were trivial, refinements were guesses" failure mode
+        the May-2026 testing surfaced.
 
         Args:
             component_name (str): PascalCase identifier.
@@ -933,18 +693,30 @@ def build_server(
             max_iterations (int): bounded loop cap. Per
                 AlphaCodium's ablation, gains plateau by
                 iteration 3-4.
-            figma_png_path (str | None): when set, the workflow
-                runs SSIM at the end of every all-pass iteration
-                against this Figma reference. When ``None``, the
-                SSIM stage is skipped.
+            figma_png_path (str | None): on-disk Figma PNG path.
+            figma_png_url (str | None): HTTPS URL to download.
+            figma_png_base64 (str | None): inline base64 PNG body.
+            spec_text (str | None): optional free-form spec body
+                (Figma layer dump, ticket text, etc.). Used as
+                the hybrid searcher's query and for hex-literal
+                extraction. Defaults to ``component_name`` when
+                omitted, which still yields useful retrieval for
+                callers who don't have a spec.
 
         Returns:
-            dict: ``{"workflow_id", "component_name", "task_queue"}``.
+            dict: ``{"workflow_id", "component_name", "task_queue", "context"}``
+            where ``context`` mirrors :class:`ReflectionContext`'s
+            fields plus an ``imitation_pwspec`` sub-dict.
         """
         logger.info(
-            "start_generate_component tool invoked name=%s services=%s",
+            "start_generate_component tool invoked name=%s services=%s "
+            "figma_path=%s figma_url=%s figma_b64=%s spec_chars=%d",
             component_name,
             services_root,
+            figma_png_path is not None,
+            figma_png_url is not None,
+            figma_png_base64 is not None,
+            len(spec_text) if spec_text else 0,
         )
         client = await state.temporal_client()
         from prism_mcp.workflow.workflow import GenerateComponentWorkflow
@@ -957,14 +729,27 @@ def build_server(
                 services_root=services_root,
                 max_iterations=max_iterations,
                 figma_png_path=figma_png_path,
+                figma_png_url=figma_png_url,
+                figma_png_base64=figma_png_base64,
             ),
             id=workflow_id,
             task_queue=PRISM_TASK_QUEUE,
+        )
+        # Build the up-front context bundle. Failures here must NOT
+        # block the workflow start — the LLM can still iterate without
+        # it. We log + return an empty context shape on failure so the
+        # response schema stays stable.
+        context = _build_start_context(
+            state=state,
+            component_name=component_name,
+            services_root=services_root,
+            spec_text=spec_text,
         )
         return {
             "workflow_id": handle.id,
             "component_name": component_name,
             "task_queue": PRISM_TASK_QUEUE,
+            "context": context,
         }
 
     @server.tool()
@@ -972,6 +757,7 @@ def build_server(
         workflow_id: str,
         jsx_code: str,
         companion_test_code: str | None = None,
+        companion_spec_code: str | None = None,
     ) -> dict[str, Any]:
         """Send a candidate to the workflow's update handler.
 
@@ -984,13 +770,30 @@ def build_server(
         verbatim, which is the SOTA pattern that pushed
         open-source 8B models to 94.51% HumanEval pass@1.
 
+        Companion test files
+        --------------------
+
+        At iteration 1 the workflow auto-scaffolds a minimal
+        Playwright pwspec + Jest spec under the candidate's
+        scratch dir, so neither field is required for the
+        validator chain to run. Supply them only when you have
+        behaviour-specific assertions to add. The dedicated
+        :func:`update_companion_tests` tool is usually a
+        cleaner channel for refinement than wedging tests
+        into every ``submit_candidate`` payload.
+
         Args:
             workflow_id (str): the ID returned by
                 ``start_generate_component``.
             jsx_code (str): the candidate JSX body. Written to
                 ``services/src/scratch/Generated/<Name>/<Name>.jsx``.
             companion_test_code (str | None): optional pwspec.ts
-                body produced by the AlphaCodium AI-test stage.
+                body. ``None`` triggers the auto-scaffold (first
+                iteration) or preserves prior content (later
+                iterations).
+            companion_spec_code (str | None): optional jest
+                spec.tsx body. Same write-once-then-preserve
+                semantics.
 
         Returns:
             dict: the :class:`CandidateResult` payload plus three
@@ -1011,9 +814,12 @@ def build_server(
               destination the user expects.
         """
         logger.info(
-            "submit_candidate tool invoked workflow_id=%s jsx_len=%d",
+            "submit_candidate tool invoked workflow_id=%s jsx_len=%d "
+            "pwspec_supplied=%s spec_supplied=%s",
             workflow_id,
             len(jsx_code),
+            companion_test_code is not None,
+            companion_spec_code is not None,
         )
         client = await state.temporal_client()
         from prism_mcp.workflow.workflow import GenerateComponentWorkflow
@@ -1024,6 +830,7 @@ def build_server(
             SubmitInput(
                 jsx_code=jsx_code,
                 companion_test_code=companion_test_code,
+                companion_spec_code=companion_spec_code,
             ),
         )
         payload = result.model_dump()
@@ -1045,8 +852,73 @@ def build_server(
         return payload
 
     @server.tool()
+    async def update_companion_tests(
+        workflow_id: str,
+        pwspec_code: str | None = None,
+        spec_code: str | None = None,
+    ) -> dict[str, Any]:
+        """Refine the auto-scaffolded Playwright + Jest tests in place.
+
+        At iteration 1 the workflow auto-scaffolds a minimal
+        pwspec.ts and spec.tsx so the validator chain has
+        something to run. Once a candidate's behaviour is stable,
+        call this tool to upgrade the scaffolds with
+        behaviour-specific assertions:
+
+        * **pwspec.ts** is the place for ``@axe-core/playwright``
+          a11y assertions, screenshot diffs, and interaction
+          flow tests.
+        * **spec.tsx** is the place for unit-level
+          render/event/state-transition assertions using
+          ``@testing-library/react``.
+
+        Either argument can be ``None`` to leave that file
+        untouched. Refining tests does *not* re-run the validator
+        chain — call ``submit_candidate`` afterwards (with the
+        same JSX, or new JSX) to validate against the refined
+        tests.
+
+        Args:
+            workflow_id (str): the running workflow's ID.
+            pwspec_code (str | None): full pwspec.ts body, or
+                ``None`` to leave the existing pwspec alone.
+            spec_code (str | None): full spec.tsx body, or
+                ``None`` to leave the existing spec alone.
+
+        Returns:
+            dict: the :class:`UpdateCompanionTestsResult` payload —
+            ``component_name``, ``wrote_pwspec``, ``wrote_spec``,
+            ``pwspec_path``, ``spec_path``, ``next_step_hint``.
+        """
+        logger.info(
+            "update_companion_tests tool invoked workflow_id=%s "
+            "pwspec_supplied=%s spec_supplied=%s",
+            workflow_id,
+            pwspec_code is not None,
+            spec_code is not None,
+        )
+        client = await state.temporal_client()
+        from prism_mcp.workflow.workflow import GenerateComponentWorkflow
+
+        handle = client.get_workflow_handle(workflow_id)  # type: ignore[attr-defined]
+        result = await handle.execute_update(
+            GenerateComponentWorkflow.update_companion_tests,
+            UpdateCompanionTestsInput(
+                pwspec_code=pwspec_code,
+                spec_code=spec_code,
+            ),
+        )
+        return result.model_dump()
+
+    @server.tool()
     async def get_component_status(workflow_id: str) -> dict[str, Any]:
-        """Poll a workflow's current status (read-only query).
+        """INTERNAL (operator/demo-UI only). Poll a workflow's status.
+
+        Not part of the canonical Figma->Prism flow — the LLM
+        gets the validator panel synchronously from
+        ``submit_candidate``, so it never needs to poll. This
+        tool is kept for the demo UI and human operators
+        watching iteration progress.
 
         Slice 12. Useful for the demo UI (or a watchful agent) to
         observe iteration progress without sending an update.
@@ -1206,6 +1078,115 @@ def build_server(
         }
 
     return server
+
+
+# --------------------------------------------------------------------------
+# start_generate_component context bundling. Lives at module scope (not as
+# a closure inside build_server) so the test suite can exercise the
+# fallback behaviour without standing up a real FastMCP.
+# --------------------------------------------------------------------------
+
+
+def _build_start_context(
+    *,
+    state: _ServerState,
+    component_name: str,
+    services_root: str,
+    spec_text: str | None,
+) -> dict[str, Any]:
+    """Build the up-front context bundle for ``start_generate_component``.
+
+    Synchronously fans out to the slice-9..11 indices on the
+    Library plus the slice-12 ``find_pwspec_example`` helper, so
+    the LLM has imitation examples, a11y blocks, design tokens,
+    and an authoring template for the companion pwspec before it
+    generates iteration-1 code.
+
+    Failure modes are *soft*: if the Library can't be acquired
+    (e.g. cold-start no-cache, or VPN missing) or the pwspec
+    glob misses, we return an empty bundle rather than aborting
+    the workflow start. The validator chain itself still runs
+    fine without context — the LLM just iterates with thinner
+    inputs.
+
+    Args:
+        state (_ServerState): the server's lazy state holder.
+            Provides the Library reference.
+        component_name (str): the workflow target.
+        services_root (str): absolute path to the Prism library's
+            ``services/`` directory. Used by
+            :func:`find_pwspec_example` to locate the imitation
+            template on disk.
+        spec_text (str | None): free-form spec body for the
+            searcher. ``None`` falls back to ``component_name``
+            as the query so retrieval still produces hits.
+
+    Returns:
+        dict: a JSON-serialisable bundle with keys
+        ``examples``, ``related``, ``token_hints``, ``a11y_blocks``,
+        ``candidate_decompositions``, and ``imitation_pwspec``.
+        Each list defaults to empty on lookup failure;
+        ``imitation_pwspec`` is always present and reports
+        ``found=False`` when no pwspec matches.
+    """
+    query_text = spec_text if spec_text and spec_text.strip() else component_name
+    empty_context = {
+        "component_name": component_name,
+        "examples": [],
+        "related": [],
+        "token_hints": [],
+        "a11y_blocks": [],
+        "candidate_decompositions": [],
+    }
+    pwspec_dict: dict[str, Any]
+    try:
+        pwspec = find_pwspec_example(
+            services_root=services_root,
+            component_name=component_name,
+        )
+        pwspec_dict = pwspec.model_dump()
+    except Exception:
+        logger.exception(
+            "find_pwspec_example failed component=%s services_root=%s",
+            component_name,
+            services_root,
+        )
+        pwspec_dict = {
+            "component_name": component_name,
+            "found": False,
+            "path": None,
+            "code": None,
+            "note": "imitation pwspec lookup failed (see server logs)",
+        }
+    try:
+        library = state.library()
+        reflection = build_reflection_context(
+            component_name=component_name,
+            spec_text=query_text,
+            hybrid_searcher=library.hybrid_searcher(),
+            composition_graph=library.composition_graph(),
+            color_token_index=library.color_token_index(),
+            a11y_rules=library.a11y_rules(),
+        )
+        context = reflection.model_dump()
+    except Exception:
+        logger.exception(
+            "build_reflection_context failed component=%s; returning empty bundle",
+            component_name,
+        )
+        context = empty_context
+    context["imitation_pwspec"] = pwspec_dict
+    logger.info(
+        "built start-context component=%s examples=%d related=%d "
+        "tokens=%d a11y=%d pwspec_found=%s",
+        component_name,
+        len(context.get("examples", [])),
+        len(context.get("related", [])),
+        len(context.get("token_hints", [])),
+        len(context.get("a11y_blocks", [])),
+        pwspec_dict.get("found", False),
+    )
+    return context
 
 
 class _ServerState:

@@ -320,6 +320,210 @@ def test_reflection_prompt_is_empty_string_when_all_passed() -> None:
     assert build_reflection_prompt(passing) == ""
 
 
+def test_reflection_prompt_appends_figma_nudge_when_reference_missing() -> (
+    None
+):
+    """A failing candidate with no Figma reference gets the SSIM nudge.
+
+    The nudge tells the LLM to pass ``figma_png_url`` on the
+    next ``start_generate_component`` call so future iterations
+    can run SSIM. The 3-question core stays unchanged.
+    """
+    failing = CandidateResult(
+        iteration=1,
+        component_name="X",
+        validators=[
+            ValidatorResult(
+                kind=ValidatorKind.typecheck,
+                exit_code=1,
+                stdout_tail="error TS2339",
+                stderr_tail="",
+                duration_ms=1,
+            ),
+        ],
+        ssim=None,
+        figma_reference_present=False,
+    )
+    prompt = build_reflection_prompt(failing)
+    # 3-question core still present.
+    assert "What was your assumption that turned out wrong?" in prompt
+    # Plus the new nudge mentioning the URL parameter and SSIM.
+    assert "figma_png_url" in prompt
+    assert "SSIM" in prompt or "ssim" in prompt.lower()
+
+
+def test_reflection_prompt_omits_figma_nudge_when_reference_present() -> None:
+    """When a Figma reference *was* supplied, the nudge stays off.
+
+    Otherwise we'd nag the LLM about a problem it doesn't have.
+    """
+    failing = CandidateResult(
+        iteration=1,
+        component_name="X",
+        validators=[
+            ValidatorResult(
+                kind=ValidatorKind.eslint,
+                exit_code=1,
+                stdout_tail="lint-error",
+                stderr_tail="",
+                duration_ms=1,
+            ),
+        ],
+        ssim=None,
+        figma_reference_present=True,
+    )
+    prompt = build_reflection_prompt(failing)
+    assert "figma_png_url" not in prompt
+
+
+def test_reflection_prompt_appends_rendered_unavailable_nudge() -> None:
+    """All validators pass + rendered_unavailable skip → the prompt
+    fires anyway (validators pass alone don't earn an empty
+    string when SSIM was attempted but skipped) and includes the
+    refinement nudge with the literal screenshot path.
+
+    This is the regression for the May-2026 bug where the auto-
+    scaffolded smoke pwspec didn't write a screenshot, the
+    workflow was crashing in the SSIM activity, and the LLM had
+    no actionable signal. The reflection prompt now teaches the
+    LLM to call ``update_companion_tests`` with a real pwspec
+    that ends with ``page.screenshot({path: ...})``.
+    """
+    rendered_unavailable = CandidateResult(
+        iteration=1,
+        component_name="ConfirmationModal",
+        validators=[
+            ValidatorResult(
+                kind=ValidatorKind.typecheck,
+                exit_code=0,
+                stdout_tail="",
+                stderr_tail="",
+                duration_ms=1,
+            ),
+        ],
+        ssim=None,
+        ssim_skip_reason="rendered_unavailable",
+        figma_reference_present=True,
+    )
+    prompt = build_reflection_prompt(
+        rendered_unavailable,
+        rendered_png_path="/tmp/services/playwright-output/ConfirmationModal.png",
+    )
+    # 3-question core still present.
+    assert "What was your assumption that turned out wrong?" in prompt
+    # Refinement nudge mentions the exact tool the LLM should call
+    # plus the templated path the pwspec must write to.
+    assert "update_companion_tests" in prompt
+    assert "page.screenshot" in prompt
+    assert "ConfirmationModal.png" in prompt
+    # Failing-kinds surfaces "ssim" so the validator panel reads
+    # consistently with a real SSIM-fail bucket.
+    assert "ssim" in rendered_unavailable.failing_kinds
+
+
+def test_reflection_prompt_omits_rendered_unavailable_nudge_by_default() -> (
+    None
+):
+    """A failing iteration that did NOT skip SSIM via
+    ``rendered_unavailable`` shouldn't see the new nudge.
+    """
+    failing = CandidateResult(
+        iteration=1,
+        component_name="X",
+        validators=[
+            ValidatorResult(
+                kind=ValidatorKind.eslint,
+                exit_code=1,
+                stdout_tail="lint-error",
+                stderr_tail="",
+                duration_ms=1,
+            ),
+        ],
+        ssim=None,
+        ssim_skip_reason=None,
+        figma_reference_present=True,
+    )
+    prompt = build_reflection_prompt(failing)
+    assert "update_companion_tests" not in prompt
+    assert "page.screenshot" not in prompt
+
+
+def test_candidate_result_rendered_unavailable_demotes_all_passed() -> None:
+    """``ssim_skip_reason="rendered_unavailable"`` blocks the
+    candidate from being marked passed, even when every
+    subprocess validator returned ``ok=True``.
+
+    Otherwise the workflow would silently declare victory while
+    skipping visual validation — the user supplied a Figma
+    reference precisely *because* they want SSIM to run.
+    """
+    result = CandidateResult(
+        iteration=1,
+        component_name="X",
+        validators=[
+            ValidatorResult(
+                kind=ValidatorKind.typecheck,
+                exit_code=0,
+                stdout_tail="",
+                stderr_tail="",
+                duration_ms=1,
+            ),
+            ValidatorResult(
+                kind=ValidatorKind.eslint,
+                exit_code=0,
+                stdout_tail="",
+                stderr_tail="",
+                duration_ms=1,
+            ),
+            ValidatorResult(
+                kind=ValidatorKind.jest,
+                exit_code=0,
+                stdout_tail="",
+                stderr_tail="",
+                duration_ms=1,
+            ),
+            ValidatorResult(
+                kind=ValidatorKind.playwright_axe,
+                exit_code=0,
+                stdout_tail="",
+                stderr_tail="",
+                duration_ms=1,
+            ),
+        ],
+        ssim=None,
+        ssim_skip_reason="rendered_unavailable",
+        figma_reference_present=True,
+    )
+    assert result.all_passed is False
+    assert "ssim" in result.failing_kinds
+
+
+def test_candidate_result_no_skip_reason_keeps_all_passed_true() -> None:
+    """``ssim_skip_reason=None`` is the existing happy-path: SSIM
+    either ran (and the verdict is on the result) or wasn't
+    attempted (no Figma reference). Neither case demotes
+    ``all_passed`` purely on the absence of a verdict.
+    """
+    result = CandidateResult(
+        iteration=1,
+        component_name="X",
+        validators=[
+            ValidatorResult(
+                kind=ValidatorKind.typecheck,
+                exit_code=0,
+                stdout_tail="",
+                stderr_tail="",
+                duration_ms=1,
+            ),
+        ],
+        ssim=None,
+        ssim_skip_reason=None,
+        figma_reference_present=False,
+    )
+    assert result.all_passed is True
+    assert result.failing_kinds == []
+
+
 # --------------------------------------------------------------------------
 # WorkflowStatus: the @workflow.query payload shape.
 # --------------------------------------------------------------------------
@@ -442,3 +646,111 @@ def test_reflection_context_defaults_lists_to_empty() -> None:
     assert ctx.token_hints == []
     assert ctx.a11y_blocks == []
     assert ctx.candidate_decompositions == []
+
+
+# --------------------------------------------------------------------------
+# WorkflowStartInput: the multi-channel Figma reference plumbing.
+# --------------------------------------------------------------------------
+
+
+def test_workflow_start_input_has_figma_reference_with_path() -> None:
+    """``figma_png_path`` set → ``has_figma_reference`` is True."""
+    from prism_mcp.workflow.contracts import WorkflowStartInput
+
+    i = WorkflowStartInput(
+        component_name="X",
+        services_root="/srv",
+        figma_png_path="/tmp/figma.png",
+    )
+    assert i.has_figma_reference is True
+
+
+def test_workflow_start_input_has_figma_reference_with_url() -> None:
+    """``figma_png_url`` set → ``has_figma_reference`` is True."""
+    from prism_mcp.workflow.contracts import WorkflowStartInput
+
+    i = WorkflowStartInput(
+        component_name="X",
+        services_root="/srv",
+        figma_png_url="https://figma.example/x.png",
+    )
+    assert i.has_figma_reference is True
+
+
+def test_workflow_start_input_has_figma_reference_with_base64() -> None:
+    """``figma_png_base64`` set → ``has_figma_reference`` is True."""
+    from prism_mcp.workflow.contracts import WorkflowStartInput
+
+    i = WorkflowStartInput(
+        component_name="X",
+        services_root="/srv",
+        figma_png_base64="aGVsbG8=",
+    )
+    assert i.has_figma_reference is True
+
+
+def test_workflow_start_input_has_no_figma_reference_when_all_unset() -> None:
+    """All three Figma fields ``None`` → ``has_figma_reference`` is False.
+
+    The workflow uses this gate to skip
+    ``materialise_figma_reference`` entirely; the test pins it
+    so a regression here can't silently call the activity with
+    no inputs.
+    """
+    from prism_mcp.workflow.contracts import WorkflowStartInput
+
+    i = WorkflowStartInput(component_name="X", services_root="/srv")
+    assert i.has_figma_reference is False
+
+
+# --------------------------------------------------------------------------
+# UpdateCompanionTestsInput: companion-test refinement contract.
+# --------------------------------------------------------------------------
+
+
+def test_update_companion_tests_input_allows_either_field_alone() -> None:
+    """Each companion file can be updated independently."""
+    from prism_mcp.workflow.contracts import UpdateCompanionTestsInput
+
+    pwspec_only = UpdateCompanionTestsInput(pwspec_code="// pwspec body")
+    assert pwspec_only.pwspec_code == "// pwspec body"
+    assert pwspec_only.spec_code is None
+
+    spec_only = UpdateCompanionTestsInput(spec_code="// spec body")
+    assert spec_only.pwspec_code is None
+    assert spec_only.spec_code == "// spec body"
+
+
+def test_update_companion_tests_result_has_next_step_hint() -> None:
+    """The result always carries a hint pointing the LLM to the
+    next ``submit_candidate`` call so it doesn't forget to
+    re-run validators against the refined tests.
+    """
+    from prism_mcp.workflow.contracts import UpdateCompanionTestsResult
+
+    r = UpdateCompanionTestsResult(
+        component_name="X",
+        wrote_pwspec=True,
+        wrote_spec=False,
+        pwspec_path="/p",
+        spec_path="/s",
+    )
+    assert "submit_candidate" in r.next_step_hint
+
+
+# --------------------------------------------------------------------------
+# CandidateResult: figma_reference_present is the new field that the
+# reflection-prompt nudge depends on.
+# --------------------------------------------------------------------------
+
+
+def test_candidate_result_defaults_figma_reference_present_true() -> None:
+    """Backwards compat: existing call sites that don't supply the
+    new field get ``True`` (the legacy assumption).
+
+    The workflow always populates this explicitly, so the default
+    only matters for direct test construction (which is exactly
+    what most existing tests do).
+    """
+    r = CandidateResult(iteration=1, component_name="X")
+    assert r.figma_reference_present is True
