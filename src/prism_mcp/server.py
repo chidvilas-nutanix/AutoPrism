@@ -607,7 +607,11 @@ def build_server(
             input (MapFigmaTreeInput): structured input with
                 ``node_url`` (required), ``reference_jsx``,
                 ``variable_defs``, ``figma_token``, ``max_depth``,
-                ``max_nodes``, ``max_agenda``, ``bypass_cache``.
+                ``max_nodes``, ``max_agenda``, ``bypass_cache``,
+                and ``figma_depth`` (per-call override for the REST
+                ``depth`` query parameter — defaults to the
+                fetcher's tuned value of 12, enough for real
+                Nutanix designs).
 
         Returns:
             dict: ``FigmaTreeMapping`` shape (``layout_tree``,
@@ -627,7 +631,7 @@ def build_server(
         logger.info(
             "map_figma_tree tool invoked url=%s reference_jsx=%s "
             "variable_defs=%d max_depth=%d max_nodes=%d max_agenda=%d "
-            "bypass_cache=%s",
+            "bypass_cache=%s figma_depth=%s",
             input.node_url,
             "present" if input.reference_jsx else "absent",
             len(input.variable_defs or {}),
@@ -635,15 +639,19 @@ def build_server(
             input.max_nodes,
             input.max_agenda,
             input.bypass_cache,
+            input.figma_depth if input.figma_depth is not None else "default",
         )
 
         try:
             parsed = parse_figma_url(input.node_url)
-            tree_json = await _fetch_figma_tree(
-                parsed=parsed,
-                figma_token=input.figma_token,
-                bypass_cache=input.bypass_cache,
-            )
+            fetch_kwargs: dict[str, Any] = {
+                "parsed": parsed,
+                "figma_token": input.figma_token,
+                "bypass_cache": input.bypass_cache,
+            }
+            if input.figma_depth is not None:
+                fetch_kwargs["depth"] = max(1, int(input.figma_depth))
+            tree_json = await _fetch_figma_tree(**fetch_kwargs)
         except FetchError as exc:
             raise ValueError(_fetch_error_to_mcp(exc)) from exc
 

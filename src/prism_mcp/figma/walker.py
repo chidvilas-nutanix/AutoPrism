@@ -37,7 +37,12 @@ from prism_mcp.figma.models import (
     LayoutNode,
     MappedRegion,
 )
-from prism_mcp.figma.patterns import PATTERNS, PatternMatch
+from prism_mcp.figma.patterns import (
+    PAGE_SCALE_MIN_EDGE,
+    PATTERNS,
+    PATTERNS_LEAF_SCALE,
+    PatternMatch,
+)
 from prism_mcp.figma.routing import (
     FrameRole,
     RouterDecision,
@@ -62,6 +67,33 @@ class WalkerError(RuntimeError):
     The walker bails fast on these rather than silently producing
     truncated output. See design doc §4.7.
     """
+
+
+_PATTERN_ABSORB_MAX_RATIO = 0.5
+"""Reject a pattern match that would absorb more than this fraction
+of the total input tree.
+
+Shape-only pattern detectors can over-match catastrophically when the
+heuristic accidentally lines up at page scale — a single
+:func:`prism_mcp.figma.patterns.match_kpi_tile` hit on a 1280×800 root
+FRAME would otherwise swallow the entire page into one agenda row.
+The 50% ceiling is empirical: a legitimate pattern (a 5-cell table
+column, a 4-icon button group) absorbs a tiny fraction of the page,
+while runaway matches swallow nearly all of it. The
+:attr:`prism_mcp.figma.filter.DropReason.pattern_oversized_reject`
+audit entry records the rejected candidate so users can see what would
+have happened without the rail.
+"""
+
+
+_PATTERN_ABSORB_MIN_TREE_SIZE = 20
+"""Only apply the absorb-ratio rail when the input tree has at least
+this many nodes.
+
+Below this threshold the rail's denominator gets noisy — a perfectly
+legitimate 4-stripe icon match in a 6-node mini-fixture is 67%
+absorbed and would otherwise be falsely rejected. Real-world failures
+of the rail always involve hundreds-of-nodes pages."""
 
 
 # The MapFigmaNodeFn signature mirrors the public
@@ -381,14 +413,20 @@ def _visit(
     # ---- Pass 5 (icon coalesce) — try BEFORE recursing, since the
     # whole subtree collapses into one icon region.
     icon_match = PATTERNS[0](node)
-    if icon_match is not None:
+    if icon_match is not None and _pattern_within_size_budget(
+        icon_match, ctx, node
+    ):
         return _emit_pattern_region(node, ctx, parent_chain, icon_match)
 
     # ---- Pattern detection at the cluster level (stat-list, etc.)
     # ALSO runs before recursing — the matched pattern absorbs the
-    # descendants.
+    # descendants. The absorb-ratio safety rail rejects matches that
+    # would swallow more than half of the input tree (typically a
+    # shape-only heuristic mis-firing at page scale).
     cluster_match = _try_cluster_patterns(node)
-    if cluster_match is not None:
+    if cluster_match is not None and _pattern_within_size_budget(
+        cluster_match, ctx, node
+    ):
         return _emit_pattern_region(node, ctx, parent_chain, cluster_match)
 
     # ---- Recurse into children. Capture their results.
@@ -671,12 +709,82 @@ def _try_cluster_patterns(node: dict[str, Any]) -> PatternMatch | None:
     *before* this function inside :func:`_visit` because icons
     collapse leaf subtrees and shouldn't share the cluster
     code-path.
+
+    Page-scale gate: when the candidate node's larger bbox edge
+    exceeds :data:`prism_mcp.figma.patterns.PAGE_SCALE_MIN_EDGE`,
+    we skip the patterns in
+    :data:`prism_mcp.figma.patterns.PATTERNS_LEAF_SCALE` (kpi-tile,
+    button-group, stat-list). Those rely on shape + text heuristics
+    without a strong layer-name anchor and are only meaningful for
+    small clusters; at page scale only the name-anchored patterns
+    (column-of-cells, tab-strip) can correctly fire. See design doc
+    §4.4.1 (a page-sized FRAME is a composed-region, not a leaf
+    pattern).
     """
+    bbox = node.get("absoluteBoundingBox") or {}
+    try:
+        max_edge = max(
+            float(bbox.get("width", 0)), float(bbox.get("height", 0))
+        )
+    except (TypeError, ValueError):
+        max_edge = 0.0
+    is_page_scale = max_edge > PAGE_SCALE_MIN_EDGE
+
     for predicate in PATTERNS[1:]:
+        if is_page_scale and predicate in PATTERNS_LEAF_SCALE:
+            continue
         match = predicate(node)
         if match is not None:
             return match
     return None
+
+
+def _pattern_within_size_budget(
+    match: PatternMatch,
+    ctx: _WalkContext,
+    node: dict[str, Any],
+) -> bool:
+    """Return True if the pattern match is within the absorb-ratio
+    safety budget, False if it should be rejected.
+
+    On rejection, appends one :class:`DroppedNode` audit row with
+    reason :attr:`DropReason.pattern_oversized_reject` (so the user
+    can see what the walker chose NOT to do) and one warning to
+    ``ctx.warnings`` (so the agenda's first-turn summary surfaces it).
+
+    The rail only fires for trees with at least
+    :data:`_PATTERN_ABSORB_MIN_TREE_SIZE` nodes — small fixtures with
+    legitimately high absorb fractions (e.g. a 4-stripe icon in a
+    6-node mini-tree) would otherwise be falsely rejected.
+    """
+    if ctx.input_nodes < _PATTERN_ABSORB_MIN_TREE_SIZE:
+        return True
+    absorb_count = len(match.absorbed_ids)
+    if absorb_count == 0:
+        return True
+    ratio = absorb_count / ctx.input_nodes
+    if ratio <= _PATTERN_ABSORB_MAX_RATIO:
+        return True
+
+    pct = int(round(ratio * 100))
+    detail = (
+        f"{match.kind} match would absorb {absorb_count} of "
+        f"{ctx.input_nodes} nodes ({pct}%); exceeded "
+        f"{int(_PATTERN_ABSORB_MAX_RATIO * 100)}% safety rail"
+    )
+    ctx.drop(node, DropReason.pattern_oversized_reject, detail=detail)
+    ctx.warnings.append(
+        f"pattern '{match.kind}' rejected at "
+        f"{node.get('id', '?')!s} ({node.get('name', '')!r}): {detail}. "
+        "Walker continued recursive descent instead."
+    )
+    logger.warning(
+        "rejected oversized pattern match kind=%s node_id=%s ratio=%.2f",
+        match.kind,
+        node.get("id", "?"),
+        ratio,
+    )
+    return False
 
 
 # --------------------------------------------------------------------------

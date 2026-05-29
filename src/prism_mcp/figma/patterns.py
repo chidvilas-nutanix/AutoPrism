@@ -206,6 +206,14 @@ def match_column_of_cells(node: dict[str, Any]) -> PatternMatch | None:
     and N ``Table/Table Cell`` (or ``Cell``) children.
 
     Real example: §8.2. The Opportunities page has 7 such columns.
+
+    The title text is allowed to be nested inside the
+    ``Table/Table Title`` frame — real Nutanix designs wrap the
+    header TEXT in helper layout FRAMEs (``Text + Icon``,
+    ``Checkbox + Text``, etc.). We search up to four levels deep
+    for the first TEXT inside the title so the predicate matches
+    those production designs without losing the strong
+    ``Table/Column`` name anchor.
     """
     if node.get("type") != "FRAME":
         return None
@@ -220,9 +228,8 @@ def match_column_of_cells(node: dict[str, Any]) -> PatternMatch | None:
     for child in children:
         name = str(child.get("name", "")).strip()
         if _TABLE_TITLE_NAME_RE.match(name):
-            for c in iter_children(child):
-                if c.get("type") == "TEXT":
-                    title_text = title_text or get_characters(c)
+            if title_text is None:
+                title_text = _first_text_within_depth(child, max_depth=4)
         elif _TABLE_CELL_NAME_RE.match(name):
             cell_count += 1
 
@@ -343,11 +350,57 @@ def match_button_group(node: dict[str, Any]) -> PatternMatch | None:
 # --------------------------------------------------------------------------
 
 
+_KPI_TILE_MAX_EDGE = 400
+"""Hard cap on the longer bbox edge of a kpi-tile, in pixels.
+
+A real KPI tile in a Nutanix-style dashboard is at most ~300px on each
+side; the 400px ceiling adds headroom without admitting whole pages.
+Without this gate the predicate would (and did) match a 1280×800 page
+whose ratio happens to fall inside the loose 1:3-3:1 aspect band — see
+audit findings on nodes 624:6826 and 667:211 from the Figma-basics
+file. See walker safety-rail discussion in the README's "patterns"
+section."""
+
+_KPI_TILE_MAX_DESCENDANTS = 30
+"""Hard cap on total descendants for a candidate kpi-tile.
+
+A real kpi-tile has at most a handful of internal nodes (a couple of
+TEXTs plus optional icon plumbing). 30 leaves plenty of slack for
+icon-as-VECTOR stacks while ruling out the catastrophic case where a
+400-node page-content frame happens to satisfy the size and text
+heuristics."""
+
+_KPI_TILE_MAX_TEXT_NODES = 6
+"""Cap on TEXT nodes within the (depth-limited) search.
+
+The canonical kpi-tile has 1 value + 1 label, sometimes a unit or a
+caption. 6 leaves margin without admitting "page with one H1 and
+twenty body labels"."""
+
+_KPI_TILE_TEXT_MAX_DEPTH = 3
+"""Maximum subtree depth from the candidate node at which a TEXT
+descendant still counts toward the value/label decision.
+
+A real kpi-tile's value and label are direct children or wrapped in
+at most a couple of layout FRAMEs; texts buried >3 levels deep belong
+to nested clusters, not to the tile itself. Limits work too — large
+subtrees stop early."""
+
+
 def match_kpi_tile(node: dict[str, Any]) -> PatternMatch | None:
-    """A FRAME / INSTANCE roughly square (1:3 < w:h < 3:1) with
-    one big TEXT (font ≥ 24) and one small TEXT (font < 16).
+    """A small FRAME / INSTANCE roughly square (1:3 < w:h < 3:1)
+    holding one big TEXT (font ≥ 24) and one small TEXT (font < 16),
+    near the top of its subtree.
 
     Real example: dashboard KPI cards like "Active Clusters: 12".
+
+    The four caps (``_KPI_TILE_MAX_EDGE``, ``_KPI_TILE_MAX_DESCENDANTS``,
+    ``_KPI_TILE_MAX_TEXT_NODES``, ``_KPI_TILE_TEXT_MAX_DEPTH``) make
+    this predicate genuinely "leaf-scale". Without them the aspect-ratio
+    + descendant-text check would match any container whose ratio falls
+    in (0.33, 3.0) AND whose subtree happens to contain exactly one
+    ≥24pt TEXT — empirically that's most app pages, since most pages
+    have a single H1.
     """
     if node.get("type") not in {"FRAME", "INSTANCE"}:
         return None
@@ -356,26 +409,28 @@ def match_kpi_tile(node: dict[str, Any]) -> PatternMatch | None:
     h = float(bbox.get("height", 0))
     if w <= 0 or h <= 0:
         return None
+    if max(w, h) > _KPI_TILE_MAX_EDGE:
+        return None
     ratio = w / h
     if ratio < (1.0 / 3.0) or ratio > 3.0:
         return None
 
-    texts: list[tuple[float, str]] = []
-    for descendant in _iter_descendant_dicts(node):
-        if descendant.get("type") != "TEXT":
-            continue
-        chars = get_characters(descendant)
-        if not chars:
-            continue
-        font_size = _extract_font_size(descendant)
-        texts.append((font_size, chars))
+    descendants = _iter_descendant_dicts(node)
+    if len(descendants) > _KPI_TILE_MAX_DESCENDANTS:
+        return None
+
+    texts = list(
+        _iter_texts_within_depth(node, max_depth=_KPI_TILE_TEXT_MAX_DEPTH)
+    )
+    if len(texts) > _KPI_TILE_MAX_TEXT_NODES:
+        return None
 
     big = [t for t in texts if t[0] >= 24]
     small = [t for t in texts if t[0] < 16]
     if len(big) != 1 or not small:
         return None
 
-    absorbed = [str(d.get("id", "")) for d in _iter_descendant_dicts(node)]
+    absorbed = [str(d.get("id", "")) for d in descendants]
     return PatternMatch(
         kind="kpi-tile",
         content_slots={
@@ -389,6 +444,34 @@ def match_kpi_tile(node: dict[str, Any]) -> PatternMatch | None:
         children_summary="1 big TEXT + 1 small TEXT",
         absorbed_ids=absorbed,
     )
+
+
+def _iter_texts_within_depth(
+    node: dict[str, Any],
+    *,
+    max_depth: int,
+) -> list[tuple[float, str]]:
+    """Yield ``(font_size, characters)`` for TEXT descendants of
+    ``node`` whose depth (root = 0) is at most ``max_depth``.
+
+    Centralised so :func:`match_kpi_tile` can scope its text search to
+    near-direct descendants without re-scanning the whole subtree the
+    way the original implementation did. We yield in DFS order; callers
+    that need a list materialise themselves.
+    """
+    out: list[tuple[float, str]] = []
+    stack: list[tuple[dict[str, Any], int]] = [
+        (c, 1) for c in iter_children(node)
+    ]
+    while stack:
+        cur, depth = stack.pop()
+        if cur.get("type") == "TEXT":
+            chars = get_characters(cur)
+            if chars:
+                out.append((_extract_font_size(cur), chars))
+        if depth < max_depth:
+            stack.extend((c, depth + 1) for c in iter_children(cur))
+    return out
 
 
 def _extract_font_size(text_node: dict[str, Any]) -> float:
@@ -440,6 +523,34 @@ return wins. Ordering rationale:
 """
 
 
+PATTERNS_LEAF_SCALE: frozenset = frozenset(
+    {match_button_group, match_stat_list, match_kpi_tile}
+)
+"""Patterns that are only meaningful for small / leaf-scale clusters.
+
+These predicates rely on shape + text heuristics without a strong layer-
+name anchor, so they can over-match catastrophically on page-scale
+FRAMEs. The walker (:func:`prism_mcp.figma.walker._try_cluster_patterns`)
+skips them whenever a candidate node's bounding box exceeds
+:data:`PAGE_SCALE_MIN_EDGE` on either axis — at that scale only the
+name-anchored patterns (icon / column-of-cells / tab-strip) get a
+chance to match. See design doc §4.4.1: a page-sized FRAME should
+classify as a ``composed-region``, never as a leaf-scale pattern.
+"""
+
+
+PAGE_SCALE_MIN_EDGE = 600
+"""A FRAME whose larger bbox edge exceeds this is treated as
+page-scale.
+
+At page scale we restrict pattern detection to the name-anchored
+predicates (icon / column-of-cells / tab-strip). The threshold (600px)
+is well above any realistic kpi-tile / button-group / stat-list and
+well below any tablet-or-larger viewport, so it cleanly separates
+"cluster candidate" from "page container".
+"""
+
+
 # --------------------------------------------------------------------------
 # Helpers.
 # --------------------------------------------------------------------------
@@ -470,3 +581,31 @@ def get_characters_of_first_text(node: dict[str, Any]) -> str:
             if chars:
                 return chars
     return ""
+
+
+def _first_text_within_depth(
+    node: dict[str, Any],
+    *,
+    max_depth: int,
+) -> str | None:
+    """Return the first non-empty TEXT ``characters`` found within
+    ``max_depth`` levels of ``node`` (DFS, depth 1 = direct child).
+
+    Used by :func:`match_column_of_cells` to locate the column header
+    text even when the designer has wrapped it in helper layout
+    FRAMEs (``Text + Icon``, ``Checkbox + Text``, etc.). Keeps the
+    search bounded so we don't accidentally pick a TEXT belonging to
+    a nested cluster.
+    """
+    stack: list[tuple[dict[str, Any], int]] = [
+        (c, 1) for c in iter_children(node)
+    ]
+    while stack:
+        cur, depth = stack.pop(0)  # BFS so shallowest text wins
+        if cur.get("type") == "TEXT":
+            chars = get_characters(cur)
+            if chars:
+                return chars
+        if depth < max_depth:
+            stack.extend((c, depth + 1) for c in iter_children(cur))
+    return None

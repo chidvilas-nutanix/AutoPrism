@@ -38,6 +38,12 @@ def test_drop_reasons_have_stable_string_values() -> None:
         "captured_as_content_slot",
         "folded_into_pattern",
         "unknown_type_fallback",
+        # Added when the walker grew the universal pattern absorb-
+        # ratio safety rail (see walker.py — rejects any pattern
+        # match that would swallow > 50% of the input tree). The
+        # skill's audit step keys off this string; if you rename it
+        # update the skill in lockstep.
+        "pattern_oversized_reject",
     }
     actual = {str(reason) for reason in DropReason}
     assert actual == expected

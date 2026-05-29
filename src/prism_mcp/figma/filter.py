@@ -49,6 +49,12 @@ class DropReason(StrEnum):
     captured_as_content_slot = "captured_as_content_slot"
     folded_into_pattern = "folded_into_pattern"
     unknown_type_fallback = "unknown_type_fallback"
+    pattern_oversized_reject = "pattern_oversized_reject"
+    """A pattern matched but would absorb more than the walker's
+    safety-rail threshold of the input tree (default 50%). The
+    walker rejects the match, logs the candidate here, and continues
+    recursive walking. Guards against shape-only heuristics
+    over-matching at page-scale FRAMEs. See walker safety rails."""
 
 
 _TINY_AREA_FLOOR = 50.0

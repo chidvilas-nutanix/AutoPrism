@@ -531,6 +531,129 @@ def test_match_kpi_tile_negative_no_big_text() -> None:
     assert match_kpi_tile(node) is None
 
 
+def test_match_kpi_tile_negative_page_scale_with_one_h1() -> None:
+    """A 1280x800 page-scale FRAME with one H1 + one label is NOT a
+    kpi-tile.
+
+    Regression for the catastrophic over-match observed against the
+    real "Active Cluster Page" (node 624:6826) and "E01 - Share
+    Summary" (node 667:211) — both 1280-wide pages where a single
+    page-title TEXT at ~26pt + body labels at ~14pt caused the
+    walker to fold the entire 400+ node tree into one kpi-tile
+    agenda row. The size cap on
+    :data:`prism_mcp.figma.patterns._KPI_TILE_MAX_EDGE` (400 px) is
+    the gate that catches this.
+    """
+    node = {
+        "id": "624:6826",
+        "name": "Active Cluster Page",
+        "type": "FRAME",
+        "absoluteBoundingBox": _bbox(0, 0, 1280, 800),
+        "children": [
+            {
+                "id": "624:6827",
+                "type": "TEXT",
+                "name": "Title",
+                "characters": "Licenses",
+                "style": {"fontSize": 26},
+            },
+            {
+                "id": "624:6828",
+                "type": "TEXT",
+                "name": "Page",
+                "characters": "Page 1",
+                "style": {"fontSize": 14},
+            },
+        ],
+    }
+    assert match_kpi_tile(node) is None
+
+
+def test_match_kpi_tile_negative_too_many_descendants() -> None:
+    """A small-ish FRAME with one H1 + one label is NOT a kpi-tile
+    when the subtree exceeds the descendant cap.
+
+    Defends against the case where a card or panel happens to share
+    the kpi-tile size + text signature but actually contains many
+    sub-clusters (icons, dividers, etc.) the walker should keep
+    visible as their own regions.
+    """
+    children: list[dict] = [
+        {
+            "id": "1:2",
+            "type": "TEXT",
+            "name": "Value",
+            "characters": "42",
+            "style": {"fontSize": 32},
+        },
+        {
+            "id": "1:3",
+            "type": "TEXT",
+            "name": "Label",
+            "characters": "Active Clusters",
+            "style": {"fontSize": 12},
+        },
+    ]
+    for i in range(35):
+        children.append(
+            {
+                "id": f"1:{100 + i}",
+                "type": "RECTANGLE",
+                "name": "Decoration",
+                "absoluteBoundingBox": _bbox(0, 0, 50, 50),
+            }
+        )
+    node = {
+        "id": "1:1",
+        "name": "Big card pretending to be a tile",
+        "type": "FRAME",
+        "absoluteBoundingBox": _bbox(0, 0, 300, 200),
+        "children": children,
+    }
+    assert match_kpi_tile(node) is None
+
+
+def test_match_kpi_tile_negative_h1_buried_too_deep() -> None:
+    """When the H1 is buried below the depth cap it doesn't count.
+
+    A real kpi-tile's value text is direct or 1-2 wrappers deep.
+    If the only ≥24pt TEXT sits 5 levels deep, the candidate node is
+    almost certainly a container hosting another component, not a
+    tile.
+    """
+    deep_h1 = {
+        "id": "1:99",
+        "type": "TEXT",
+        "characters": "Buried Heading",
+        "style": {"fontSize": 28},
+    }
+    nested = deep_h1
+    for i in range(5):
+        nested = {
+            "id": f"1:{50 + i}",
+            "type": "FRAME",
+            "name": f"wrapper-{i}",
+            "absoluteBoundingBox": _bbox(0, 0, 200, 120),
+            "children": [nested],
+        }
+    node = {
+        "id": "1:1",
+        "name": "Card",
+        "type": "FRAME",
+        "absoluteBoundingBox": _bbox(0, 0, 200, 120),
+        "children": [
+            nested,
+            {
+                "id": "1:2",
+                "type": "TEXT",
+                "characters": "label",
+                "style": {"fontSize": 12},
+            },
+        ],
+    }
+    assert match_kpi_tile(node) is None
+
+
 # --------------------------------------------------------------------------
 # Cross-pattern guarantee: nothing matches an empty node.
 # --------------------------------------------------------------------------

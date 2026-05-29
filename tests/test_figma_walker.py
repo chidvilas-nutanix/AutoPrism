@@ -263,3 +263,123 @@ def test_opportunities_page_collapses_278_nodes_to_under_50_regions() -> None:
     assert not mapping.warnings, (
         f"unexpected walker warnings: {mapping.warnings!r}"
     )
+
+
+# ----------------------------------------------------------------------
+# Real-world page regressions — pin the walker's behaviour against the
+# three large Figma-basics fixtures so we never silently re-introduce
+# the catastrophic "fold whole page into one kpi-tile" failure mode.
+# ----------------------------------------------------------------------
+
+
+def _walk_real_fixture(name: str):
+    tree = json.loads((FIXTURE_DIR / name).read_text(encoding="utf-8"))
+    return walk_tree(
+        tree_json=tree,
+        reference_jsx=None,
+        variable_defs=None,
+        map_figma_node_fn=None,
+    )
+
+
+def _assert_not_collapsed_to_single_kpi_tile(mapping, fixture_name: str) -> None:
+    """Shared sanity check for the three big page fixtures.
+
+    The pre-fix failure mode was: a 400-node tree collapses to ONE
+    agenda row with role ``kpi-tile`` because the
+    :func:`prism_mcp.figma.patterns.match_kpi_tile` predicate matched
+    the entire page. Any future regression that brings that mode back
+    will trip one of these three asserts.
+    """
+    assert mapping.summary["agenda_size"] > 1, (
+        f"{fixture_name}: agenda collapsed to {mapping.summary['agenda_size']} "
+        "row(s); previously this was the kpi-tile over-match failure mode"
+    )
+    if mapping.agenda:
+        roles = [r.role for r in mapping.agenda]
+        kpi_root_match = (
+            len(roles) == 1 and roles[0] == "kpi-tile"
+        )
+        assert not kpi_root_match, (
+            f"{fixture_name}: page-root fell into a single kpi-tile; "
+            "the leaf-pattern size cap was supposed to prevent this"
+        )
+
+
+def test_active_cluster_page_does_not_fold_to_single_kpi_tile() -> None:
+    """The 1280x800 Active Cluster page (real Figma-basics fixture)
+    must produce more than one agenda row.
+
+    Pre-fix this fixture collapsed all 440 nodes into one
+    ``kpi-tile`` row because the page contains exactly one ≥24pt TEXT
+    ("Licenses") and a forest of ≤14pt body labels — the smoking-gun
+    case for the predicate over-match. The Layer 1 size cap and
+    Layer 3 page-scale gate together must keep this off.
+    """
+    mapping = _walk_real_fixture("figma-active-cluster-page.json")
+    _assert_not_collapsed_to_single_kpi_tile(
+        mapping, "figma-active-cluster-page.json"
+    )
+    # Sanity: we should see the table columns and the header pulled
+    # out as their own agenda rows (they have strong name anchors).
+    roles = [r.role for r in mapping.agenda]
+    assert "table-column" in roles, (
+        "active-cluster-page should pull out at least one "
+        "Table/Column region"
+    )
+
+
+def test_e01_share_summary_does_not_fold_to_single_kpi_tile() -> None:
+    """The 1280x890 E01 - Share Summary page (real Figma-basics
+    fixture) must produce more than one agenda row.
+
+    Same failure mode as the Active Cluster page — one ≥24pt TEXT
+    ("Home" at 29pt) inside a page-scale FRAME was enough to swallow
+    347 of 348 nodes into a single kpi-tile region pre-fix.
+    """
+    mapping = _walk_real_fixture("figma-e01-share-summary.json")
+    _assert_not_collapsed_to_single_kpi_tile(
+        mapping, "figma-e01-share-summary.json"
+    )
+
+
+def test_d02_share_summary_keeps_working() -> None:
+    """The 1280x1179 D02 page is the case that already worked before
+    the fix (no ≥24pt TEXT, so kpi-tile never fired); it should keep
+    producing a non-trivial agenda after the fix lands.
+
+    Pinning this fixture guards against the opposite regression:
+    accidentally tightening match_kpi_tile so much that nothing
+    matches anymore.
+    """
+    mapping = _walk_real_fixture("figma-d02-share-summary.json")
+    _assert_not_collapsed_to_single_kpi_tile(
+        mapping, "figma-d02-share-summary.json"
+    )
+
+
+def test_real_page_fixtures_do_not_trip_oversized_rail() -> None:
+    """After the Layer 1 + Layer 3 fixes, no real-world fixture
+    should reach Layer 2's absorb-ratio safety rail.
+
+    The rail is a defence-in-depth guard; if it fires on
+    well-behaved input that means a more specific predicate /
+    page-scale gate failed and we need to tighten upstream. This
+    test surfaces that early.
+    """
+    fixtures = [
+        "figma-active-cluster-page.json",
+        "figma-e01-share-summary.json",
+        "figma-d02-share-summary.json",
+    ]
+    for fixture in fixtures:
+        mapping = _walk_real_fixture(fixture)
+        oversized = [
+            d for d in mapping.dropped
+            if d.reason == "pattern_oversized_reject"
+        ]
+        assert not oversized, (
+            f"{fixture}: Layer 2 safety rail fired ({len(oversized)} "
+            f"reject(s)); upstream predicate/page-scale gate should "
+            f"have caught these earlier. First reject: {oversized[0]!r}"
+        )

@@ -59,6 +59,14 @@ class MapFigmaTreeInput(BaseModel):
         bypass_cache (bool): if True, skip the disk cache for the
             REST fetch (useful when the user has just edited the
             design and wants a fresh pull). Default False.
+        figma_depth (int | None): override the ``depth`` query
+            parameter the fetcher sends to Figma's REST API.
+            ``None`` (default) uses the fetcher's tuned default
+            (12 — enough for nearly every Nutanix design we have
+            inspected). Set to a higher value for unusually deeply
+            nested files; set lower to reduce payload size when
+            you know the subtree is shallow. Values < 1 are
+            clamped to 1 by the fetcher.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -71,6 +79,7 @@ class MapFigmaTreeInput(BaseModel):
     max_nodes: int = 5000
     max_agenda: int = 50
     bypass_cache: bool = False
+    figma_depth: int | None = None
 
 
 # --------------------------------------------------------------------------

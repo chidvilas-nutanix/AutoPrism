@@ -53,12 +53,26 @@ iterative debug session ("walk, fix, walk again") avoids the
 network; short enough that a designer-edit-and-fetch round-trip
 still picks up the fresh tree."""
 
-_DEFAULT_DEPTH = 6
+_DEFAULT_DEPTH = 12
 """Default ``depth`` query parameter sent to Figma's REST API.
 
-Figma's docs default to "no depth limit" (returns the whole
-subtree), but in practice a 6-level cap is enough for any single
-page we care about, and limits payload size."""
+Figma's docs say omitting ``depth`` returns the whole subtree;
+specifying ``depth=N`` returns up to ``N`` levels below the
+requested node (root counts as level 0).
+
+We pin to ``12`` because real Nutanix designs routinely nest
+table cells, icon stacks, and instance-of-instance wrappers
+8-10 levels under the page-root FRAME. The previous default of
+``6`` truncated FRAMEs like ``Table/Table Title`` to leaves with
+``children: []``, which made shape-based pattern detectors
+(``match_column_of_cells``, ``match_kpi_tile``) miss every match
+because their interior signal had been stripped server-side.
+
+12 levels is enough for every Nutanix page we have inspected and
+still safely under the 10MB :data:`_TREE_SIZE_CAP_BYTES` for the
+``Figma-basics`` and CPQ-style pages we walk. Callers needing a
+deeper or shallower fetch can pass ``figma_depth=N`` to
+``map_figma_tree`` per call without changing this default."""
 
 
 # --------------------------------------------------------------------------
