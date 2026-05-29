@@ -166,6 +166,32 @@ falls back to the last cached version with `from_cache=true`; when
 the cache is also empty, the server raises a `LibraryError` whose
 message tells the operator to connect to the Nutanix VPN.
 
+### Figma page → Prism (page-level mapping)
+
+In addition to per-node mapping (`map_figma_node`), the server
+exposes `map_figma_tree` for **page-level** Figma → Prism
+conversion. Given a Figma node URL it parses the URL, fetches
+the subtree via the Figma REST API, applies a 7-pass noise
+filter + routing layer + pattern detector, and returns a
+structured `FigmaTreeMapping` containing a pruned `layout_tree`,
+an `agenda` of `MappedRegion`s with ranked Prism candidates,
+and a `dropped` audit trail. The
+[`figma-page-to-prism`](.cursor/skills/figma-page-to-prism/SKILL.md)
+Cursor skill orchestrates the full Phase A–H flow (input →
+gather → map → plan → compose → write → validate → report) on
+top of this tool. See
+[`docs/figma-page-to-prism-plan.md`](docs/figma-page-to-prism-plan.md)
+for the design rationale, the routing table, the pattern
+catalogue, and worked examples.
+
+`map_figma_tree` requires `FIGMA_TOKEN` (a Figma personal
+access token with `file:read` scope, generated at
+<https://www.figma.com/settings>). Put it in `.env` alongside
+the JFROG credentials; the server reads it at call time. The
+fetcher caches Figma responses to `~/.cache/prism-mcp/figma/`
+with a 1-hour TTL and retries transient 429/5xx/timeout errors
+three times with exponential backoff.
+
 ## Repository layout
 
 | Path | Purpose |

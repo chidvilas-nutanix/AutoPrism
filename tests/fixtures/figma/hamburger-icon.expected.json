@@ -1,0 +1,32 @@
+{
+  "summary": {
+    "input_nodes": 4,
+    "kept_for_mapping": 1,
+    "dropped_total": 3,
+    "agenda_size": 1,
+    "tokens_count": 1,
+    "warnings_count": 0,
+    "max_depth": 20,
+    "max_agenda": 50,
+    "dropped_icon_internal": 3
+  },
+  "agenda": [
+    {
+      "id": "9999:1",
+      "role": "icon",
+      "name": "Menu"
+    }
+  ],
+  "layout_tree": [
+    {
+      "id": "9999:1",
+      "role": "icon",
+      "name": "Menu",
+      "children_ids": []
+    }
+  ],
+  "dropped_by_reason": {
+    "icon_internal": 3
+  },
+  "warnings": []
+}

@@ -1,0 +1,488 @@
+{
+  "id": "626:986",
+  "name": "Impacted Cluster Copy",
+  "type": "GROUP",
+  "fills": [
+    {
+      "blendMode": "NORMAL",
+      "visible": false,
+      "type": "SOLID",
+      "color": "#ffffff"
+    }
+  ],
+  "absoluteBoundingBox": {
+    "x": 940,
+    "y": 521,
+    "width": 320,
+    "height": 309
+  },
+  "children": [
+    {
+      "id": "626:987",
+      "name": "Tile",
+      "type": "INSTANCE",
+      "absoluteBoundingBox": {
+        "x": 940,
+        "y": 521,
+        "width": 320,
+        "height": 309
+      },
+      "children": [
+        {
+          "id": "I626:987;0:2729",
+          "name": "Tile",
+          "type": "INSTANCE",
+          "absoluteBoundingBox": {
+            "x": 940,
+            "y": 521,
+            "width": 320,
+            "height": 309
+          },
+          "children": []
+        },
+        {
+          "id": "I626:987;0:2730",
+          "name": "Header",
+          "type": "FRAME",
+          "fills": [
+            {
+              "blendMode": "NORMAL",
+              "visible": false,
+              "type": "SOLID",
+              "color": "#ffffff"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 940,
+            "y": 521,
+            "width": 320,
+            "height": 40
+          },
+          "children": [
+            {
+              "id": "I626:987;0:2732",
+              "name": "Title",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#22272e"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 960,
+                "y": 536,
+                "width": 183,
+                "height": 10
+              },
+              "characters": "Top 5 Shares by Connections",
+              "style": {
+                "fontFamily": "Nutanix Soft",
+                "fontStyle": "Semibold",
+                "fontWeight": 600,
+                "fontSize": 14,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 10
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "626:988",
+      "name": "Cluster Details",
+      "type": "GROUP",
+      "fills": [
+        {
+          "blendMode": "NORMAL",
+          "visible": false,
+          "type": "SOLID",
+          "color": "#ffffff"
+        }
+      ],
+      "absoluteBoundingBox": {
+        "x": 940,
+        "y": 561.0215454101562,
+        "width": 320,
+        "height": 120
+      },
+      "children": [
+        {
+          "id": "626:989",
+          "name": "Row",
+          "type": "FRAME",
+          "fills": [
+            {
+              "blendMode": "NORMAL",
+              "visible": false,
+              "type": "SOLID",
+              "color": "#ffffff"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 940,
+            "y": 561.0215454101562,
+            "width": 320,
+            "height": 40
+          },
+          "children": [
+            {
+              "id": "626:990",
+              "name": "Row",
+              "type": "RECTANGLE",
+              "fills": [
+                {
+                  "opacity": 0.00009999999747378752,
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#000000"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 940,
+                "y": 561.0215454101562,
+                "width": 320,
+                "height": 40
+              }
+            },
+            {
+              "id": "626:991",
+              "name": "CBTest",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#22272e"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 959.6949462890625,
+                "y": 576.0215454101562,
+                "width": 126,
+                "height": 10
+              },
+              "characters": "CBTest",
+              "style": {
+                "fontFamily": "Nutanix Soft",
+                "fontStyle": "Regular",
+                "fontWeight": 400,
+                "fontSize": 14,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 10
+              }
+            }
+          ]
+        },
+        {
+          "id": "626:992",
+          "name": "Row",
+          "type": "FRAME",
+          "fills": [
+            {
+              "blendMode": "NORMAL",
+              "visible": false,
+              "type": "SOLID",
+              "color": "#ffffff"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 940,
+            "y": 601.0215454101562,
+            "width": 320,
+            "height": 80
+          },
+          "children": [
+            {
+              "id": "626:993",
+              "name": "Row",
+              "type": "RECTANGLE",
+              "fills": [
+                {
+                  "opacity": 0.00009999999747378752,
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#000000"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 940,
+                "y": 601.0215454101562,
+                "width": 320,
+                "height": 40
+              }
+            },
+            {
+              "id": "626:994",
+              "name": "Row Copy 4",
+              "type": "RECTANGLE",
+              "fills": [
+                {
+                  "opacity": 0.00009999999747378752,
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#000000"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 940,
+                "y": 641.0215454101562,
+                "width": 320,
+                "height": 40
+              }
+            },
+            {
+              "id": "626:995",
+              "name": "Intern19Share",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#22272e"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 959.6949462890625,
+                "y": 616.0215454101562,
+                "width": 129,
+                "height": 10
+              },
+              "characters": "Intern19Share",
+              "style": {
+                "fontFamily": "Nutanix Soft",
+                "fontStyle": "Regular",
+                "fontWeight": 400,
+                "fontSize": 14,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 10
+              }
+            }
+          ]
+        },
+        {
+          "id": "626:996",
+          "name": "Row",
+          "type": "FRAME",
+          "fills": [
+            {
+              "blendMode": "NORMAL",
+              "visible": false,
+              "type": "SOLID",
+              "color": "#ffffff"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 940,
+            "y": 641.0215454101562,
+            "width": 320,
+            "height": 40
+          },
+          "children": [
+            {
+              "id": "626:997",
+              "name": "Row",
+              "type": "RECTANGLE",
+              "absoluteBoundingBox": {
+                "x": 940,
+                "y": 641.0215454101562,
+                "width": 320,
+                "height": 40
+              }
+            },
+            {
+              "id": "626:998",
+              "name": "SyslogShare",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#22272e"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 959.6949462890625,
+                "y": 656.0215454101562,
+                "width": 129,
+                "height": 10
+              },
+              "characters": "SyslogShare",
+              "style": {
+                "fontFamily": "Nutanix Soft",
+                "fontStyle": "Regular",
+                "fontWeight": 400,
+                "fontSize": 14,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 10
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "626:999",
+      "name": "Cluster Details Copy",
+      "type": "GROUP",
+      "fills": [
+        {
+          "blendMode": "NORMAL",
+          "visible": false,
+          "type": "SOLID",
+          "color": "#ffffff"
+        }
+      ],
+      "absoluteBoundingBox": {
+        "x": 940,
+        "y": 681.0215454101562,
+        "width": 320,
+        "height": 80
+      },
+      "children": [
+        {
+          "id": "626:1000",
+          "name": "Row",
+          "type": "FRAME",
+          "fills": [
+            {
+              "blendMode": "NORMAL",
+              "visible": false,
+              "type": "SOLID",
+              "color": "#ffffff"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 940,
+            "y": 681.0215454101562,
+            "width": 320,
+            "height": 80
+          },
+          "children": [
+            {
+              "id": "626:1001",
+              "name": "Row",
+              "type": "RECTANGLE",
+              "fills": [
+                {
+                  "opacity": 0.00009999999747378752,
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#000000"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 940,
+                "y": 681.0215454101562,
+                "width": 320,
+                "height": 40
+              }
+            },
+            {
+              "id": "626:1002",
+              "name": "Row Copy",
+              "type": "RECTANGLE",
+              "fills": [
+                {
+                  "opacity": 0.00009999999747378752,
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#000000"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 940,
+                "y": 721.0215454101562,
+                "width": 320,
+                "height": 40
+              }
+            },
+            {
+              "id": "626:1003",
+              "name": "NTNX21Share",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#22272e"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 959.6949462890625,
+                "y": 696.0215454101562,
+                "width": 115,
+                "height": 10
+              },
+              "characters": "NTNX21Share",
+              "style": {
+                "fontFamily": "Nutanix Soft",
+                "fontStyle": "Regular",
+                "fontWeight": 400,
+                "fontSize": 14,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 10
+              }
+            }
+          ]
+        },
+        {
+          "id": "626:1004",
+          "name": "Row",
+          "type": "FRAME",
+          "fills": [
+            {
+              "blendMode": "NORMAL",
+              "visible": false,
+              "type": "SOLID",
+              "color": "#ffffff"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 959,
+            "y": 736.0215454101562,
+            "width": 73,
+            "height": 10
+          },
+          "children": [
+            {
+              "id": "626:1005",
+              "name": "DemoTest",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#22272e"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 959.6948852539062,
+                "y": 736.0215454101562,
+                "width": 71.59322357177734,
+                "height": 10
+              },
+              "characters": "DemoTest",
+              "style": {
+                "fontFamily": "Nutanix Soft",
+                "fontStyle": "Regular",
+                "fontWeight": 400,
+                "fontSize": 14,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 10
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

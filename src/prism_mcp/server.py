@@ -29,6 +29,17 @@ from mcp.server.fastmcp import FastMCP
 from prism_mcp.cache import Cache
 from prism_mcp.config import ConfigError, ServerConfig
 from prism_mcp.entities import EntityType
+from prism_mcp.figma import (
+    FigmaTreeMapping,
+    MapFigmaTreeInput,
+    walk_tree,
+)
+from prism_mcp.figma.fetch import (
+    FetchError,
+    FetchErrorCode,
+    _fetch_figma_tree,
+    parse_figma_url,
+)
 from prism_mcp.library import Library, LibraryError
 from prism_mcp.library_assets import find_pwspec_example
 from prism_mcp.refresh import RefreshLoop, RefreshLoopConfig
@@ -51,6 +62,31 @@ logger = logging.getLogger(__name__)
 
 SERVER_NAME = "prism-mcp"
 ECHO_REPLY = "prism-mcp: alive"
+
+
+def _fetch_error_to_mcp(exc: FetchError) -> str:
+    """Render a :class:`FetchError` as a Cursor-facing message.
+
+    Format per design doc §7.4:
+
+        ``[<code>] <message>  Hint: <hint>``
+
+    The ``[<code>]`` prefix is machine-readable so the Cursor
+    skill can route per-code; the hint nudges the user toward the
+    fix. We deliberately raise as ``ValueError`` from the tool —
+    FastMCP wraps it into a tool-result error block.
+    """
+    parts = [f"[{exc.code}] {exc.message}"]
+    if exc.hint:
+        parts.append(f"Hint: {exc.hint}")
+    return "  ".join(parts)
+
+
+# Re-export FetchErrorCode at module scope so tests can reference
+# the canonical taxonomy without reaching into the private fetch
+# module. The walker's MCP wrapper is the only legitimate user of
+# the underlying FetchError class.
+__all__ = ["SERVER_INSTRUCTIONS", "FetchErrorCode", "build_server"]
 
 
 SERVER_INSTRUCTIONS = """\
@@ -130,6 +166,70 @@ ATOMIC TOOLS FOR DRILL-DOWN
 retrieval), `get_entity` (full record with signature + examples), and
 `get_library_meta` (version + index status) cover the cases where
 `map_figma_node` returned thin results.
+
+PAGE-LEVEL FIGMA -> PRISM FLOW
+
+When the user pastes a whole-page Figma URL (e.g. a screen, dashboard,
+or modal that obviously contains many components), prefer the
+page-level flow over manually iterating `map_figma_node` per child.
+
+A. Trigger detection.
+   The Cursor `figma-page-to-prism` skill activates when the user
+   pastes a `figma.com/design/.../?node-id=...` URL and says any of
+   "build this", "implement this page", "convert to Prism", or when
+   the referenced node is a whole frame (not a single instance).
+
+B. Read the URL.
+   The skill extracts `node_url` verbatim. URL form uses `-` between
+   id parts (e.g. `node-id=624-6826`); the tool normalises to `:`.
+
+C. Capture optional plugin signals.
+   If the user has the Figma plugin connected, call:
+   - `get_design_context(nodeId)` once and pass the body as
+     `reference_jsx`.
+   - `get_variable_defs(nodeId)` once and pass the dict as
+     `variable_defs`.
+   Both are optional; the walker degrades gracefully.
+
+D. Call `map_figma_tree(input=MapFigmaTreeInput(...))`.
+   Read the response. `summary.input_nodes` is your sanity check; if
+   it is 0, the URL or token was wrong. `agenda` is the ordered list
+   of region decisions; `layout_tree` is the nested shape; `tokens`
+   maps every visible hex to its closest Prism token; `dropped` is
+   the audit trail (look for `unknown_type_fallback` or extreme
+   `tiny_decorative` counts as a signal that the walker missed
+   something).
+
+E. Pre-render walkthrough.
+   Echo `summary` to the user (especially `agenda_size`, top three
+   `dropped_<reason>` buckets, and any `warnings`) before generating
+   JSX. This is the user's chance to abort if the walker absorbed
+   too much.
+
+F. Compose top-down.
+   For each `MappedRegion` in `agenda`, the `mapping.candidates[0]`
+   is the suggested Prism component. Pick from `candidates` (never
+   invent), import via the canonical `@nutanix-ui/prism-reactjs`
+   path, and respect each region's `content_slots` (title / items /
+   header / value / label) and `reference_jsx_slice` when supplied.
+
+G. Validate.
+   For non-trivial pages, kick off the AlphaCodium loop via
+   `start_generate_component` per logical chunk. The walker's
+   `tokens` map seeds the SSIM-friendly colour mapping; the
+   `agenda`'s `reference_jsx_slice` slots feed the iteration-1
+   prompt context.
+
+H. Error handling.
+   `map_figma_tree` surfaces a structured `FetchError` for every
+   recoverable failure: `missing_token` (no FIGMA_TOKEN env),
+   `invalid_token` (rejected by Figma), `file_not_found`,
+   `node_not_found`, `rate_limited` (after 3 retries),
+   `network_timeout`, `tree_too_large` (over 10MB cap),
+   `transport_error`, `invalid_url`. The skill recovers per-code per
+   §7.4 of the design doc; never silently retry on
+   `missing_token` / `invalid_token` — surface the fix hint to the
+   user.
 """
 
 
@@ -476,6 +576,99 @@ def build_server(
             top_k=top_k,
         )
         return mapping.model_dump()
+
+    @server.tool()
+    async def map_figma_tree(
+        input: MapFigmaTreeInput,
+    ) -> dict[str, Any]:
+        """Walk a whole Figma page into a structured Prism agenda.
+
+        The page-level companion to ``map_figma_node``. Given a
+        Figma node URL, this tool:
+
+        1. Parses the URL into ``(file_key, node_id)``.
+        2. Fetches the raw Figma SceneNode tree via the REST API
+           (with retries + a 1-hour disk cache).
+        3. Walks the tree through a 7-pass noise filter, role
+           classifier, and 6 pattern detectors — collapsing
+           the typical 200-400-node page payload into a 5-40
+           row "agenda" of Prism component decisions.
+        4. Calls ``map_figma_node`` per agenda row with the
+           enriched signals (text_content, children_summary,
+           structural_hints, parent_chain) so the BM25 + dense
+           rankers see strictly more signal than per-node
+           callers can supply on their own.
+
+        Read the canonical PAGE-LEVEL FIGMA -> PRISM FLOW section
+        of the server instructions before invoking. The Cursor
+        `figma-page-to-prism` skill is the recommended driver.
+
+        Args:
+            input (MapFigmaTreeInput): structured input with
+                ``node_url`` (required), ``reference_jsx``,
+                ``variable_defs``, ``figma_token``, ``max_depth``,
+                ``max_nodes``, ``max_agenda``, ``bypass_cache``.
+
+        Returns:
+            dict: ``FigmaTreeMapping`` shape (``layout_tree``,
+            ``agenda``, ``tokens``, ``dropped``, ``summary``,
+            ``warnings``).
+
+        Raises:
+            ValueError: with a structured ``[<code>] <message>``
+                prefix when the underlying fetcher hits one of
+                ``missing_token`` / ``invalid_token`` /
+                ``file_not_found`` / ``node_not_found`` /
+                ``rate_limited`` / ``network_timeout`` /
+                ``tree_too_large`` / ``transport_error`` /
+                ``invalid_url``. The skill maps each code to a
+                user-facing hint per design doc §7.4.
+        """
+        logger.info(
+            "map_figma_tree tool invoked url=%s reference_jsx=%s "
+            "variable_defs=%d max_depth=%d max_nodes=%d max_agenda=%d "
+            "bypass_cache=%s",
+            input.node_url,
+            "present" if input.reference_jsx else "absent",
+            len(input.variable_defs or {}),
+            input.max_depth,
+            input.max_nodes,
+            input.max_agenda,
+            input.bypass_cache,
+        )
+
+        try:
+            parsed = parse_figma_url(input.node_url)
+            tree_json = await _fetch_figma_tree(
+                parsed=parsed,
+                figma_token=input.figma_token,
+                bypass_cache=input.bypass_cache,
+            )
+        except FetchError as exc:
+            raise ValueError(_fetch_error_to_mcp(exc)) from exc
+
+        library = state.library()
+
+        def _bound_map_figma_node(**kwargs: Any) -> Any:
+            return _build_figma_node_mapping(
+                index=library.index(),
+                hybrid_searcher=library.hybrid_searcher(),
+                composition_graph=library.composition_graph(),
+                color_token_index=library.color_token_index(),
+                a11y_rules=library.a11y_rules(),
+                **kwargs,
+            )
+
+        result: FigmaTreeMapping = walk_tree(
+            tree_json=tree_json,
+            reference_jsx=input.reference_jsx,
+            variable_defs=input.variable_defs,
+            max_depth=input.max_depth,
+            max_nodes=input.max_nodes,
+            max_agenda=input.max_agenda,
+            map_figma_node_fn=_bound_map_figma_node,
+        )
+        return result.model_dump()
 
     @server.tool()
     def get_pwspec_example(
@@ -1129,7 +1322,9 @@ def _build_start_context(
         ``imitation_pwspec`` is always present and reports
         ``found=False`` when no pwspec matches.
     """
-    query_text = spec_text if spec_text and spec_text.strip() else component_name
+    query_text = (
+        spec_text if spec_text and spec_text.strip() else component_name
+    )
     empty_context = {
         "component_name": component_name,
         "examples": [],

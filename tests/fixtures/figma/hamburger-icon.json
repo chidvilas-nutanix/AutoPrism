@@ -1,0 +1,97 @@
+{
+  "id": "9999:1",
+  "type": "BOOLEAN_OPERATION",
+  "name": "Menu",
+  "absoluteBoundingBox": {
+    "x": 0,
+    "y": 0,
+    "width": 14,
+    "height": 14
+  },
+  "fills": [
+    {
+      "type": "SOLID",
+      "visible": true,
+      "color": {
+        "r": 0.486,
+        "g": 0.553,
+        "b": 0.624,
+        "a": 1.0
+      }
+    }
+  ],
+  "children": [
+    {
+      "id": "9999:2",
+      "type": "RECTANGLE",
+      "name": "Rectangle 2",
+      "cornerRadius": 1,
+      "absoluteBoundingBox": {
+        "x": 0,
+        "y": 0,
+        "width": 14,
+        "height": 2
+      },
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "color": {
+            "r": 0.486,
+            "g": 0.553,
+            "b": 0.624,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "9999:3",
+      "type": "RECTANGLE",
+      "name": "Rectangle 2",
+      "cornerRadius": 1,
+      "absoluteBoundingBox": {
+        "x": 0,
+        "y": 6,
+        "width": 14,
+        "height": 2
+      },
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "color": {
+            "r": 0.486,
+            "g": 0.553,
+            "b": 0.624,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "9999:4",
+      "type": "RECTANGLE",
+      "name": "Rectangle 2",
+      "cornerRadius": 1,
+      "absoluteBoundingBox": {
+        "x": 0,
+        "y": 12,
+        "width": 14,
+        "height": 2
+      },
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "color": {
+            "r": 0.486,
+            "g": 0.553,
+            "b": 0.624,
+            "a": 1.0
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,537 @@
+{
+  "summary": {
+    "input_nodes": 278,
+    "kept_for_mapping": 37,
+    "dropped_total": 224,
+    "agenda_size": 37,
+    "tokens_count": 0,
+    "warnings_count": 0,
+    "max_depth": 20,
+    "max_agenda": 50,
+    "dropped_unknown_type_fallback": 1,
+    "dropped_icon_internal": 111,
+    "dropped_invisible_decoration": 6,
+    "dropped_same_bbox_passthrough_collapsed": 3,
+    "dropped_captured_as_content_slot": 95,
+    "dropped_tiny_decorative": 8
+  },
+  "agenda": [
+    {
+      "id": "602:58",
+      "role": "icon",
+      "name": "Left"
+    },
+    {
+      "id": "I602:63;0:99765",
+      "role": "icon",
+      "name": "Button - Outline"
+    },
+    {
+      "id": "602:63",
+      "role": "instance",
+      "name": "Button"
+    },
+    {
+      "id": "602:65",
+      "role": "instance",
+      "name": "Padding"
+    },
+    {
+      "id": "602:68",
+      "role": "icon",
+      "name": "Logo"
+    },
+    {
+      "id": "602:74",
+      "role": "composed-region",
+      "name": "Nav Links"
+    },
+    {
+      "id": "602:81",
+      "role": "icon",
+      "name": "Icon - Chevron Down"
+    },
+    {
+      "id": "602:79",
+      "role": "composed-region",
+      "name": "User"
+    },
+    {
+      "id": "602:66",
+      "role": "composed-region",
+      "name": "other-products-idle"
+    },
+    {
+      "id": "602:84",
+      "role": "composed-region",
+      "name": "Description"
+    },
+    {
+      "id": "602:93",
+      "role": "icon",
+      "name": "Icon - Double Arrow"
+    },
+    {
+      "id": "602:109",
+      "role": "icon",
+      "name": "Icon - Double Arrow"
+    },
+    {
+      "id": "602:110",
+      "role": "icon",
+      "name": "Icon - Double Arrow"
+    },
+    {
+      "id": "602:116",
+      "role": "icon",
+      "name": "Icon - Double Arrow"
+    },
+    {
+      "id": "602:133",
+      "role": "icon",
+      "name": "Icon - Double Arrow"
+    },
+    {
+      "id": "602:150",
+      "role": "icon",
+      "name": "Icon - Double Arrow"
+    },
+    {
+      "id": "602:167",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:171",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:175",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:179",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:183",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:187",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:191",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:195",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:199",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:203",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:207",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:211",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:214",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical"
+    },
+    {
+      "id": "602:221",
+      "role": "icon",
+      "name": "Icon - Chevron Left"
+    },
+    {
+      "id": "602:224",
+      "role": "icon",
+      "name": "Icon - Chevron Right"
+    },
+    {
+      "id": "I602:227;0:99808",
+      "role": "icon",
+      "name": "Double Arrow"
+    },
+    {
+      "id": "602:227",
+      "role": "instance",
+      "name": "Select - Rows"
+    },
+    {
+      "id": "602:217",
+      "role": "composed-region",
+      "name": "Pagination"
+    },
+    {
+      "id": "602:215",
+      "role": "composed-region",
+      "name": "Toolbar"
+    },
+    {
+      "id": "602:247",
+      "role": "icon",
+      "name": "Group 11"
+    },
+    {
+      "id": "602:245",
+      "role": "composed-region",
+      "name": "Group"
+    }
+  ],
+  "layout_tree": [
+    {
+      "id": "602:58",
+      "role": "icon",
+      "name": "Left",
+      "children_ids": []
+    },
+    {
+      "id": "I602:63;0:99765",
+      "role": "icon",
+      "name": "Button - Outline",
+      "children_ids": []
+    },
+    {
+      "id": "602:63",
+      "role": "instance",
+      "name": "Button",
+      "children_ids": [
+        "I602:63;0:99765"
+      ]
+    },
+    {
+      "id": "602:65",
+      "role": "instance",
+      "name": "Padding",
+      "children_ids": []
+    },
+    {
+      "id": "602:68",
+      "role": "icon",
+      "name": "Logo",
+      "children_ids": []
+    },
+    {
+      "id": "602:74",
+      "role": "composed-region",
+      "name": "Nav Links",
+      "children_ids": []
+    },
+    {
+      "id": "602:81",
+      "role": "icon",
+      "name": "Icon - Chevron Down",
+      "children_ids": []
+    },
+    {
+      "id": "602:79",
+      "role": "composed-region",
+      "name": "User",
+      "children_ids": [
+        "602:81"
+      ]
+    },
+    {
+      "id": "602:66",
+      "role": "composed-region",
+      "name": "other-products-idle",
+      "children_ids": [
+        "602:68",
+        "602:74",
+        "602:79"
+      ]
+    },
+    {
+      "id": "602:84",
+      "role": "composed-region",
+      "name": "Description",
+      "children_ids": []
+    },
+    {
+      "id": "602:82",
+      "role": "layout-container",
+      "name": "Sub Header",
+      "children_ids": [
+        "602:84"
+      ]
+    },
+    {
+      "id": "602:93",
+      "role": "icon",
+      "name": "Icon - Double Arrow",
+      "children_ids": []
+    },
+    {
+      "id": "602:109",
+      "role": "icon",
+      "name": "Icon - Double Arrow",
+      "children_ids": []
+    },
+    {
+      "id": "602:110",
+      "role": "icon",
+      "name": "Icon - Double Arrow",
+      "children_ids": []
+    },
+    {
+      "id": "602:116",
+      "role": "icon",
+      "name": "Icon - Double Arrow",
+      "children_ids": []
+    },
+    {
+      "id": "602:113",
+      "role": "layout-container",
+      "name": "Close dates",
+      "children_ids": [
+        "602:116"
+      ]
+    },
+    {
+      "id": "602:133",
+      "role": "icon",
+      "name": "Icon - Double Arrow",
+      "children_ids": []
+    },
+    {
+      "id": "602:130",
+      "role": "layout-container",
+      "name": "Opportunity owner",
+      "children_ids": [
+        "602:133"
+      ]
+    },
+    {
+      "id": "602:150",
+      "role": "icon",
+      "name": "Icon - Double Arrow",
+      "children_ids": []
+    },
+    {
+      "id": "602:147",
+      "role": "layout-container",
+      "name": "Total Amount",
+      "children_ids": [
+        "602:150"
+      ]
+    },
+    {
+      "id": "602:167",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:171",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:175",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:179",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:183",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:187",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:191",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:195",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:199",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:203",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:207",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:211",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:214",
+      "role": "icon",
+      "name": "Icon - Triple Dots Vertical",
+      "children_ids": []
+    },
+    {
+      "id": "602:221",
+      "role": "icon",
+      "name": "Icon - Chevron Left",
+      "children_ids": []
+    },
+    {
+      "id": "602:219",
+      "role": "layout-container",
+      "name": "Back",
+      "children_ids": [
+        "602:221"
+      ]
+    },
+    {
+      "id": "602:224",
+      "role": "icon",
+      "name": "Icon - Chevron Right",
+      "children_ids": []
+    },
+    {
+      "id": "602:222",
+      "role": "layout-container",
+      "name": "Forward",
+      "children_ids": [
+        "602:224"
+      ]
+    },
+    {
+      "id": "I602:227;0:99808",
+      "role": "icon",
+      "name": "Double Arrow",
+      "children_ids": []
+    },
+    {
+      "id": "602:227",
+      "role": "instance",
+      "name": "Select - Rows",
+      "children_ids": [
+        "I602:227;0:99808"
+      ]
+    },
+    {
+      "id": "602:225",
+      "role": "layout-container",
+      "name": "Rows",
+      "children_ids": [
+        "602:227"
+      ]
+    },
+    {
+      "id": "602:217",
+      "role": "composed-region",
+      "name": "Pagination",
+      "children_ids": []
+    },
+    {
+      "id": "602:215",
+      "role": "composed-region",
+      "name": "Toolbar",
+      "children_ids": [
+        "602:217"
+      ]
+    },
+    {
+      "id": "602:247",
+      "role": "icon",
+      "name": "Group 11",
+      "children_ids": []
+    },
+    {
+      "id": "602:245",
+      "role": "composed-region",
+      "name": "Group",
+      "children_ids": [
+        "602:247"
+      ]
+    },
+    {
+      "id": "602:57",
+      "role": "layout-container",
+      "name": "Opportunities_List View Copy",
+      "children_ids": [
+        "602:58",
+        "602:63",
+        "602:65",
+        "602:66",
+        "602:93",
+        "602:109",
+        "602:110",
+        "602:167",
+        "602:171",
+        "602:175",
+        "602:179",
+        "602:183",
+        "602:187",
+        "602:191",
+        "602:195",
+        "602:199",
+        "602:203",
+        "602:207",
+        "602:211",
+        "602:214",
+        "602:215",
+        "602:245"
+      ]
+    }
+  ],
+  "dropped_by_reason": {
+    "unknown_type_fallback": 1,
+    "icon_internal": 111,
+    "invisible_decoration": 6,
+    "same_bbox_passthrough_collapsed": 3,
+    "captured_as_content_slot": 95,
+    "tiny_decorative": 8
+  },
+  "warnings": []
+}

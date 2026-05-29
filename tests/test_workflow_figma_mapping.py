@@ -22,6 +22,8 @@ from prism_mcp.tokens_index import (
 )
 from prism_mcp.workflow.figma_mapping import (
     FigmaNodeMapping,
+    _build_lexical_query,
+    _build_semantic_query,
     map_figma_node,
 )
 
@@ -222,9 +224,7 @@ def test_map_figma_node_marks_both_when_lexical_and_semantic_agree() -> None:
     BM25 caught the exact name and the dense ranker caught the
     semantic intent independently.
     """
-    searcher = _StubHybridSearcher(
-        [_hit("<Modal/>", component_name="Modal")]
-    )
+    searcher = _StubHybridSearcher([_hit("<Modal/>", component_name="Modal")])
     index = Index(
         entities=[_component_entity("Modal")],
         version="t",
@@ -451,7 +451,9 @@ def test_map_figma_node_carries_top_three_example_bodies() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_map_figma_node_returns_empty_related_for_unknown_top_candidate() -> None:
+def test_map_figma_node_returns_empty_related_for_unknown_top_candidate() -> (
+    None
+):
     """Top candidate not in the graph → ``related`` empty, no exception.
 
     This matters because BM25 will surface entities the
@@ -480,3 +482,177 @@ def test_map_figma_node_returns_empty_related_for_unknown_top_candidate() -> Non
     assert mapping.suggested_component_name == "BrandNew"
     assert mapping.related == []
     assert mapping.candidate_decompositions == []
+
+
+# --------------------------------------------------------------------------
+# Phase 6: query-builder enrichment regression tests.
+#
+# The four new optional kwargs (``text_content``, ``children_summary``,
+# ``structural_hints``, ``parent_chain``) are additive — passing ``None``
+# for all of them must reproduce the v1 query byte-for-byte. The walker
+# in :mod:`prism_mcp.figma.walker` relies on the v1 behaviour to keep
+# the slice-12 reflection loop's prompt cache warm.
+# --------------------------------------------------------------------------
+
+
+def test_build_lexical_query_v1_baseline_unchanged_without_enrichment() -> None:
+    """Bare-name → ``"<node_name>"``."""
+    assert (
+        _build_lexical_query(
+            node_name="Tile",
+            node_type=None,
+            reference_code=None,
+        )
+        == "Tile"
+    )
+
+
+def test_build_lexical_query_v1_baseline_with_type_unchanged() -> None:
+    assert (
+        _build_lexical_query(
+            node_name="Tile",
+            node_type="INSTANCE",
+            reference_code=None,
+        )
+        == "Tile INSTANCE"
+    )
+
+
+def test_build_lexical_query_v1_baseline_with_ref_code_unchanged() -> None:
+    """The reference-code JSX tag extraction is the v1 contract."""
+    result = _build_lexical_query(
+        node_name="Tile",
+        node_type="INSTANCE",
+        reference_code="<Tile><Header/></Tile>",
+    )
+    assert result == "Tile INSTANCE Tile Header"
+
+
+def test_build_lexical_query_appends_text_content() -> None:
+    result = _build_lexical_query(
+        node_name="Tile",
+        node_type="INSTANCE",
+        reference_code=None,
+        text_content="Top 5 Shares by Connections",
+    )
+    assert result.startswith("Tile INSTANCE")
+    assert "Top 5 Shares by Connections" in result
+
+
+def test_build_lexical_query_appends_children_summary_and_hints() -> None:
+    result = _build_lexical_query(
+        node_name="Tile",
+        node_type="INSTANCE",
+        reference_code=None,
+        children_summary="FRAME Header(1 TEXT)",
+        structural_hints=["320x309 ~square", "3-row vertical stack"],
+    )
+    assert "FRAME Header(1 TEXT)" in result
+    assert "320x309 ~square" in result
+    assert "3-row vertical stack" in result
+
+
+def test_build_lexical_query_only_appends_last_two_parents() -> None:
+    """Closer ancestors carry stronger context; deeper ones add noise."""
+    result = _build_lexical_query(
+        node_name="Tile",
+        node_type="INSTANCE",
+        reference_code=None,
+        parent_chain=["Page", "Workspace", "Body", "Cluster Details"],
+    )
+    parts = result.split(" ")
+    assert "Body" in parts
+    assert "Cluster" in parts and "Details" in parts
+    # First two ancestors should NOT appear.
+    assert "Page" not in parts
+    assert "Workspace" not in parts
+
+
+def test_build_semantic_query_v1_baseline_bare_name() -> None:
+    """Bare-name should yield just the name."""
+    assert (
+        _build_semantic_query(node_name="Tile", reference_code=None) == "Tile"
+    )
+
+
+def test_build_semantic_query_v1_baseline_with_ref_code_unchanged() -> None:
+    assert (
+        _build_semantic_query(node_name="Tile", reference_code="<Tile/>")
+        == "Tile\n\n<Tile/>"
+    )
+
+
+def test_build_semantic_query_prepends_text_content_when_no_ref_code() -> None:
+    result = _build_semantic_query(
+        node_name="Tile",
+        reference_code=None,
+        text_content="Top 5 Shares by Connections",
+    )
+    assert result == "Tile\n\nTop 5 Shares by Connections"
+
+
+def test_build_semantic_query_text_content_before_reference_code() -> None:
+    """Both prepend cleanly: name → text_content → reference_code."""
+    result = _build_semantic_query(
+        node_name="Tile",
+        reference_code="<Tile/>",
+        text_content="Top 5 Shares by Connections",
+    )
+    assert result == "Tile\n\nTop 5 Shares by Connections\n\n<Tile/>"
+
+
+# --------------------------------------------------------------------------
+# Positive: enrichment surfaces a better candidate.
+# --------------------------------------------------------------------------
+
+
+def test_map_figma_node_text_content_improves_candidate_score() -> None:
+    """With ``text_content``, the BM25 query matches more tokens of
+    the Paragraph component's summary than the bare layer name
+    alone — so Paragraph rises in the candidates."""
+    searcher = _StubHybridSearcher([])
+    index = Index(
+        entities=[
+            _component_entity(
+                "Paragraph",
+                summary="paragraph component for displaying lines of text content",
+            ),
+            _component_entity(
+                "Tile",
+                summary="generic tile container",
+            ),
+        ],
+        version="t",
+    )
+
+    bare = map_figma_node(
+        node_name="Frame 2540",
+        node_type="FRAME",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=build_composition_graph(chunks=[], version="t"),
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+
+    enriched = map_figma_node(
+        node_name="Frame 2540",
+        node_type="FRAME",
+        text_content="paragraph text content lines",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=build_composition_graph(chunks=[], version="t"),
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+
+    bare_top = bare.suggested_component_name
+    enriched_names = [c.name for c in enriched.candidates]
+
+    # With enrichment, Paragraph should appear at all (it shouldn't
+    # in the bare case — "Frame 2540" has no tokens in common with
+    # Paragraph's summary).
+    assert "Paragraph" in enriched_names, (
+        f"expected Paragraph in enriched candidates, got {enriched_names} "
+        f"(bare top was {bare_top})"
+    )

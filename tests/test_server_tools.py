@@ -262,6 +262,23 @@ async def test_listed_tools_include_post_consolidation_surface() -> None:
             "do not re-register without revisiting the tool budget"
         )
 
+    # Phase-7 page-level surface: map_figma_tree is the only new
+    # public entrypoint. The fetcher and walker helpers stay
+    # package-private — exposing them would tempt callers to skip
+    # the noise filter and pass raw Figma JSON straight into the
+    # LLM (defeats the whole point of the walker).
+    assert "map_figma_tree" in names
+    for forbidden in (
+        "fetch_figma_tree",
+        "_fetch_figma_tree",
+        "parse_figma_url",
+        "walk_tree",
+    ):
+        assert forbidden not in names, (
+            f"{forbidden!r} must remain package-private; "
+            "the public entrypoint is map_figma_tree"
+        )
+
 
 @pytest.mark.asyncio
 async def test_get_entity_returns_design_token_value(
@@ -734,4 +751,3 @@ async def test_search_examples_reranker_param_bypasses_rerank(
 
     assert payload["version"] == VERSION
     assert isinstance(payload["results"], list)
-

@@ -19,7 +19,11 @@ dist/
 .venv/
 venv/
 env/
+
+# Secrets — .env is local, .env.example is committed as the contract
 .env
+*.env
+!.env.example
 
 # Tooling caches
 .pytest_cache/

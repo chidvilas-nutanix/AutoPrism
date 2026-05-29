@@ -1,0 +1,173 @@
+{
+  "id": "8000:1",
+  "type": "FRAME",
+  "name": "Table/Column",
+  "absoluteBoundingBox": {
+    "x": 0,
+    "y": 0,
+    "width": 220,
+    "height": 380
+  },
+  "fills": [],
+  "children": [
+    {
+      "id": "8000:2",
+      "type": "FRAME",
+      "name": "Table/Table Title",
+      "absoluteBoundingBox": {
+        "x": 0,
+        "y": 0,
+        "width": 220,
+        "height": 40
+      },
+      "fills": [],
+      "children": [
+        {
+          "id": "8000:3",
+          "type": "TEXT",
+          "name": "Header",
+          "characters": "Opportunity Name",
+          "absoluteBoundingBox": {
+            "x": 12,
+            "y": 12,
+            "width": 196,
+            "height": 16
+          },
+          "style": {
+            "fontSize": 12
+          }
+        }
+      ]
+    },
+    {
+      "id": "8000:4",
+      "type": "INSTANCE",
+      "name": "Table/Table Cell",
+      "absoluteBoundingBox": {
+        "x": 0,
+        "y": 40,
+        "width": 220,
+        "height": 56
+      },
+      "fills": [],
+      "children": [
+        {
+          "id": "8000:41",
+          "type": "TEXT",
+          "name": "Body",
+          "characters": "First Hawaiian Bank",
+          "absoluteBoundingBox": {
+            "x": 12,
+            "y": 60,
+            "width": 196,
+            "height": 16
+          }
+        }
+      ]
+    },
+    {
+      "id": "8000:5",
+      "type": "INSTANCE",
+      "name": "Table/Table Cell",
+      "absoluteBoundingBox": {
+        "x": 0,
+        "y": 96,
+        "width": 220,
+        "height": 56
+      },
+      "fills": [],
+      "children": [
+        {
+          "id": "8000:51",
+          "type": "TEXT",
+          "name": "Body",
+          "characters": "Sample Account Name",
+          "absoluteBoundingBox": {
+            "x": 12,
+            "y": 116,
+            "width": 196,
+            "height": 16
+          }
+        }
+      ]
+    },
+    {
+      "id": "8000:6",
+      "type": "INSTANCE",
+      "name": "Table/Table Cell",
+      "absoluteBoundingBox": {
+        "x": 0,
+        "y": 152,
+        "width": 220,
+        "height": 56
+      },
+      "fills": [],
+      "children": [
+        {
+          "id": "8000:61",
+          "type": "TEXT",
+          "name": "Body",
+          "characters": "ACME Industries",
+          "absoluteBoundingBox": {
+            "x": 12,
+            "y": 172,
+            "width": 196,
+            "height": 16
+          }
+        }
+      ]
+    },
+    {
+      "id": "8000:7",
+      "type": "INSTANCE",
+      "name": "Table/Table Cell",
+      "absoluteBoundingBox": {
+        "x": 0,
+        "y": 208,
+        "width": 220,
+        "height": 56
+      },
+      "fills": [],
+      "children": [
+        {
+          "id": "8000:71",
+          "type": "TEXT",
+          "name": "Body",
+          "characters": "Global Tech Holdings",
+          "absoluteBoundingBox": {
+            "x": 12,
+            "y": 228,
+            "width": 196,
+            "height": 16
+          }
+        }
+      ]
+    },
+    {
+      "id": "8000:8",
+      "type": "INSTANCE",
+      "name": "Table/Table Cell",
+      "absoluteBoundingBox": {
+        "x": 0,
+        "y": 264,
+        "width": 220,
+        "height": 56
+      },
+      "fills": [],
+      "children": [
+        {
+          "id": "8000:81",
+          "type": "TEXT",
+          "name": "Body",
+          "characters": "North Star Bank",
+          "absoluteBoundingBox": {
+            "x": 12,
+            "y": 284,
+            "width": 196,
+            "height": 16
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -287,9 +287,10 @@ def test_stdio_initialize_and_list_tools(seeded_cache: Path) -> None:
     assert "result" in tools_response
     tool_names = {tool["name"] for tool in tools_response["result"]["tools"]}
     # Post slice-12.x consolidation: 13 registered tools (10 LLM-facing
-    # + 3 marked INTERNAL via docstring prefix). The exact set is
-    # asserted to lock the surface against accidental re-introduction
-    # of pruned tools.
+    # + 3 marked INTERNAL via docstring prefix). Phase 7 adds
+    # ``map_figma_tree`` for the page-level walker. The exact set
+    # is asserted to lock the surface against accidental
+    # re-introduction of pruned tools.
     assert tool_names == {
         # LLM-facing core.
         "get_library_meta",
@@ -297,6 +298,7 @@ def test_stdio_initialize_and_list_tools(seeded_cache: Path) -> None:
         "search_entities",
         "search_examples",
         "map_figma_node",
+        "map_figma_tree",
         # Slice-12 AlphaCodium iteration loop.
         "compare_to_figma",
         "start_generate_component",
@@ -386,4 +388,63 @@ def test_stdio_call_search_entities_returns_seeded_components(
     # The default ``make_prism_tarball`` ships Button + Modal.
     assert {"Button", "Modal"} <= names, (
         f"unexpected component set; stderr:\n{client.stderr()}"
+    )
+
+
+def test_stdio_call_map_figma_tree_translates_missing_token_error(
+    seeded_cache: Path,
+) -> None:
+    """``map_figma_tree`` surfaces ``FetchError`` codes via the stdio wire.
+
+    We can't hit Figma's REST API from a hermetic test, but we *can*
+    prove the full tool wiring works end-to-end by deliberately
+    omitting ``FIGMA_TOKEN``: the tool must reach the fetcher, the
+    fetcher must raise ``FetchError(code='missing_token')``, the
+    server must translate it via ``_fetch_error_to_mcp``, and the
+    error string must arrive over stdio in the documented
+    ``[missing_token] ... Hint: ...`` format. That's the contract
+    the ``figma-page-to-prism`` skill leans on (see SKILL.md error
+    handling table).
+    """
+    env = _server_env(seeded_cache)
+    # Strip FIGMA_TOKEN even if the developer happens to have one
+    # exported — the missing-token path is the whole point of the
+    # test.
+    env.pop("FIGMA_TOKEN", None)
+
+    with _spawn_server(env) as client:
+        _initialize(client)
+
+        response = client.request(
+            "tools/call",
+            params={
+                "name": "map_figma_tree",
+                "arguments": {
+                    "input": {
+                        "node_url": (
+                            "https://www.figma.com/design/SOMEFILEKEY/"
+                            "Some-File?node-id=624-6826"
+                        ),
+                    },
+                },
+            },
+        )
+
+    assert "result" in response, (
+        f"tools/call failed unexpectedly; stderr:\n{client.stderr()}"
+    )
+    result = response["result"]
+    # FastMCP returns isError=True for tools that raise ValueError, with
+    # the error string in ``content[0].text``.
+    assert result.get("isError") is True, (
+        f"expected isError=True for missing FIGMA_TOKEN; got {result!r}"
+    )
+    content = result.get("content") or []
+    assert content, "expected non-empty content list"
+    text = content[0].get("text", "")
+    assert "[missing_token]" in text, (
+        f"expected [missing_token] in error text; got {text!r}"
+    )
+    assert "Hint:" in text, (
+        f"expected ' Hint: ' segment in error text; got {text!r}"
     )

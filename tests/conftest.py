@@ -20,6 +20,36 @@ from typing import Any
 
 import pytest
 
+# ----------------------------------------------------------------------
+# Pytest CLI extensions.
+# ----------------------------------------------------------------------
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Register Prism-MCP-specific pytest CLI flags.
+
+    ``--update-figma-golden`` re-writes the ``*.expected.json``
+    goldens in ``tests/fixtures/figma/`` to match the walker's
+    current output. Use after intentional walker behaviour changes;
+    review the diff before committing.
+    """
+    parser.addoption(
+        "--update-figma-golden",
+        action="store_true",
+        default=False,
+        help=(
+            "Regenerate tests/fixtures/figma/*.expected.json from the "
+            "current walker output instead of asserting against them. "
+            "Use after intentional walker changes; review the diff."
+        ),
+    )
+
+
+@pytest.fixture(scope="session")
+def update_figma_golden(pytestconfig: pytest.Config) -> bool:
+    """Expose ``--update-figma-golden`` as a session-scoped fixture."""
+    return bool(pytestconfig.getoption("--update-figma-golden"))
+
 
 @pytest.fixture(autouse=True)
 def _strip_credentials(monkeypatch: pytest.MonkeyPatch) -> None:

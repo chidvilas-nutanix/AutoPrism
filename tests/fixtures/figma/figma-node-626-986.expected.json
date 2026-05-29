@@ -1,0 +1,68 @@
+{
+  "summary": {
+    "input_nodes": 23,
+    "kept_for_mapping": 3,
+    "dropped_total": 18,
+    "agenda_size": 3,
+    "tokens_count": 0,
+    "warnings_count": 0,
+    "max_depth": 20,
+    "max_agenda": 50,
+    "dropped_invisible_decoration": 1,
+    "dropped_captured_as_content_slot": 1,
+    "dropped_folded_into_pattern": 16
+  },
+  "agenda": [
+    {
+      "id": "626:987",
+      "role": "instance",
+      "name": "Tile"
+    },
+    {
+      "id": "626:988",
+      "role": "stat-list",
+      "name": "Cluster Details"
+    },
+    {
+      "id": "626:999",
+      "role": "stat-list",
+      "name": "Cluster Details Copy"
+    }
+  ],
+  "layout_tree": [
+    {
+      "id": "626:987",
+      "role": "instance",
+      "name": "Tile",
+      "children_ids": []
+    },
+    {
+      "id": "626:988",
+      "role": "stat-list",
+      "name": "Cluster Details",
+      "children_ids": []
+    },
+    {
+      "id": "626:999",
+      "role": "stat-list",
+      "name": "Cluster Details Copy",
+      "children_ids": []
+    },
+    {
+      "id": "626:986",
+      "role": "layout-container",
+      "name": "Impacted Cluster Copy",
+      "children_ids": [
+        "626:987",
+        "626:988",
+        "626:999"
+      ]
+    }
+  ],
+  "dropped_by_reason": {
+    "invisible_decoration": 1,
+    "captured_as_content_slot": 1,
+    "folded_into_pattern": 16
+  },
+  "warnings": []
+}

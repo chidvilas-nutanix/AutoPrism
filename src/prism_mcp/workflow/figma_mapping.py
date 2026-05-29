@@ -238,6 +238,10 @@ def _build_lexical_query(
     node_name: str,
     node_type: str | None,
     reference_code: str | None,
+    text_content: str | None = None,
+    children_summary: str | None = None,
+    structural_hints: list[str] | None = None,
+    parent_chain: list[str] | None = None,
 ) -> str:
     """Compose a BM25-friendly query from the node's inputs.
 
@@ -250,10 +254,35 @@ def _build_lexical_query(
     tokenizer ignores tokens that aren't in any entity's doc, so
     extra junk doesn't pollute the score; but missing tokens
     that *would* have matched is a hard regression.
+
+    Args (additive, all default ``None`` for backward compatibility
+    with v1 callers — see design doc §5.2):
+
+        text_content (str | None): concatenated descendant TEXT
+            characters. A tile with ``"Top 5 Shares by Connections"``
+            matches ``<Tile>`` much better than the bare layer name.
+        children_summary (str | None): one-line description of
+            immediate children (``"FRAME Header(1 TEXT)"``). Biases
+            search toward composites that contain those collaborators.
+        structural_hints (list[str] | None): freeform hints like
+            ``"320x309 ~square"`` or ``"3-row vertical stack"``.
+        parent_chain (list[str] | None): ancestor names, root-first.
+            Only the last two are appended (closer context = less
+            noise).
     """
     parts: list[str] = [node_name]
     if node_type:
         parts.append(node_type)
+    if text_content:
+        parts.append(text_content)
+    if children_summary:
+        parts.append(children_summary)
+    if structural_hints:
+        parts.extend(structural_hints)
+    if parent_chain:
+        # The two most recent ancestors carry the strongest
+        # context; deeper ones add noise.
+        parts.extend(parent_chain[-2:])
     if reference_code:
         tags = _REACT_TAG_RE.findall(reference_code)
         parts.extend(tags)
@@ -264,6 +293,7 @@ def _build_semantic_query(
     *,
     node_name: str,
     reference_code: str | None,
+    text_content: str | None = None,
 ) -> str:
     """Compose the semantic-query for slice-9's hybrid searcher.
 
@@ -272,10 +302,22 @@ def _build_semantic_query(
     input here. We always include ``node_name`` as a prose
     prefix so layer names like ``"Empty State Card"`` still
     contribute.
+
+    Args (additive, design doc §5.2):
+
+        text_content (str | None): concatenated descendant TEXT
+            characters. Prism's ``examples.md`` files contain
+            prose around their JSX, so prepending the visible
+            text gives the dense encoder *both* signals — code if
+            available, prose otherwise.
     """
+    body_parts = [node_name]
+    if text_content:
+        body_parts.append(text_content)
+    body = "\n\n".join(body_parts)
     if reference_code:
-        return f"{node_name}\n\n{reference_code}"
-    return node_name
+        return f"{body}\n\n{reference_code}"
+    return body
 
 
 # --------------------------------------------------------------------------
@@ -289,6 +331,10 @@ def map_figma_node(
     node_type: str | None = None,
     reference_code: str | None = None,
     hex_colors: list[str] | None = None,
+    text_content: str | None = None,
+    children_summary: str | None = None,
+    structural_hints: list[str] | None = None,
+    parent_chain: list[str] | None = None,
     index: Index,
     hybrid_searcher: HybridSearcherLike,
     composition_graph: CompositionGraph,
@@ -302,11 +348,9 @@ def map_figma_node(
 
     1. **BM25 entity search** over the lexical query
        (``node_name`` + ``node_type`` + JSX tags from
-       ``reference_code``).
+       ``reference_code`` + the four new enrichment fields).
     2. **Hybrid example search** over the semantic query
-       (``node_name`` + ``reference_code``). The hybrid
-       searcher already fuses BM25-over-chunks with
-       768-dim dense + cross-encoder rerank.
+       (``node_name`` + ``text_content`` + ``reference_code``).
     3. **Composition / a11y / tokens** anchored on the top
        candidate, mirroring the slice-12 reflection scaffold.
 
@@ -326,6 +370,21 @@ def map_figma_node(
             parsed from the design's variables, or ``None`` to
             let this function extract them from
             ``reference_code``.
+        text_content (str | None): concatenated descendant TEXT
+            characters. **Additive in this slice (design doc §5)**;
+            populated by the page walker for non-INSTANCE
+            regions (where the layer name alone is often
+            meaningless like ``"Frame 2540"``).
+        children_summary (str | None): one-line description of
+            immediate descendants (e.g. ``"FRAME Header(1 TEXT)"``).
+            Biases search toward composites containing those
+            collaborators. **Additive in this slice**.
+        structural_hints (list[str] | None): freeform hints like
+            ``"320x309 ~square"`` or ``"3-row vertical stack"``.
+            **Additive in this slice**.
+        parent_chain (list[str] | None): ancestor names,
+            root-first. The last two are appended to the lexical
+            query. **Additive in this slice**.
         index (Index): the slice-3..6 entity index.
         hybrid_searcher (HybridSearcherLike): slice-9 hybrid
             searcher.
@@ -338,15 +397,25 @@ def map_figma_node(
         FigmaNodeMapping: structured bundle. ``candidates`` is
         ordered best-first; ``suggested_component_name`` is the
         top candidate's name (or ``None`` when nothing matched).
+
+    Backward-compat: passing ``None`` for all four enrichment
+    fields produces *byte-identical* queries to the v1
+    implementation — regression-tested in
+    ``tests/test_workflow_figma_mapping.py``.
     """
     lexical_query = _build_lexical_query(
         node_name=node_name,
         node_type=node_type,
         reference_code=reference_code,
+        text_content=text_content,
+        children_summary=children_summary,
+        structural_hints=structural_hints,
+        parent_chain=parent_chain,
     )
     semantic_query = _build_semantic_query(
         node_name=node_name,
         reference_code=reference_code,
+        text_content=text_content,
     )
 
     candidates = _build_candidates(
@@ -460,9 +529,7 @@ def _build_candidates(
         summaries.setdefault(name, row.get("summary", ""))
         types.setdefault(name, row.get("type", "component"))
     for comp_name, rank in hybrid_first_rank.items():
-        fused[comp_name] = (
-            fused.get(comp_name, 0.0) + 1.0 / (_RRF_K + rank + 1)
-        )
+        fused[comp_name] = fused.get(comp_name, 0.0) + 1.0 / (_RRF_K + rank + 1)
         sources.setdefault(comp_name, set()).add("hybrid")
         # Hybrid hits don't carry BM25's ``why_matched`` or
         # ``summary``; fall back to whatever BM25 contributed
