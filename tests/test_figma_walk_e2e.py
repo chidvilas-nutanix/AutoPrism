@@ -241,13 +241,26 @@ def test_e2e_table_column_top_candidate_is_table_column() -> None:
     )
 
 
-def test_e2e_walker_calls_map_figma_node_once_per_agenda_row() -> None:
-    """Walker must invoke ``map_figma_node_fn`` exactly N times for N agenda rows.
+def test_e2e_walker_calls_map_figma_node_at_most_once_per_agenda_row() -> None:
+    """Walker must invoke ``map_figma_node_fn`` AT MOST N times for N
+    agenda rows.
 
     Pins the contract that ``walk_tree`` does not double-call
     ``map_figma_node`` on collapsed nodes — once a region is
-    emitted, the map is called exactly once per row. Regressing
-    this would silently double the cost of every page.
+    emitted, the map is called at most once per row. Regressing
+    that intent (e.g. by re-introducing the duplicated hybrid
+    search per region or by walking the same agenda row twice)
+    would silently double the cost of every page.
+
+    The ``<=`` (rather than ``==``) accommodates the per-walk
+    dedup cache in :func:`prism_mcp.figma.walker._resolve_pending_mappings`:
+    when two regions emit byte-identical inputs (e.g. two
+    repeated hamburger icons or two stat-list patterns whose
+    layer name + content match exactly) the mapper is invoked
+    once and the result is broadcast to both regions. The cache
+    is a strict optimisation — both regions still receive the
+    same ``FigmaNodeMapping`` they would have received under the
+    one-call-per-row contract.
     """
     call_count = [0]
 
@@ -266,9 +279,14 @@ def test_e2e_walker_calls_map_figma_node_once_per_agenda_row() -> None:
         map_figma_node_fn=counting_map,
     )
 
-    assert call_count[0] == len(mapping.agenda), (
-        f"expected exactly {len(mapping.agenda)} map_figma_node calls "
-        f"(one per agenda row), got {call_count[0]}"
+    assert call_count[0] <= len(mapping.agenda), (
+        f"expected at most {len(mapping.agenda)} map_figma_node calls "
+        f"(one per agenda row, fewer when dedup hits), got {call_count[0]}"
+    )
+    assert call_count[0] >= 1, (
+        "expected the walker to have invoked the mapper at least once for "
+        f"a non-empty agenda; got call_count={call_count[0]} with "
+        f"{len(mapping.agenda)} rows"
     )
 
 

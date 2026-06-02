@@ -252,11 +252,17 @@ def _gather_a11y_blocks(
     rules: A11yRules,
     component_name: str,
 ) -> list[str]:
-    """Return the a11y-block bodies for ``component_name``, if any."""
-    for component in rules.per_component:
-        if component.component_name == component_name:
-            return list(component.blocks)
-    return []
+    """Return the a11y-block bodies for ``component_name``, if any.
+
+    Uses :meth:`A11yRules.find_by_component` (O(1) cached dict
+    lookup); shares the cache with the Figma walker's per-region
+    lookups since both paths run against the same
+    :class:`A11yRules` instance held on :class:`Library`.
+    """
+    component = rules.find_by_component(component_name)
+    if component is None:
+        return []
+    return list(component.blocks)
 
 
 def _enumerate_candidates(

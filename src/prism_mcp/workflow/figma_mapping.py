@@ -179,6 +179,29 @@ class FigmaNodeMapping(BaseModel):
             ``"anchor + collaborator"`` strings, mirroring
             slice-12's reflection scaffold. Each is one
             possible decomposition the LLM can explore.
+        primary_recommendation (str | None): deterministic
+            primary component pick derived from
+            :attr:`MappedRegion.role` via
+            :data:`PATTERN_TO_PRIMARY`. ``None`` for regions
+            whose role doesn't carry a high-confidence
+            recommendation (the catch-all
+            ``composed-region`` / ``layout-container`` and
+            generic Figma node-type roles). The LLM should
+            treat this as a soft override: when present AND
+            ``primary_recommendation_confidence >= 0.8``, the
+            LLM may bypass the candidates list. When the
+            BM25/hybrid top-1 disagrees, the LLM should pick
+            the recommendation and surface the candidates as
+            alternatives. Audit committed at
+            ``scripts/audit_layer_b_agreement.py``.
+        primary_recommendation_rationale (str): one-line
+            human-readable explanation
+            (``"pattern role 'kpi-tile' → Tile"``). Empty when
+            no recommendation.
+        primary_recommendation_confidence (float): 0–1 score.
+            ``1.0`` for the pattern-derived recommendations
+            (deterministic), ``0.0`` when no recommendation.
+            Reserved range for future ML-derived sources.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -191,6 +214,9 @@ class FigmaNodeMapping(BaseModel):
     token_mappings: list[TokenMapping] = Field(default_factory=list)
     examples: list[str] = Field(default_factory=list)
     candidate_decompositions: list[str] = Field(default_factory=list)
+    primary_recommendation: str | None = None
+    primary_recommendation_rationale: str = ""
+    primary_recommendation_confidence: float = 0.0
 
 
 # --------------------------------------------------------------------------
@@ -233,6 +259,244 @@ when debugging fusion behaviour.
 """
 
 
+_ROLE_SYNONYM_BONUS = 0.15
+"""Score boost added when a candidate's normalised name matches a
+synonym for the caller's ``region_role``.
+
+The walker forwards :attr:`MappedRegion.role` here so a pattern
+that the deterministic detector confidently labelled as e.g.
+``"kpi-tile"`` biases the BM25 ranker toward Tile-family
+components. The 0.15 value dwarfs a single RRF contribution
+(max ~0.0164 per ranker) on purpose — when both rankers agree AND
+the role agrees, the candidate should land at the top
+deterministically. See ``docs/handoff-spatial-and-ranker.md``
+§3.2 for the empirical reasoning."""
+
+
+ROLE_TO_COMPONENT_SYNONYMS: dict[str, frozenset[str]] = {
+    # Pattern roles emitted by :mod:`prism_mcp.figma.patterns`.
+    "icon": frozenset({"icon", "iconbutton", "iconwithtext"}),
+    "stat-list": frozenset(
+        {"stat", "statlist", "statgroup", "list", "datalist"}
+    ),
+    "table-column": frozenset(
+        {"table", "tablecolumn", "datatable", "grid", "gridcolumn"}
+    ),
+    "tab-strip": frozenset(
+        {"tab", "tabs", "tabbar", "tabstrip", "tabgroup", "tabsbar"}
+    ),
+    "button-group": frozenset(
+        {
+            "button",
+            "buttongroup",
+            "actionbar",
+            "actiongroup",
+            "splitbutton",
+        }
+    ),
+    "kpi-tile": frozenset({"tile", "metric", "metriccard", "stat", "kpi"}),
+}
+
+
+_SHAPE_BUCKET_BONUS = 0.05
+"""Score boost when a candidate's normalised name matches a
+synonym for the caller-supplied ``region_shape_bucket``.
+
+A third of the role-synonym bonus on purpose — shape is a weaker
+signal than role (a square 200×200 region could be a tile OR a
+small modal OR a thumbnail) so we only nudge the score rather
+than dominate it. The bonus stacks with the role bonus when both
+agree, which is what we want — a confident pattern + matching
+geometry is the strongest possible hint short of an exact name
+match. See ``docs/handoff-spatial-and-ranker.md`` §3.3."""
+
+
+PATTERN_TO_PRIMARY: dict[str, str] = {
+    # Pattern roles emitted by :mod:`prism_mcp.figma.patterns` map
+    # to a single Prism component the LLM should pick by default.
+    # Audited at 100% agreement vs BM25 top-1 across the three
+    # real-world fixtures — see
+    # ``scripts/audit_layer_b_agreement.py``.
+    "icon": "Icon",
+    "stat-list": "StatList",
+    "table-column": "TableColumn",
+    "tab-strip": "TabBar",
+    "button-group": "ButtonGroup",
+    "kpi-tile": "Tile",
+}
+"""Deterministic ``MappedRegion.role`` → Prism component name.
+
+This is the source of truth for
+:attr:`FigmaNodeMapping.primary_recommendation`. The walker
+forwards the region's role and we look it up here; the value (a
+PascalCase component name) goes into ``primary_recommendation``
+verbatim alongside a confidence of ``1.0`` and a rationale string.
+
+Confidence is hard-coded to ``1.0`` because the role itself was
+emitted by a deterministic detector with strong guards. Future
+ML-derived recommendations should use a lower confidence value
+so the LLM can disambiguate the sources."""
+
+
+_PRIMARY_RECOMMENDATION_CONFIDENCE = 1.0
+"""Confidence stamped on every pattern-derived
+``primary_recommendation``.
+
+Equal to 1.0 because the deterministic role detector has its own
+safety rails (size caps, page-scale gates, absorb ratio limit) —
+when a pattern role fires it's high-trust by construction. Lower
+the value (or split it per-role) once an ML-derived source joins
+the pipeline."""
+
+
+SHAPE_BUCKET_TO_COMPONENT_SYNONYMS: dict[str, frozenset[str]] = {
+    "icon": frozenset({"icon", "iconbutton"}),
+    "banner": frozenset({"banner", "alert", "callout", "notification"}),
+    "sidebar": frozenset({"sidebar", "sidenav", "navrail", "drawer"}),
+    "page": frozenset({"page", "layout", "appshell"}),
+    "modal": frozenset(
+        {"modal", "dialog", "drawer", "popover", "sheet"}
+    ),
+    "tile": frozenset({"tile", "card", "kpicard", "statcard"}),
+    "card": frozenset({"card", "listitem", "row"}),
+    # ``"block"`` is the catch-all — no synonyms, no bonus.
+}
+"""Shape-bucket to Prism component-name synonyms.
+
+Mirrors :data:`ROLE_TO_COMPONENT_SYNONYMS` but indexed by
+:func:`prism_mcp.figma.utils.shape_bucket` output. The boost
+(:data:`_SHAPE_BUCKET_BONUS`, ``+0.05``) is intentionally smaller
+than the role bonus because shape alone has more false-positive
+risk — the same 200×200 region could be a tile or a thumbnail or
+a small modal depending on context the geometry can't capture.
+"""
+"""Region-role to Prism component-name synonyms (lower-case,
+non-alphanumeric stripped).
+
+Used by :func:`_build_candidates` to award a small absolute score
+bonus when a candidate's normalised name matches one of the
+synonyms for the caller's ``region_role``. The mapping is
+deliberately conservative — only the pattern roles that
+:mod:`prism_mcp.figma.patterns` emits with high confidence appear
+here. Generic Figma node-type roles like ``frame`` / ``instance``
+/ ``group`` / ``text`` and the catch-all ``composed-region`` /
+``layout-container`` roles are absent on purpose: they don't carry
+enough semantic signal to justify a boost without false
+positives. Use :class:`frozenset` values so the lookup is O(1)
+and the constant is hashable for memoisation if a future caller
+wants it.
+"""
+
+
+def _normalise_component_name(name: str) -> str:
+    """Lower-case and drop non-alphanumerics for synonym matching.
+
+    ``"Action/Button"`` -> ``"actionbutton"``;
+    ``"Stat-Card"`` -> ``"statcard"``. Centralised so the boost
+    rule and the synonym table always use the same canonical
+    form."""
+    return "".join(ch.lower() for ch in name if ch.isalnum())
+
+
+# --------------------------------------------------------------------------
+# Fix E — ``Domain/Type`` Figma naming → Prism ranker query rewriting.
+#
+# The X-Ray Master Files use ``Action/Link``, ``Badge/Badge``,
+# ``Status/Tag``, ``Table/Table Cell``, ``Modal/Fullpage`` and similar
+# slash-namespaced names. The BM25 / hybrid retrievers treat the
+# literal ``"Action/Link"`` as a single token that almost never appears
+# verbatim in any Prism entity description, producing the
+# ``0.016 / 0.032 / 0.033`` RRF "no-signal" score floor documented in
+# ``docs/x-ray-walker-investigation.md`` §11.6.
+#
+# Fix E has two pieces, applied in :func:`_rewrite_figma_name_for_query`:
+#
+# 1. **Splitting**: ``"Action/Link"`` ⇒ ``"action link"`` and
+#    ``"Table/Table Cell"`` ⇒ ``"table table cell"``. The original
+#    literal is preserved so any description that *does* contain it
+#    still matches; the split form is appended as additional tokens.
+# 2. **Aliases**: a small table of Figma-name → Prism-name hints for
+#    the cases where ``Foo/Bar`` and the Prism entity name are
+#    spelled differently. Aliases are appended (not substituted) so
+#    the rewriting is additive and never degrades a query that
+#    happened to be correct under the literal name.
+#
+# The alias table is intentionally small and only carries the
+# patterns observed in the X-Ray investigation; growing it
+# unboundedly would defeat BM25's "tokens not in any doc are
+# ignored" property.
+# --------------------------------------------------------------------------
+
+
+_FIGMA_NAME_ALIAS_TABLE: tuple[tuple[str, str], ...] = (
+    ("action/link", "Link Action"),
+    ("action/button", "Button Action"),
+    ("action/icon button", "IconButton Button"),
+    ("badge/badge", "Badge"),
+    ("status/tag", "Tag Badge Status"),
+    ("status/icon", "StatusIcon Status Icon"),
+    ("status/alert", "Alert Banner"),
+    ("table/table cell", "TableCell Cell"),
+    ("table/table title", "TableHeader Header"),
+    ("table/table header", "TableHeader Header"),
+    ("table/column", "TableColumn Column"),
+    ("table/row", "TableRow Row"),
+    ("navigation/header", "NavigationHeader Nav Header"),
+    ("navigation/subheader", "Subheader Nav Header"),
+    ("navigation/sidebar", "Sidebar Navigation"),
+    ("navigation/breadcrumb", "Breadcrumb Navigation"),
+    ("modal/fullpage", "FullPageModal Modal"),
+    ("modal/dialog", "Modal Dialog"),
+    ("modal/toast", "Toast Notification Modal"),
+    ("input/text", "TextInput Input"),
+    ("input/select", "Select Dropdown Input"),
+    ("input/checkbox", "Checkbox Input"),
+    ("input/radio", "Radio RadioButton Input"),
+    ("input/toggle", "Toggle Switch Input"),
+    ("form/field", "FormField Field"),
+)
+"""Ordered Figma-name → Prism-search-hint table for Fix E.
+
+Match semantics: case-insensitive substring containment on the
+lower-cased layer name. The first matching row wins; we deliberately
+do NOT chain multiple hints because that introduces unbounded
+synthetic tokens. The table is ordered most-specific-first so
+``action/icon button`` is preferred over ``action/button``.
+"""
+
+
+def _rewrite_figma_name_for_query(name: str) -> str:
+    """Expand ``"Action/Link"``-style names with split tokens + alias.
+
+    Returns ``name`` followed by the split tokens (whitespace-joined)
+    and any matching alias hint. The original literal is always
+    preserved at the start of the result so descriptions that
+    happen to contain it still match. See
+    ``docs/x-ray-walker-investigation.md`` §11.6 + §12 "Fix E".
+
+    Examples:
+        >>> _rewrite_figma_name_for_query("Action/Link")
+        'Action/Link action link Link Action'
+        >>> _rewrite_figma_name_for_query("Table/Table Cell")
+        'Table/Table Cell table table cell TableCell Cell'
+        >>> _rewrite_figma_name_for_query("Header")
+        'Header'
+    """
+    stripped = name.strip()
+    if not stripped:
+        return ""
+    parts: list[str] = [stripped]
+    if "/" in stripped:
+        split_lower = stripped.replace("/", " ").lower()
+        parts.append(split_lower)
+    lower = stripped.lower()
+    for needle, hint in _FIGMA_NAME_ALIAS_TABLE:
+        if needle in lower:
+            parts.append(hint)
+            break
+    return " ".join(parts)
+
+
 def _build_lexical_query(
     *,
     node_name: str,
@@ -255,6 +519,14 @@ def _build_lexical_query(
     extra junk doesn't pollute the score; but missing tokens
     that *would* have matched is a hard regression.
 
+    Fix E (``docs/x-ray-walker-investigation.md`` §11.6 + §12) runs
+    :func:`_rewrite_figma_name_for_query` over both ``node_name``
+    and every entry in ``parent_chain`` so slash-namespaced layer
+    names like ``Action/Link`` contribute *individual* tokens
+    (``action`` + ``link``) plus the alias hint (``Link Action``)
+    instead of the literal ``Action/Link`` that almost never
+    matches a Prism description.
+
     Args (additive, all default ``None`` for backward compatibility
     with v1 callers — see design doc §5.2):
 
@@ -270,7 +542,7 @@ def _build_lexical_query(
             Only the last two are appended (closer context = less
             noise).
     """
-    parts: list[str] = [node_name]
+    parts: list[str] = [_rewrite_figma_name_for_query(node_name)]
     if node_type:
         parts.append(node_type)
     if text_content:
@@ -282,7 +554,9 @@ def _build_lexical_query(
     if parent_chain:
         # The two most recent ancestors carry the strongest
         # context; deeper ones add noise.
-        parts.extend(parent_chain[-2:])
+        parts.extend(
+            _rewrite_figma_name_for_query(anc) for anc in parent_chain[-2:]
+        )
     if reference_code:
         tags = _REACT_TAG_RE.findall(reference_code)
         parts.extend(tags)
@@ -311,7 +585,7 @@ def _build_semantic_query(
             text gives the dense encoder *both* signals — code if
             available, prose otherwise.
     """
-    body_parts = [node_name]
+    body_parts = [_rewrite_figma_name_for_query(node_name)]
     if text_content:
         body_parts.append(text_content)
     body = "\n\n".join(body_parts)
@@ -335,6 +609,8 @@ def map_figma_node(
     children_summary: str | None = None,
     structural_hints: list[str] | None = None,
     parent_chain: list[str] | None = None,
+    region_role: str | None = None,
+    region_shape_bucket: str | None = None,
     index: Index,
     hybrid_searcher: HybridSearcherLike,
     composition_graph: CompositionGraph,
@@ -385,6 +661,27 @@ def map_figma_node(
         parent_chain (list[str] | None): ancestor names,
             root-first. The last two are appended to the lexical
             query. **Additive in this slice**.
+        region_role (str | None): the
+            :attr:`MappedRegion.role` emitted by the walker (one
+            of the pattern roles like ``"kpi-tile"`` /
+            ``"table-column"`` / ``"icon"``). When supplied, every
+            candidate whose normalised name matches a synonym in
+            :data:`ROLE_TO_COMPONENT_SYNONYMS` receives a
+            ``+0.15`` boost on the fused score. ``None`` for
+            non-pattern regions (``composed-region`` /
+            ``layout-container`` / generic Figma types); the
+            boost is skipped and the original RRF ranking
+            applies — fully backward-compatible with v1 callers.
+        region_shape_bucket (str | None): the
+            :attr:`MappedRegion.shape_bucket` produced by
+            :func:`prism_mcp.figma.utils.shape_bucket` (one of
+            ``"tile"`` / ``"card"`` / ``"banner"`` / ``"icon"`` /
+            ``"sidebar"`` / ``"modal"`` / ``"page"`` /
+            ``"block"``). When supplied AND non-empty, candidates
+            whose normalised name matches a synonym in
+            :data:`SHAPE_BUCKET_TO_COMPONENT_SYNONYMS` receive
+            a ``+0.05`` boost (stacks with the role bonus when
+            both agree). ``None`` or ``""`` skips the boost.
         index (Index): the slice-3..6 entity index.
         hybrid_searcher (HybridSearcherLike): slice-9 hybrid
             searcher.
@@ -418,12 +715,14 @@ def map_figma_node(
         text_content=text_content,
     )
 
-    candidates = _build_candidates(
+    candidates, hybrid_rows = _build_candidates(
         index=index,
         hybrid_searcher=hybrid_searcher,
         lexical_query=lexical_query,
         semantic_query=semantic_query,
         top_k=top_k,
+        region_role=region_role,
+        region_shape_bucket=region_shape_bucket,
     )
     top = candidates[0] if candidates else None
     related = _gather_related(
@@ -440,25 +739,31 @@ def map_figma_node(
         hex_colors=hex_colors,
         reference_code=reference_code,
     )
-    examples = _gather_examples(
-        searcher=hybrid_searcher,
-        semantic_query=semantic_query,
-        top_k=3,
-    )
+    # Reuse the hybrid hits we already paid for in
+    # ``_build_candidates`` instead of running a second
+    # ``hybrid_searcher.search`` for the examples list. ``hybrid_rows``
+    # is already sorted by descending fused/rerank score, so the
+    # first three codes are the same the legacy second call returned.
+    examples = [hit.code for hit in hybrid_rows[:3]]
     decompositions = _enumerate_decompositions(
         component_name=top.name if top else None,
         related=related,
     )
 
+    primary, rationale, confidence = _resolve_primary_recommendation(
+        region_role
+    )
+
     logger.info(
         "mapped figma node name=%s top=%s candidates=%d related=%d "
-        "tokens=%d examples=%d",
+        "tokens=%d examples=%d primary=%s",
         node_name,
         top.name if top else None,
         len(candidates),
         len(related),
         len(token_mappings),
         len(examples),
+        primary,
     )
 
     return FigmaNodeMapping(
@@ -470,6 +775,36 @@ def map_figma_node(
         token_mappings=token_mappings,
         examples=examples,
         candidate_decompositions=decompositions,
+        primary_recommendation=primary,
+        primary_recommendation_rationale=rationale,
+        primary_recommendation_confidence=confidence,
+    )
+
+
+def _resolve_primary_recommendation(
+    region_role: str | None,
+) -> tuple[str | None, str, float]:
+    """Look up the deterministic primary recommendation for a role.
+
+    Returns ``(name, rationale, confidence)``:
+
+    * ``name`` is the Prism component name from
+      :data:`PATTERN_TO_PRIMARY` or ``None`` when ``region_role``
+      is ``None`` or not in the table.
+    * ``rationale`` is a short human-readable string; empty when
+      there's no recommendation.
+    * ``confidence`` is :data:`_PRIMARY_RECOMMENDATION_CONFIDENCE`
+      (1.0) for pattern-derived picks, ``0.0`` otherwise.
+    """
+    if region_role is None:
+        return None, "", 0.0
+    primary = PATTERN_TO_PRIMARY.get(region_role)
+    if primary is None:
+        return None, "", 0.0
+    return (
+        primary,
+        f"pattern role {region_role!r} → {primary}",
+        _PRIMARY_RECOMMENDATION_CONFIDENCE,
     )
 
 
@@ -486,7 +821,9 @@ def _build_candidates(
     lexical_query: str,
     semantic_query: str,
     top_k: int,
-) -> list[CandidateMatch]:
+    region_role: str | None = None,
+    region_shape_bucket: str | None = None,
+) -> tuple[list[CandidateMatch], list[ExampleHit]]:
     """Run BM25 + hybrid in parallel, merge into ranked CandidateMatches.
 
     Merge rule: collect the union of names across both rankers,
@@ -500,13 +837,36 @@ def _build_candidates(
     The ``source`` field on each :class:`CandidateMatch` records
     which ranker(s) found it (``"bm25"`` / ``"hybrid"`` /
     ``"both"``) so the LLM can weight the rows accordingly.
+
+    When ``region_role`` is provided AND has an entry in
+    :data:`ROLE_TO_COMPONENT_SYNONYMS`, every candidate whose
+    normalised name appears in that synonym set receives a
+    :data:`_ROLE_SYNONYM_BONUS` (``+0.15``) score boost before
+    the final top-k slice. ``None`` (the default) reproduces v1's
+    pure-RRF ranking exactly — verified by
+    ``test_workflow_figma_mapping.py::test_region_role_none_matches_v1``.
+
+    Returns:
+        tuple[list[CandidateMatch], list[ExampleHit]]: the fused
+        ranked candidates AND the raw hybrid example hits that fed
+        the fusion. The example hits are returned alongside the
+        candidates so the caller can slice them into
+        :attr:`FigmaNodeMapping.examples` without paying for a
+        second :meth:`HybridSearcher.search` call against the same
+        query.
     """
     bm25_rows = index.search(query=lexical_query, top_k=top_k * 2)
 
+    # Pull at least 3 hits so the caller's ``examples`` slice never
+    # under-fills when ``top_k`` is small (e.g. ``top_k=1`` → would
+    # otherwise return only 2 hits). The default ``top_k=5`` already
+    # asks for 10 which comfortably covers the 3 we slice for
+    # ``FigmaNodeMapping.examples``.
+    hybrid_pool = max(top_k * 2, 3)
     hybrid_rows: list[ExampleHit] = []
     if semantic_query.strip():
         hybrid_rows = hybrid_searcher.search(
-            query=semantic_query, top_k=top_k * 2
+            query=semantic_query, top_k=hybrid_pool
         )
     # Each hybrid hit is per-*example*; collapse to per-component
     # by keeping the highest-ranked hit per component_name.
@@ -540,8 +900,26 @@ def _build_candidates(
     def _source_label(src: set[str]) -> str:
         return "both" if src == {"bm25", "hybrid"} else next(iter(src))
 
+    role_synonyms = (
+        ROLE_TO_COMPONENT_SYNONYMS.get(region_role)
+        if region_role is not None
+        else None
+    )
+    shape_synonyms = (
+        SHAPE_BUCKET_TO_COMPONENT_SYNONYMS.get(region_shape_bucket)
+        if region_shape_bucket
+        else None
+    )
+    if role_synonyms or shape_synonyms:
+        for name in list(fused.keys()):
+            norm = _normalise_component_name(name)
+            if role_synonyms and norm in role_synonyms:
+                fused[name] += _ROLE_SYNONYM_BONUS
+            if shape_synonyms and norm in shape_synonyms:
+                fused[name] += _SHAPE_BUCKET_BONUS
+
     ranked = sorted(fused.items(), key=lambda kv: (-kv[1], kv[0]))[:top_k]
-    return [
+    candidates = [
         CandidateMatch(
             name=name,
             type=types.get(name, "component"),
@@ -552,6 +930,7 @@ def _build_candidates(
         )
         for name, score in ranked
     ]
+    return candidates, hybrid_rows
 
 
 def _gather_related(
@@ -574,13 +953,20 @@ def _gather_a11y_blocks(
     rules: A11yRules,
     component_name: str | None,
 ) -> list[str]:
-    """Return per-component a11y guidance for the top candidate."""
+    """Return per-component a11y guidance for the top candidate.
+
+    Uses :meth:`A11yRules.find_by_component` (O(1) cached dict
+    lookup) instead of the original linear ``for`` over
+    ``rules.per_component``. The mapper is called once per Figma
+    agenda row, so on a ~50-region page this saves ~50 linear scans
+    over the ~150-entry component list per page.
+    """
     if component_name is None:
         return []
-    for component in rules.per_component:
-        if component.component_name == component_name:
-            return list(component.blocks)
-    return []
+    component = rules.find_by_component(component_name)
+    if component is None:
+        return []
+    return list(component.blocks)
 
 
 def _gather_token_mappings(
@@ -624,19 +1010,6 @@ def _gather_token_mappings(
             )
         )
     return mappings
-
-
-def _gather_examples(
-    *,
-    searcher: HybridSearcherLike,
-    semantic_query: str,
-    top_k: int,
-) -> list[str]:
-    """Return top-k JSX bodies for the semantic query."""
-    if not semantic_query.strip():
-        return []
-    hits = searcher.search(query=semantic_query, top_k=top_k)
-    return [hit.code for hit in hits]
 
 
 def _enumerate_decompositions(

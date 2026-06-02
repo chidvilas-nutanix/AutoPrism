@@ -1,19 +1,20 @@
 {
   "summary": {
     "input_nodes": 1178,
-    "kept_for_mapping": 316,
-    "dropped_total": 822,
-    "agenda_size": 316,
-    "tokens_count": 9,
+    "kept_for_mapping": 50,
+    "dropped_total": 1117,
+    "agenda_size": 50,
+    "tokens_count": 6,
     "warnings_count": 1,
     "max_depth": 20,
     "max_agenda": 50,
-    "dropped_explicit_hidden": 536,
-    "dropped_icon_internal": 58,
-    "dropped_same_bbox_passthrough_collapsed": 28,
-    "dropped_captured_as_content_slot": 186,
-    "dropped_tiny_decorative": 2,
-    "dropped_folded_into_pattern": 12
+    "dropped_explicit_hidden": 349,
+    "dropped_icon_internal": 18,
+    "dropped_same_bbox_passthrough_collapsed": 14,
+    "dropped_captured_as_content_slot": 242,
+    "dropped_folded_into_pattern": 395,
+    "dropped_variant_alternative": 81,
+    "dropped_agenda_truncated": 18
   },
   "agenda": [
     {
@@ -25,11 +26,6 @@
       "id": "674:8188",
       "role": "composed-region",
       "name": "Header"
-    },
-    {
-      "id": "I674:8198;24801:50808",
-      "role": "instance",
-      "name": "\u2705 Selection & Control/Checkbox/Checkbox"
     },
     {
       "id": "674:8198",
@@ -57,24 +53,14 @@
       "name": "List Item"
     },
     {
-      "id": "674:8227",
-      "role": "icon",
-      "name": "Vector 40"
-    },
-    {
-      "id": "674:8229",
-      "role": "icon",
-      "name": "Icon + Text"
-    },
-    {
-      "id": "674:8233",
-      "role": "icon",
-      "name": "Icon/Actions/External Link"
-    },
-    {
       "id": "674:8228",
       "role": "composed-region",
       "name": "Frame 632936"
+    },
+    {
+      "id": "674:8200",
+      "role": "composed-region",
+      "name": "Status/Alert Banner"
     },
     {
       "id": "674:8194",
@@ -97,114 +83,14 @@
       "name": "Footer"
     },
     {
+      "id": "674:8187",
+      "role": "composed-region",
+      "name": "Cloud Connect Settings"
+    },
+    {
       "id": "674:8238",
       "role": "instance",
       "name": "Modal/Underlay"
-    },
-    {
-      "id": "674:8246",
-      "role": "instance",
-      "name": "Action/Link"
-    },
-    {
-      "id": "674:8249",
-      "role": "instance",
-      "name": "Badge/Badge"
-    },
-    {
-      "id": "I674:8250;143:121",
-      "role": "icon",
-      "name": "Button Icon"
-    },
-    {
-      "id": "674:8250",
-      "role": "instance",
-      "name": "Action/Link"
-    },
-    {
-      "id": "I674:8251;143:121",
-      "role": "icon",
-      "name": "Button Icon"
-    },
-    {
-      "id": "674:8251",
-      "role": "instance",
-      "name": "Action/Link"
-    },
-    {
-      "id": "I674:8253;390:5100",
-      "role": "icon",
-      "name": "clip0_49937_38881"
-    },
-    {
-      "id": "I674:8253;390:5104",
-      "role": "icon",
-      "name": "Group"
-    },
-    {
-      "id": "I674:8253;390:5108",
-      "role": "icon",
-      "name": "Group"
-    },
-    {
-      "id": "I674:8253;390:5110",
-      "role": "icon",
-      "name": "Group"
-    },
-    {
-      "id": "I674:8253;390:5095",
-      "role": "icon",
-      "name": "Button Icon"
-    },
-    {
-      "id": "I674:8253;390:5093",
-      "role": "frame",
-      "name": "Action/Link"
-    },
-    {
-      "id": "674:8253",
-      "role": "instance",
-      "name": "Frame 632933"
-    },
-    {
-      "id": "674:8241",
-      "role": "composed-region",
-      "name": "Status + Name"
-    },
-    {
-      "id": "674:8255",
-      "role": "icon",
-      "name": "Icon/Product/Undefined"
-    },
-    {
-      "id": "674:8259",
-      "role": "instance",
-      "name": "Action/Link"
-    },
-    {
-      "id": "674:8263",
-      "role": "instance",
-      "name": "Action/Link"
-    },
-    {
-      "id": "674:8264",
-      "role": "instance",
-      "name": "Action/Link"
-    },
-    {
-      "id": "674:8265",
-      "role": "instance",
-      "name": "Action/Link"
-    },
-    {
-      "id": "674:8258",
-      "role": "composed-region",
-      "name": "Frame 32"
-    },
-    {
-      "id": "674:8254",
-      "role": "composed-region",
-      "name": "Frame 33"
     },
     {
       "id": "674:8239",
@@ -212,64 +98,34 @@
       "name": "Navigation/Header"
     },
     {
-      "id": "674:8274",
-      "role": "icon",
-      "name": "Icon/Actions/Edit"
-    },
-    {
-      "id": "674:8271",
-      "role": "composed-region",
-      "name": "Subpage"
-    },
-    {
-      "id": "674:8268",
-      "role": "composed-region",
-      "name": "Container"
-    },
-    {
       "id": "674:8267",
       "role": "frame",
       "name": "Navigation/Subheader/Subpage"
     },
     {
-      "id": "674:8295",
+      "id": "674:8291",
       "role": "composed-region",
-      "name": "Controls"
+      "name": "Header"
     },
     {
-      "id": "674:8305",
-      "role": "kpi-tile",
-      "name": "Chart Area"
-    },
-    {
-      "id": "674:8316",
+      "id": "674:8302",
       "role": "composed-region",
-      "name": "Frame 632933"
+      "name": "left"
     },
     {
-      "id": "674:8319",
+      "id": "674:8315",
       "role": "composed-region",
-      "name": "Frame 632932"
+      "name": "right"
     },
     {
-      "id": "674:8325",
-      "role": "instance",
-      "name": "Foundation/Legend Item"
+      "id": "674:8301",
+      "role": "composed-region",
+      "name": "Table Body"
     },
     {
-      "id": "674:8327",
-      "role": "instance",
-      "name": "Foundation/Legend Item"
-    },
-    {
-      "id": "674:8322",
-      "role": "frame",
-      "name": "Component/Legend"
-    },
-    {
-      "id": "674:8353",
-      "role": "instance",
-      "name": "Action/Text Button"
+      "id": "674:8351",
+      "role": "composed-region",
+      "name": "Widget/Container Footer"
     },
     {
       "id": "674:8354",
@@ -282,19 +138,9 @@
       "name": "Opportunities - Empty"
     },
     {
-      "id": "I674:8356;686:4293",
-      "role": "instance",
-      "name": "Action/Text Button"
-    },
-    {
       "id": "674:8356",
       "role": "instance",
       "name": "Widget/Container Footer"
-    },
-    {
-      "id": "674:8359",
-      "role": "icon",
-      "name": "Icon/Controls/Information"
     },
     {
       "id": "674:8357",
@@ -302,333 +148,18 @@
       "name": "Header"
     },
     {
-      "id": "I674:8367;1557:39;54274:54844",
-      "role": "composed-region",
-      "name": "Text + Icon"
-    },
-    {
-      "id": "I674:8367;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title"
-    },
-    {
-      "id": "I674:8367;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8367;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
       "id": "674:8367",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column"
-    },
-    {
-      "id": "I674:8368;1557:39;1163:659",
-      "role": "composed-region",
-      "name": "Text + Icon"
-    },
-    {
-      "id": "I674:8368;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title"
-    },
-    {
-      "id": "I674:8368;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8368;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell"
     },
     {
       "id": "674:8368",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column"
     },
     {
-      "id": "I674:8369;1557:39;1163:659",
-      "role": "composed-region",
-      "name": "Text + Icon"
-    },
-    {
-      "id": "I674:8369;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title"
-    },
-    {
-      "id": "I674:8369;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8369;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
       "id": "674:8369",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column"
     },
     {
@@ -647,344 +178,24 @@
       "name": "Header"
     },
     {
-      "id": "I674:8383;1557:39;54274:54844",
-      "role": "composed-region",
-      "name": "Text + Icon"
-    },
-    {
-      "id": "I674:8383;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title"
-    },
-    {
-      "id": "I674:8383;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8383;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
       "id": "674:8383",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column"
-    },
-    {
-      "id": "I674:8384;1557:39;1163:659",
-      "role": "composed-region",
-      "name": "Text + Icon"
-    },
-    {
-      "id": "I674:8384;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title"
-    },
-    {
-      "id": "I674:8384;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8384;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell"
     },
     {
       "id": "674:8384",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column"
     },
     {
-      "id": "I674:8385;1557:39;1163:659",
-      "role": "composed-region",
-      "name": "Text + Icon"
-    },
-    {
-      "id": "I674:8385;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title"
-    },
-    {
-      "id": "I674:8385;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8385;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
       "id": "674:8385",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column"
     },
     {
       "id": "674:8382",
       "role": "composed-region",
       "name": "Table Body"
-    },
-    {
-      "id": "I674:8387;686:4293",
-      "role": "instance",
-      "name": "Action/Text Button"
     },
     {
       "id": "674:8387",
@@ -997,353 +208,23 @@
       "name": "Your Favorite Results"
     },
     {
-      "id": "674:8390",
-      "role": "icon",
-      "name": "Tooltip/Tooltip Caret"
-    },
-    {
-      "id": "674:8394",
-      "role": "icon",
-      "name": "Icon/Controls/Information"
-    },
-    {
-      "id": "674:8392",
+      "id": "674:8389",
       "role": "composed-region",
-      "name": "Frame 632931"
+      "name": "Filters"
     },
     {
-      "id": "I674:8400;31181:61776",
-      "role": "icon",
-      "name": "Icon/Special/Double Arrow"
-    },
-    {
-      "id": "674:8400",
-      "role": "instance",
-      "name": "Action/Text Button"
-    },
-    {
-      "id": "I674:8402;15947:45564;15947:43279",
-      "role": "icon",
-      "name": "Icon/System/Report"
-    },
-    {
-      "id": "I674:8402;15947:45564",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45565;15947:43279",
-      "role": "icon",
-      "name": "Icon/Actions/Play"
-    },
-    {
-      "id": "I674:8402;15947:45565",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45566;15947:43279",
-      "role": "icon",
-      "name": "Icon/Actions/Play"
-    },
-    {
-      "id": "I674:8402;15947:45566",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45567;15947:43279",
-      "role": "icon",
-      "name": "Icon/System/Report"
-    },
-    {
-      "id": "I674:8402;15947:45567",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45568;15947:43279",
-      "role": "icon",
-      "name": "Icon/System/Report"
-    },
-    {
-      "id": "I674:8402;15947:45568",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45569;15947:43279",
-      "role": "icon",
-      "name": "Icon/System/Report"
-    },
-    {
-      "id": "I674:8402;15947:45569",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45570;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45570",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45571;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45571",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45572;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45572",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45573;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45573",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45574;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45574",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45575;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45575",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45576;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45576",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45577;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45577",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45578;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45578",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45579;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45579",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45580;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45580",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45581;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45581",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8402;15947:45582;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical"
-    },
-    {
-      "id": "I674:8402;15947:45582",
-      "role": "instance",
-      "name": "Table/Table Cell"
+      "id": "674:8391",
+      "role": "composed-region",
+      "name": "Header"
     },
     {
       "id": "674:8402",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column"
     },
     {
-      "id": "I674:8403;1557:140;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link"
-    },
-    {
-      "id": "I674:8403;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2393;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link"
-    },
-    {
-      "id": "I674:8403;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2397;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link"
-    },
-    {
-      "id": "I674:8403;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2401;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link"
-    },
-    {
-      "id": "I674:8403;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2405;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link"
-    },
-    {
-      "id": "I674:8403;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2409;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link"
-    },
-    {
-      "id": "I674:8403;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
-      "id": "I674:8403;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell"
-    },
-    {
       "id": "674:8403",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column"
     },
     {
@@ -1352,9 +233,14 @@
       "name": "Table Body"
     },
     {
-      "id": "674:8409",
-      "role": "instance",
-      "name": "Action/Text Button"
+      "id": "674:8407",
+      "role": "composed-region",
+      "name": "Widget/Container Footer"
+    },
+    {
+      "id": "674:8388",
+      "role": "composed-region",
+      "name": "Education Center"
     },
     {
       "id": "674:8421",
@@ -1367,227 +253,12 @@
       "name": "Frame 632929"
     },
     {
-      "id": "674:8438",
+      "id": "674:8448",
       "role": "composed-region",
-      "name": "List Item"
-    },
-    {
-      "id": "674:8441",
-      "role": "composed-region",
-      "name": "List Item"
-    },
-    {
-      "id": "674:8450",
-      "role": "instance",
-      "name": "Action/Text Button"
-    },
-    {
-      "id": "674:8411",
-      "role": "frame",
-      "name": "Widget/Normal"
-    },
-    {
-      "id": "674:8452",
-      "role": "composed-region",
-      "name": "Header"
-    },
-    {
-      "id": "I674:8466;2023:42092",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42093",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42094",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42095",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42096",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42097",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42098",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42099",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42100",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42101",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42102",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42104",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42105",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42106",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42107",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42108",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42109",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42110",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42111",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42112",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42113",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42114",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42115",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42116",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42117",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42119",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42120",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42121",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42122",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42123",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42125",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42126",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42127",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42128",
-      "role": "icon",
-      "name": "Vector"
-    },
-    {
-      "id": "I674:8466;2023:42129",
-      "role": "icon",
-      "name": "Group"
-    },
-    {
-      "id": "674:8466",
-      "role": "instance",
-      "name": "Empty States/Upgrade"
-    },
-    {
-      "id": "674:8465",
-      "role": "composed-region",
-      "name": "Frame 632929"
-    },
-    {
-      "id": "I674:8468;686:4293",
-      "role": "instance",
-      "name": "Action/Text Button"
-    },
-    {
-      "id": "674:8468",
-      "role": "instance",
       "name": "Widget/Container Footer"
     },
     {
-      "id": "674:8451",
+      "id": "674:8411",
       "role": "frame",
       "name": "Widget/Normal"
     },
@@ -1610,20 +281,6 @@
       "name": "Header",
       "children_ids": [
         "674:8192"
-      ]
-    },
-    {
-      "id": "I674:8198;24801:50808",
-      "role": "instance",
-      "name": "\u2705 Selection & Control/Checkbox/Checkbox",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8198;64397:45278",
-      "role": "layout-container",
-      "name": "Container",
-      "children_ids": [
-        "I674:8198;24801:50808"
       ]
     },
     {
@@ -1714,20 +371,25 @@
       ]
     },
     {
+      "id": "674:8200",
+      "role": "composed-region",
+      "name": "Status/Alert Banner",
+      "children_ids": []
+    },
+    {
       "id": "674:8194",
       "role": "composed-region",
       "name": "Body",
       "children_ids": [
-        "674:8197"
+        "674:8197",
+        "674:8200"
       ]
     },
     {
       "id": "674:8235",
       "role": "instance",
       "name": "Action/Button",
-      "children_ids": [
-        "I674:8235;325:132"
-      ]
+      "children_ids": []
     },
     {
       "id": "674:8237",
@@ -1746,7 +408,7 @@
     },
     {
       "id": "674:8187",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "Cloud Connect Settings",
       "children_ids": [
         "674:8188",
@@ -1761,226 +423,16 @@
       "children_ids": []
     },
     {
-      "id": "674:8246",
-      "role": "instance",
-      "name": "Action/Link",
-      "children_ids": []
-    },
-    {
-      "id": "674:8249",
-      "role": "instance",
-      "name": "Badge/Badge",
-      "children_ids": []
-    },
-    {
-      "id": "674:8245",
-      "role": "layout-container",
-      "name": "Group 510",
-      "children_ids": [
-        "674:8246",
-        "674:8249"
-      ]
-    },
-    {
-      "id": "I674:8250;143:121",
-      "role": "icon",
-      "name": "Button Icon",
-      "children_ids": []
-    },
-    {
-      "id": "674:8250",
-      "role": "instance",
-      "name": "Action/Link",
-      "children_ids": [
-        "I674:8250;143:121"
-      ]
-    },
-    {
-      "id": "I674:8251;143:121",
-      "role": "icon",
-      "name": "Button Icon",
-      "children_ids": []
-    },
-    {
-      "id": "674:8251",
-      "role": "instance",
-      "name": "Action/Link",
-      "children_ids": [
-        "I674:8251;143:121"
-      ]
-    },
-    {
-      "id": "I674:8253;390:5100",
-      "role": "icon",
-      "name": "clip0_49937_38881",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8253;390:5104",
-      "role": "icon",
-      "name": "Group",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8253;390:5108",
-      "role": "icon",
-      "name": "Group",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8253;390:5110",
-      "role": "icon",
-      "name": "Group",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8253;390:5107",
-      "role": "layout-container",
-      "name": "Mask group",
-      "children_ids": [
-        "I674:8253;390:5108",
-        "I674:8253;390:5110"
-      ]
-    },
-    {
-      "id": "I674:8253;390:5103",
-      "role": "layout-container",
-      "name": "Mask group",
-      "children_ids": [
-        "I674:8253;390:5104",
-        "I674:8253;390:5107"
-      ]
-    },
-    {
-      "id": "I674:8253;390:5099",
-      "role": "layout-container",
-      "name": "Clip path group",
-      "children_ids": [
-        "I674:8253;390:5100",
-        "I674:8253;390:5103"
-      ]
-    },
-    {
-      "id": "I674:8253;390:5095",
-      "role": "icon",
-      "name": "Button Icon",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8253;390:5093",
-      "role": "frame",
-      "name": "Action/Link",
-      "children_ids": [
-        "I674:8253;390:5095"
-      ]
-    },
-    {
-      "id": "674:8253",
-      "role": "instance",
-      "name": "Frame 632933",
-      "children_ids": [
-        "I674:8253;390:5099",
-        "I674:8253;390:5093"
-      ]
-    },
-    {
-      "id": "674:8241",
-      "role": "composed-region",
-      "name": "Status + Name",
-      "children_ids": [
-        "674:8250",
-        "674:8251",
-        "674:8253"
-      ]
-    },
-    {
-      "id": "674:8255",
-      "role": "icon",
-      "name": "Icon/Product/Undefined",
-      "children_ids": []
-    },
-    {
-      "id": "674:8259",
-      "role": "instance",
-      "name": "Action/Link",
-      "children_ids": []
-    },
-    {
-      "id": "674:8263",
-      "role": "instance",
-      "name": "Action/Link",
-      "children_ids": []
-    },
-    {
-      "id": "674:8264",
-      "role": "instance",
-      "name": "Action/Link",
-      "children_ids": []
-    },
-    {
-      "id": "674:8265",
-      "role": "instance",
-      "name": "Action/Link",
-      "children_ids": []
-    },
-    {
-      "id": "674:8258",
-      "role": "composed-region",
-      "name": "Frame 32",
-      "children_ids": [
-        "674:8259",
-        "674:8263",
-        "674:8264",
-        "674:8265"
-      ]
-    },
-    {
-      "id": "674:8254",
-      "role": "composed-region",
-      "name": "Frame 33",
-      "children_ids": [
-        "674:8255",
-        "674:8258"
-      ]
-    },
-    {
       "id": "674:8239",
       "role": "frame",
       "name": "Navigation/Header",
-      "children_ids": [
-        "674:8241",
-        "674:8254"
-      ]
-    },
-    {
-      "id": "674:8274",
-      "role": "icon",
-      "name": "Icon/Actions/Edit",
       "children_ids": []
-    },
-    {
-      "id": "674:8271",
-      "role": "composed-region",
-      "name": "Subpage",
-      "children_ids": [
-        "674:8274"
-      ]
-    },
-    {
-      "id": "674:8268",
-      "role": "composed-region",
-      "name": "Container",
-      "children_ids": [
-        "674:8271"
-      ]
     },
     {
       "id": "674:8267",
       "role": "frame",
       "name": "Navigation/Subheader/Subpage",
-      "children_ids": [
-        "674:8268"
-      ]
+      "children_ids": []
     },
     {
       "id": "674:8295",
@@ -1990,7 +442,7 @@
     },
     {
       "id": "674:8291",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "Header",
       "children_ids": [
         "674:8293",
@@ -2005,7 +457,7 @@
     },
     {
       "id": "674:8302",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "left",
       "children_ids": [
         "674:8304"
@@ -2024,52 +476,28 @@
       "children_ids": []
     },
     {
-      "id": "I674:8325;719:15106",
-      "role": "layout-container",
-      "name": "Content",
-      "children_ids": [
-        "I674:8325;718:15125",
-        "I674:8325;719:15156"
-      ]
-    },
-    {
-      "id": "674:8325",
-      "role": "instance",
-      "name": "Foundation/Legend Item",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8327;719:15106",
-      "role": "layout-container",
-      "name": "Content",
-      "children_ids": [
-        "I674:8327;718:15125",
-        "I674:8327;719:15156"
-      ]
-    },
-    {
-      "id": "674:8327",
-      "role": "instance",
-      "name": "Foundation/Legend Item",
-      "children_ids": []
-    },
-    {
       "id": "674:8322",
       "role": "frame",
       "name": "Component/Legend",
-      "children_ids": [
-        "674:8325",
-        "674:8327"
-      ]
+      "children_ids": []
     },
     {
       "id": "674:8315",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "right",
       "children_ids": [
         "674:8316",
         "674:8319",
         "674:8322"
+      ]
+    },
+    {
+      "id": "674:8301",
+      "role": "composed-region",
+      "name": "Table Body",
+      "children_ids": [
+        "674:8302",
+        "674:8315"
       ]
     },
     {
@@ -2080,7 +508,7 @@
     },
     {
       "id": "674:8351",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "Widget/Container Footer",
       "children_ids": [
         "674:8353"
@@ -2097,23 +525,17 @@
       "role": "composed-region",
       "name": "Opportunities - Empty",
       "children_ids": [
+        "674:8291",
+        "674:8301",
         "674:8351",
         "674:8354"
       ]
     },
     {
-      "id": "I674:8356;686:4293",
-      "role": "instance",
-      "name": "Action/Text Button",
-      "children_ids": []
-    },
-    {
       "id": "674:8356",
       "role": "instance",
       "name": "Widget/Container Footer",
-      "children_ids": [
-        "I674:8356;686:4293"
-      ]
+      "children_ids": []
     },
     {
       "id": "674:8359",
@@ -2130,469 +552,22 @@
       ]
     },
     {
-      "id": "I674:8367;1557:39;54274:54844",
-      "role": "composed-region",
-      "name": "Text + Icon",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title",
-      "children_ids": [
-        "I674:8367;1557:39;54274:54844"
-      ]
-    },
-    {
-      "id": "I674:8367;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8367;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
       "id": "674:8367",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column",
-      "children_ids": [
-        "I674:8367;1557:39",
-        "I674:8367;1557:140",
-        "I674:8367;1557:2393",
-        "I674:8367;1557:2397",
-        "I674:8367;1557:2401",
-        "I674:8367;1557:2405",
-        "I674:8367;1557:2409",
-        "I674:8367;1557:2413",
-        "I674:8367;1557:2417",
-        "I674:8367;1557:2421",
-        "I674:8367;1557:2425",
-        "I674:8367;1557:2429",
-        "I674:8367;1557:2433",
-        "I674:8367;1557:2437",
-        "I674:8367;1557:2441",
-        "I674:8367;1557:2445",
-        "I674:8367;1557:2449",
-        "I674:8367;1557:2453",
-        "I674:8367;1557:2457",
-        "I674:8367;1557:2461"
-      ]
-    },
-    {
-      "id": "I674:8368;1557:39;1163:659",
-      "role": "composed-region",
-      "name": "Text + Icon",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title",
-      "children_ids": [
-        "I674:8368;1557:39;1163:659"
-      ]
-    },
-    {
-      "id": "I674:8368;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8368;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell",
       "children_ids": []
     },
     {
       "id": "674:8368",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column",
-      "children_ids": [
-        "I674:8368;1557:39",
-        "I674:8368;1557:140",
-        "I674:8368;1557:2393",
-        "I674:8368;1557:2397",
-        "I674:8368;1557:2401",
-        "I674:8368;1557:2405",
-        "I674:8368;1557:2409",
-        "I674:8368;1557:2413",
-        "I674:8368;1557:2417",
-        "I674:8368;1557:2421",
-        "I674:8368;1557:2425",
-        "I674:8368;1557:2429",
-        "I674:8368;1557:2433",
-        "I674:8368;1557:2437",
-        "I674:8368;1557:2441",
-        "I674:8368;1557:2445",
-        "I674:8368;1557:2449",
-        "I674:8368;1557:2453",
-        "I674:8368;1557:2457",
-        "I674:8368;1557:2461"
-      ]
-    },
-    {
-      "id": "I674:8369;1557:39;1163:659",
-      "role": "composed-region",
-      "name": "Text + Icon",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title",
-      "children_ids": [
-        "I674:8369;1557:39;1163:659"
-      ]
-    },
-    {
-      "id": "I674:8369;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8369;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell",
       "children_ids": []
     },
     {
       "id": "674:8369",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column",
-      "children_ids": [
-        "I674:8369;1557:39",
-        "I674:8369;1557:140",
-        "I674:8369;1557:2393",
-        "I674:8369;1557:2397",
-        "I674:8369;1557:2401",
-        "I674:8369;1557:2405",
-        "I674:8369;1557:2409",
-        "I674:8369;1557:2413",
-        "I674:8369;1557:2417",
-        "I674:8369;1557:2421",
-        "I674:8369;1557:2425",
-        "I674:8369;1557:2429",
-        "I674:8369;1557:2433",
-        "I674:8369;1557:2437",
-        "I674:8369;1557:2441",
-        "I674:8369;1557:2445",
-        "I674:8369;1557:2449",
-        "I674:8369;1557:2453",
-        "I674:8369;1557:2457",
-        "I674:8369;1557:2461"
-      ]
+      "children_ids": []
     },
     {
       "id": "674:8366",
@@ -2630,469 +605,22 @@
       "children_ids": []
     },
     {
-      "id": "I674:8383;1557:39;54274:54844",
-      "role": "composed-region",
-      "name": "Text + Icon",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title",
-      "children_ids": [
-        "I674:8383;1557:39;54274:54844"
-      ]
-    },
-    {
-      "id": "I674:8383;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8383;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
       "id": "674:8383",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column",
-      "children_ids": [
-        "I674:8383;1557:39",
-        "I674:8383;1557:140",
-        "I674:8383;1557:2393",
-        "I674:8383;1557:2397",
-        "I674:8383;1557:2401",
-        "I674:8383;1557:2405",
-        "I674:8383;1557:2409",
-        "I674:8383;1557:2413",
-        "I674:8383;1557:2417",
-        "I674:8383;1557:2421",
-        "I674:8383;1557:2425",
-        "I674:8383;1557:2429",
-        "I674:8383;1557:2433",
-        "I674:8383;1557:2437",
-        "I674:8383;1557:2441",
-        "I674:8383;1557:2445",
-        "I674:8383;1557:2449",
-        "I674:8383;1557:2453",
-        "I674:8383;1557:2457",
-        "I674:8383;1557:2461"
-      ]
-    },
-    {
-      "id": "I674:8384;1557:39;1163:659",
-      "role": "composed-region",
-      "name": "Text + Icon",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title",
-      "children_ids": [
-        "I674:8384;1557:39;1163:659"
-      ]
-    },
-    {
-      "id": "I674:8384;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8384;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell",
       "children_ids": []
     },
     {
       "id": "674:8384",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column",
-      "children_ids": [
-        "I674:8384;1557:39",
-        "I674:8384;1557:140",
-        "I674:8384;1557:2393",
-        "I674:8384;1557:2397",
-        "I674:8384;1557:2401",
-        "I674:8384;1557:2405",
-        "I674:8384;1557:2409",
-        "I674:8384;1557:2413",
-        "I674:8384;1557:2417",
-        "I674:8384;1557:2421",
-        "I674:8384;1557:2425",
-        "I674:8384;1557:2429",
-        "I674:8384;1557:2433",
-        "I674:8384;1557:2437",
-        "I674:8384;1557:2441",
-        "I674:8384;1557:2445",
-        "I674:8384;1557:2449",
-        "I674:8384;1557:2453",
-        "I674:8384;1557:2457",
-        "I674:8384;1557:2461"
-      ]
-    },
-    {
-      "id": "I674:8385;1557:39;1163:659",
-      "role": "composed-region",
-      "name": "Text + Icon",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:39",
-      "role": "instance",
-      "name": "Table/Table Title",
-      "children_ids": [
-        "I674:8385;1557:39;1163:659"
-      ]
-    },
-    {
-      "id": "I674:8385;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8385;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell",
       "children_ids": []
     },
     {
       "id": "674:8385",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column",
-      "children_ids": [
-        "I674:8385;1557:39",
-        "I674:8385;1557:140",
-        "I674:8385;1557:2393",
-        "I674:8385;1557:2397",
-        "I674:8385;1557:2401",
-        "I674:8385;1557:2405",
-        "I674:8385;1557:2409",
-        "I674:8385;1557:2413",
-        "I674:8385;1557:2417",
-        "I674:8385;1557:2421",
-        "I674:8385;1557:2425",
-        "I674:8385;1557:2429",
-        "I674:8385;1557:2433",
-        "I674:8385;1557:2437",
-        "I674:8385;1557:2441",
-        "I674:8385;1557:2445",
-        "I674:8385;1557:2449",
-        "I674:8385;1557:2453",
-        "I674:8385;1557:2457",
-        "I674:8385;1557:2461"
-      ]
+      "children_ids": []
     },
     {
       "id": "674:8382",
@@ -3105,18 +633,10 @@
       ]
     },
     {
-      "id": "I674:8387;686:4293",
-      "role": "instance",
-      "name": "Action/Text Button",
-      "children_ids": []
-    },
-    {
       "id": "674:8387",
       "role": "instance",
       "name": "Widget/Container Footer",
-      "children_ids": [
-        "I674:8387;686:4293"
-      ]
+      "children_ids": []
     },
     {
       "id": "674:8372",
@@ -3136,7 +656,7 @@
     },
     {
       "id": "674:8389",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "Filters",
       "children_ids": [
         "674:8390"
@@ -3157,22 +677,14 @@
       ]
     },
     {
-      "id": "I674:8400;31181:61776",
-      "role": "icon",
-      "name": "Icon/Special/Double Arrow",
-      "children_ids": []
-    },
-    {
       "id": "674:8400",
       "role": "instance",
       "name": "Action/Text Button",
-      "children_ids": [
-        "I674:8400;31181:61776"
-      ]
+      "children_ids": []
     },
     {
       "id": "674:8391",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "Header",
       "children_ids": [
         "674:8392",
@@ -3180,484 +692,16 @@
       ]
     },
     {
-      "id": "I674:8402;15947:45564;15947:43279",
-      "role": "icon",
-      "name": "Icon/System/Report",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45564",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45564;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45565;15947:43279",
-      "role": "icon",
-      "name": "Icon/Actions/Play",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45565",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45565;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45566;15947:43279",
-      "role": "icon",
-      "name": "Icon/Actions/Play",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45566",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45566;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45567;15947:43279",
-      "role": "icon",
-      "name": "Icon/System/Report",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45567",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45567;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45568;15947:43279",
-      "role": "icon",
-      "name": "Icon/System/Report",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45568",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45568;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45569;15947:43279",
-      "role": "icon",
-      "name": "Icon/System/Report",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45569",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45569;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45570;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45570",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45570;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45571;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45571",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45571;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45572;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45572",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45572;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45573;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45573",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45573;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45574;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45574",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45574;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45575;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45575",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45575;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45576;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45576",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45576;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45577;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45577",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45577;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45578;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45578",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45578;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45579;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45579",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45579;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45580;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45580",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45580;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45581;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45581",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45581;15947:43279"
-      ]
-    },
-    {
-      "id": "I674:8402;15947:45582;15947:43279",
-      "role": "icon",
-      "name": "Icon/Special/Triple Dots Vertical",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8402;15947:45582",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8402;15947:45582;15947:43279"
-      ]
-    },
-    {
       "id": "674:8402",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column",
-      "children_ids": [
-        "I674:8402;15947:45564",
-        "I674:8402;15947:45565",
-        "I674:8402;15947:45566",
-        "I674:8402;15947:45567",
-        "I674:8402;15947:45568",
-        "I674:8402;15947:45569",
-        "I674:8402;15947:45570",
-        "I674:8402;15947:45571",
-        "I674:8402;15947:45572",
-        "I674:8402;15947:45573",
-        "I674:8402;15947:45574",
-        "I674:8402;15947:45575",
-        "I674:8402;15947:45576",
-        "I674:8402;15947:45577",
-        "I674:8402;15947:45578",
-        "I674:8402;15947:45579",
-        "I674:8402;15947:45580",
-        "I674:8402;15947:45581",
-        "I674:8402;15947:45582"
-      ]
-    },
-    {
-      "id": "I674:8403;1557:140;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:140",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8403;1557:140;1203:40"
-      ]
-    },
-    {
-      "id": "I674:8403;1557:2393;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2393",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8403;1557:2393;1203:40"
-      ]
-    },
-    {
-      "id": "I674:8403;1557:2397;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2397",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8403;1557:2397;1203:40"
-      ]
-    },
-    {
-      "id": "I674:8403;1557:2401;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2401",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8403;1557:2401;1203:40"
-      ]
-    },
-    {
-      "id": "I674:8403;1557:2405;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2405",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8403;1557:2405;1203:40"
-      ]
-    },
-    {
-      "id": "I674:8403;1557:2409;1203:40",
-      "role": "icon",
-      "name": "Icon/Actions/External Link",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2409",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": [
-        "I674:8403;1557:2409;1203:40"
-      ]
-    },
-    {
-      "id": "I674:8403;1557:2413",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2417",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2421",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2425",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2429",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2433",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2437",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2441",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2445",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2449",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2453",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2457",
-      "role": "instance",
-      "name": "Table/Table Cell",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8403;1557:2461",
-      "role": "instance",
-      "name": "Table/Table Cell",
       "children_ids": []
     },
     {
       "id": "674:8403",
-      "role": "instance",
+      "role": "table-column",
       "name": "Table/Column",
-      "children_ids": [
-        "I674:8403;1557:140",
-        "I674:8403;1557:2393",
-        "I674:8403;1557:2397",
-        "I674:8403;1557:2401",
-        "I674:8403;1557:2405",
-        "I674:8403;1557:2409",
-        "I674:8403;1557:2413",
-        "I674:8403;1557:2417",
-        "I674:8403;1557:2421",
-        "I674:8403;1557:2425",
-        "I674:8403;1557:2429",
-        "I674:8403;1557:2433",
-        "I674:8403;1557:2437",
-        "I674:8403;1557:2441",
-        "I674:8403;1557:2445",
-        "I674:8403;1557:2449",
-        "I674:8403;1557:2453",
-        "I674:8403;1557:2457",
-        "I674:8403;1557:2461"
-      ]
+      "children_ids": []
     },
     {
       "id": "674:8401",
@@ -3676,7 +720,7 @@
     },
     {
       "id": "674:8407",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "Widget/Container Footer",
       "children_ids": [
         "674:8409"
@@ -3684,9 +728,11 @@
     },
     {
       "id": "674:8388",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "Education Center",
       "children_ids": [
+        "674:8389",
+        "674:8391",
         "674:8401",
         "674:8407"
       ]
@@ -3696,7 +742,8 @@
       "role": "layout-container",
       "name": "Frame 632933",
       "children_ids": [
-        "674:8372"
+        "674:8372",
+        "674:8388"
       ]
     },
     {
@@ -3749,7 +796,7 @@
     },
     {
       "id": "674:8448",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "Widget/Container Footer",
       "children_ids": [
         "674:8450"
@@ -3764,337 +811,11 @@
       ]
     },
     {
-      "id": "674:8452",
-      "role": "composed-region",
-      "name": "Header",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42092",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42093",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42094",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42095",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42096",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42097",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42098",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42099",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42100",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42101",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42102",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42091",
-      "role": "layout-container",
-      "name": "Group",
-      "children_ids": [
-        "I674:8466;2023:42092",
-        "I674:8466;2023:42093",
-        "I674:8466;2023:42094",
-        "I674:8466;2023:42095",
-        "I674:8466;2023:42096",
-        "I674:8466;2023:42097",
-        "I674:8466;2023:42098",
-        "I674:8466;2023:42099",
-        "I674:8466;2023:42100",
-        "I674:8466;2023:42101",
-        "I674:8466;2023:42102"
-      ]
-    },
-    {
-      "id": "I674:8466;2023:42104",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42105",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42106",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42107",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42108",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42109",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42110",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42111",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42112",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42113",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42114",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42103",
-      "role": "layout-container",
-      "name": "Group",
-      "children_ids": [
-        "I674:8466;2023:42104",
-        "I674:8466;2023:42105",
-        "I674:8466;2023:42106",
-        "I674:8466;2023:42107",
-        "I674:8466;2023:42108",
-        "I674:8466;2023:42109",
-        "I674:8466;2023:42110",
-        "I674:8466;2023:42111",
-        "I674:8466;2023:42112",
-        "I674:8466;2023:42113",
-        "I674:8466;2023:42114"
-      ]
-    },
-    {
-      "id": "I674:8466;2023:42115",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42116",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42117",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42090",
-      "role": "layout-container",
-      "name": "Group",
-      "children_ids": [
-        "I674:8466;2023:42115",
-        "I674:8466;2023:42116",
-        "I674:8466;2023:42117"
-      ]
-    },
-    {
-      "id": "I674:8466;2023:42119",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42120",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42121",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42122",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42123",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42118",
-      "role": "layout-container",
-      "name": "Group",
-      "children_ids": [
-        "I674:8466;2023:42119",
-        "I674:8466;2023:42120",
-        "I674:8466;2023:42121",
-        "I674:8466;2023:42122",
-        "I674:8466;2023:42123"
-      ]
-    },
-    {
-      "id": "I674:8466;2023:42125",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42126",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42127",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42128",
-      "role": "icon",
-      "name": "Vector",
-      "children_ids": []
-    },
-    {
-      "id": "I674:8466;2023:42124",
-      "role": "layout-container",
-      "name": "Group",
-      "children_ids": [
-        "I674:8466;2023:42125",
-        "I674:8466;2023:42126",
-        "I674:8466;2023:42127",
-        "I674:8466;2023:42128"
-      ]
-    },
-    {
-      "id": "I674:8466;2023:42129",
-      "role": "icon",
-      "name": "Group",
-      "children_ids": []
-    },
-    {
-      "id": "674:8466",
-      "role": "instance",
-      "name": "Empty States/Upgrade",
-      "children_ids": [
-        "I674:8466;2023:42129"
-      ]
-    },
-    {
-      "id": "674:8465",
-      "role": "composed-region",
-      "name": "Frame 632929",
-      "children_ids": [
-        "674:8466"
-      ]
-    },
-    {
-      "id": "I674:8468;686:4293",
-      "role": "instance",
-      "name": "Action/Text Button",
-      "children_ids": []
-    },
-    {
-      "id": "674:8468",
-      "role": "instance",
-      "name": "Widget/Container Footer",
-      "children_ids": [
-        "I674:8468;686:4293"
-      ]
-    },
-    {
-      "id": "674:8451",
-      "role": "frame",
-      "name": "Widget/Normal",
-      "children_ids": [
-        "674:8452",
-        "674:8465",
-        "674:8468"
-      ]
-    },
-    {
       "id": "674:8410",
       "role": "layout-container",
       "name": "Frame 632930",
       "children_ids": [
-        "674:8411",
-        "674:8451"
+        "674:8411"
       ]
     },
     {
@@ -4102,6 +823,7 @@
       "role": "component",
       "name": "Home - X-Ray Cloud Connect Settings",
       "children_ids": [
+        "674:8187",
         "674:8238",
         "674:8239",
         "674:8267"
@@ -4109,14 +831,15 @@
     }
   ],
   "dropped_by_reason": {
-    "explicit_hidden": 536,
-    "icon_internal": 58,
-    "same_bbox_passthrough_collapsed": 28,
-    "captured_as_content_slot": 186,
-    "tiny_decorative": 2,
-    "folded_into_pattern": 12
+    "explicit_hidden": 349,
+    "icon_internal": 18,
+    "same_bbox_passthrough_collapsed": 14,
+    "captured_as_content_slot": 242,
+    "folded_into_pattern": 395,
+    "variant_alternative": 81,
+    "agenda_truncated": 18
   },
   "warnings": [
-    "agenda_size=316 exceeded max_agenda=50; consider raising max_agenda or grouping sub-regions in composition"
+    "agenda_size=68 exceeded max_agenda=50; truncated 18 low-importance region(s); see dropped_agenda_truncated"
   ]
 }

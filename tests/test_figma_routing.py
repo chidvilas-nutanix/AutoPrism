@@ -159,3 +159,148 @@ def test_frame_role_empty_frame_is_pattern_cluster() -> None:
     final say (icon fallback / unknown wrapper)."""
     role = classify_frame_role({"type": "FRAME", "name": "Empty"})
     assert role is FrameRole.pattern_cluster
+
+
+# --------------------------------------------------------------------------
+# Visual-container promotion (the Status/Alert Banner failure mode).
+#
+# A FRAME with a visible fill / stroke / corner radius / shadow MUST
+# classify as a composed-region so the walker emits a MappedRegion for
+# it (carrying the box_style). Without this rule the grey rounded
+# banner in the d02 share-summary page was silently dropped, which the
+# user observed in their generated React as "plain text where the
+# Cloud Connect Access info panel should be".
+# --------------------------------------------------------------------------
+
+
+def test_frame_role_visible_fill_promotes_to_composed_region() -> None:
+    """A FRAME with one FRAME child that would otherwise classify as
+    ``layout_container`` is promoted to ``composed_region`` when it
+    has a visible SOLID fill — the canonical card / panel case."""
+    role = classify_frame_role(
+        {
+            "type": "FRAME",
+            "name": "Status/Alert Banner",
+            "fills": [
+                {
+                    "type": "SOLID",
+                    "color": {
+                        "r": 0.929,
+                        "g": 0.941,
+                        "b": 0.949,
+                        "a": 1.0,
+                    },
+                },
+            ],
+            "children": [
+                {"type": "FRAME", "name": "Content"},
+            ],
+        }
+    )
+    assert role is FrameRole.composed_region
+
+
+def test_frame_role_corner_radius_alone_promotes_to_composed_region() -> None:
+    """A FRAME with no fill / stroke but a non-zero corner radius is
+    still a visual container — designers occasionally use a rounded
+    transparent FRAME as a clipping mask, which the LLM should be
+    aware of."""
+    role = classify_frame_role(
+        {
+            "type": "FRAME",
+            "name": "Rounded Mask",
+            "cornerRadius": 8,
+            "children": [
+                {"type": "FRAME", "name": "Inner"},
+            ],
+        }
+    )
+    assert role is FrameRole.composed_region
+
+
+def test_frame_role_visible_stroke_promotes_to_composed_region() -> None:
+    """A FRAME bordered with a visible SOLID stroke is a card / panel
+    even without a fill — the border is the visual identity."""
+    role = classify_frame_role(
+        {
+            "type": "FRAME",
+            "name": "Bordered Panel",
+            "strokes": [
+                {
+                    "type": "SOLID",
+                    "color": {
+                        "r": 0.1,
+                        "g": 0.1,
+                        "b": 0.1,
+                        "a": 1.0,
+                    },
+                },
+            ],
+            "children": [
+                {"type": "FRAME", "name": "Inner"},
+            ],
+        }
+    )
+    assert role is FrameRole.composed_region
+
+
+def test_frame_role_no_visual_presence_stays_layout_container() -> None:
+    """Negative case: a truly bare FRAME (no fill, no stroke, no
+    corner radius, no shadow) with only layout children stays a
+    pure layout container. This prevents the visual-container
+    promotion from accidentally swallowing pure spacers."""
+    role = classify_frame_role(
+        {
+            "type": "FRAME",
+            "name": "Spacer Stack",
+            "fills": [
+                # An *invisible* fill MUST NOT promote the FRAME —
+                # a fill with visible=false is just a paint slot
+                # the designer turned off; the FRAME itself paints
+                # nothing.
+                {
+                    "type": "SOLID",
+                    "visible": False,
+                    "color": {
+                        "r": 1.0,
+                        "g": 1.0,
+                        "b": 1.0,
+                        "a": 1.0,
+                    },
+                },
+            ],
+            "children": [
+                {"type": "FRAME", "name": "Inner"},
+            ],
+        }
+    )
+    assert role is FrameRole.layout_container
+
+
+def test_frame_role_visible_shadow_promotes_to_composed_region() -> None:
+    """A FRAME with a visible drop shadow is an elevated surface
+    (card, modal, popover) — visual presence even without fill."""
+    role = classify_frame_role(
+        {
+            "type": "FRAME",
+            "name": "Elevated Card",
+            "effects": [
+                {
+                    "type": "DROP_SHADOW",
+                    "color": {
+                        "r": 0.0,
+                        "g": 0.0,
+                        "b": 0.0,
+                        "a": 0.1,
+                    },
+                    "offset": {"x": 0, "y": 4},
+                    "radius": 8,
+                    "spread": 0,
+                },
+            ],
+            "children": [
+                {"type": "FRAME", "name": "Inner"},
+            ],
+        }
+    )
+    assert role is FrameRole.composed_region

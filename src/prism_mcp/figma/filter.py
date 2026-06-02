@@ -56,6 +56,29 @@ class DropReason(StrEnum):
     recursive walking. Guards against shape-only heuristics
     over-matching at page-scale FRAMEs. See walker safety rails."""
 
+    agenda_truncated = "agenda_truncated"
+    """The walker emitted a :class:`MappedRegion` for this node
+    during the DFS but the post-DFS importance-ranking step
+    truncated it from the agenda because ``len(ctx.agenda)``
+    exceeded ``max_agenda``. Importance score is
+    ``(-parent_chain_depth, -bbox_area, has_text_slot,
+    is_pattern_region)``; lowest scorers are dropped. The dropped
+    region's mapping payload is discarded too. See
+    ``docs/x-ray-walker-investigation.md`` §8 "Fix C"."""
+
+    variant_alternative = "variant_alternative"
+    """One of N sibling FRAMEs / INSTANCEs that share a common
+    ``Domain/`` name prefix, have non-overlapping comparable bboxes,
+    and therefore look like documentation-style variant artboards
+    (e.g. *Modal/Empty* next to *Modal/Filled* next to *Modal/Error*
+    on an X-Ray Master File). Fix D keeps the first variant as the
+    agenda's representative; every subsequent sibling is dropped
+    here so the LLM only sees one component decision per logical
+    variant group. Real application pages never tile multiple
+    independent siblings under the same ``Foo/*`` prefix, so the
+    heuristic is a no-op outside design-system documentation files.
+    See ``docs/x-ray-walker-investigation.md`` §11.5 + §12 "Fix D"."""
+
 
 _TINY_AREA_FLOOR = 50.0
 """Square pixels below which a non-text leaf is considered noise.

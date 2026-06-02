@@ -1,0 +1,539 @@
+{
+  "summary": {
+    "input_nodes": 654,
+    "kept_for_mapping": 39,
+    "dropped_total": 610,
+    "agenda_size": 39,
+    "tokens_count": 4,
+    "warnings_count": 0,
+    "max_depth": 20,
+    "max_agenda": 50,
+    "dropped_explicit_hidden": 17,
+    "dropped_captured_as_content_slot": 92,
+    "dropped_same_bbox_passthrough_collapsed": 2,
+    "dropped_tiny_decorative": 2,
+    "dropped_icon_internal": 4,
+    "dropped_folded_into_pattern": 493
+  },
+  "agenda": [
+    {
+      "id": "3067:173952",
+      "role": "instance",
+      "name": "Action/Link"
+    },
+    {
+      "id": "3067:173955",
+      "role": "instance",
+      "name": "Badge/Badge"
+    },
+    {
+      "id": "3067:173956",
+      "role": "instance",
+      "name": "Action/Link"
+    },
+    {
+      "id": "3067:173957",
+      "role": "instance",
+      "name": "Action/Link"
+    },
+    {
+      "id": "3067:173959",
+      "role": "instance",
+      "name": "Action/Link"
+    },
+    {
+      "id": "3067:173947",
+      "role": "composed-region",
+      "name": "Status + Name"
+    },
+    {
+      "id": "3067:173961",
+      "role": "icon",
+      "name": "Icon/Product/Undefined"
+    },
+    {
+      "id": "3067:173965",
+      "role": "instance",
+      "name": "Action/Link"
+    },
+    {
+      "id": "3067:173969",
+      "role": "instance",
+      "name": "Action/Link"
+    },
+    {
+      "id": "3067:173971",
+      "role": "instance",
+      "name": "Action/Link"
+    },
+    {
+      "id": "3067:173972",
+      "role": "instance",
+      "name": "Action/Link"
+    },
+    {
+      "id": "3067:173964",
+      "role": "composed-region",
+      "name": "Frame 32"
+    },
+    {
+      "id": "3067:173960",
+      "role": "composed-region",
+      "name": "Frame 33"
+    },
+    {
+      "id": "3067:173945",
+      "role": "frame",
+      "name": "Navigation/Header"
+    },
+    {
+      "id": "3067:173973",
+      "role": "frame",
+      "name": "Navigation/Subheader/Subpage"
+    },
+    {
+      "id": "3067:174000",
+      "role": "icon",
+      "name": "Icon/Actions/Edit"
+    },
+    {
+      "id": "3067:173998",
+      "role": "composed-region",
+      "name": "Subpage"
+    },
+    {
+      "id": "3067:174001",
+      "role": "instance",
+      "name": "Badge/Badge"
+    },
+    {
+      "id": "8433:76989",
+      "role": "icon",
+      "name": "Icon/Actions/Empty Star"
+    },
+    {
+      "id": "8433:76991",
+      "role": "instance",
+      "name": "Action/Text Button"
+    },
+    {
+      "id": "8433:76988",
+      "role": "composed-region",
+      "name": "Frame 632963"
+    },
+    {
+      "id": "3067:173997",
+      "role": "composed-region",
+      "name": "Frame 632925"
+    },
+    {
+      "id": "8347:316898",
+      "role": "instance",
+      "name": "Action/Button"
+    },
+    {
+      "id": "3067:173996",
+      "role": "composed-region",
+      "name": "Frame 632927"
+    },
+    {
+      "id": "3067:174010",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "5075:221468",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "3067:174012",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "3067:174013",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "3067:174014",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "3067:174015",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "3067:174016",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "3067:174017",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "3067:174018",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "3067:174009",
+      "role": "composed-region",
+      "name": "Table Body"
+    },
+    {
+      "id": "3067:174007",
+      "role": "composed-region",
+      "name": "Frame 632932"
+    },
+    {
+      "id": "3067:174880",
+      "role": "instance",
+      "name": "Table/Empty State"
+    },
+    {
+      "id": "3067:174879",
+      "role": "composed-region",
+      "name": "Table Body"
+    },
+    {
+      "id": "3067:174020",
+      "role": "composed-region",
+      "name": "Frame 632933"
+    },
+    {
+      "id": "8464:80286",
+      "role": "component",
+      "name": "Results - Test Details - Progress Empty"
+    }
+  ],
+  "layout_tree": [
+    {
+      "id": "3067:173952",
+      "role": "instance",
+      "name": "Action/Link",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173955",
+      "role": "instance",
+      "name": "Badge/Badge",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173951",
+      "role": "layout-container",
+      "name": "Group 510",
+      "children_ids": [
+        "3067:173952",
+        "3067:173955"
+      ]
+    },
+    {
+      "id": "3067:173956",
+      "role": "instance",
+      "name": "Action/Link",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173957",
+      "role": "instance",
+      "name": "Action/Link",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173959",
+      "role": "instance",
+      "name": "Action/Link",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173947",
+      "role": "composed-region",
+      "name": "Status + Name",
+      "children_ids": [
+        "3067:173956",
+        "3067:173957",
+        "3067:173959"
+      ]
+    },
+    {
+      "id": "3067:173961",
+      "role": "icon",
+      "name": "Icon/Product/Undefined",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173965",
+      "role": "instance",
+      "name": "Action/Link",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173969",
+      "role": "instance",
+      "name": "Action/Link",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173971",
+      "role": "instance",
+      "name": "Action/Link",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173972",
+      "role": "instance",
+      "name": "Action/Link",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173964",
+      "role": "composed-region",
+      "name": "Frame 32",
+      "children_ids": [
+        "3067:173965",
+        "3067:173969",
+        "3067:173971",
+        "3067:173972"
+      ]
+    },
+    {
+      "id": "3067:173960",
+      "role": "composed-region",
+      "name": "Frame 33",
+      "children_ids": [
+        "3067:173961",
+        "3067:173964"
+      ]
+    },
+    {
+      "id": "3067:173945",
+      "role": "frame",
+      "name": "Navigation/Header",
+      "children_ids": [
+        "3067:173947",
+        "3067:173960"
+      ]
+    },
+    {
+      "id": "3067:173973",
+      "role": "frame",
+      "name": "Navigation/Subheader/Subpage",
+      "children_ids": []
+    },
+    {
+      "id": "3067:174000",
+      "role": "icon",
+      "name": "Icon/Actions/Edit",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173998",
+      "role": "composed-region",
+      "name": "Subpage",
+      "children_ids": [
+        "3067:174000"
+      ]
+    },
+    {
+      "id": "3067:174001",
+      "role": "instance",
+      "name": "Badge/Badge",
+      "children_ids": []
+    },
+    {
+      "id": "8433:76989",
+      "role": "icon",
+      "name": "Icon/Actions/Empty Star",
+      "children_ids": []
+    },
+    {
+      "id": "8433:76991",
+      "role": "instance",
+      "name": "Action/Text Button",
+      "children_ids": []
+    },
+    {
+      "id": "8433:76988",
+      "role": "composed-region",
+      "name": "Frame 632963",
+      "children_ids": [
+        "8433:76989",
+        "8433:76991"
+      ]
+    },
+    {
+      "id": "3067:173997",
+      "role": "composed-region",
+      "name": "Frame 632925",
+      "children_ids": [
+        "3067:173998",
+        "3067:174001",
+        "8433:76988"
+      ]
+    },
+    {
+      "id": "8347:316898",
+      "role": "instance",
+      "name": "Action/Button",
+      "children_ids": []
+    },
+    {
+      "id": "3067:173996",
+      "role": "composed-region",
+      "name": "Frame 632927",
+      "children_ids": [
+        "3067:173997",
+        "8347:316898"
+      ]
+    },
+    {
+      "id": "3067:173994",
+      "role": "layout-container",
+      "name": "Frame Copy",
+      "children_ids": [
+        "3067:173996"
+      ]
+    },
+    {
+      "id": "3067:174010",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "5075:221468",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "3067:174012",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "3067:174013",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "3067:174014",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "3067:174015",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "3067:174016",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "3067:174017",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "3067:174018",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "3067:174009",
+      "role": "composed-region",
+      "name": "Table Body",
+      "children_ids": [
+        "3067:174010",
+        "5075:221468",
+        "3067:174012",
+        "3067:174013",
+        "3067:174014",
+        "3067:174015",
+        "3067:174016",
+        "3067:174017",
+        "3067:174018"
+      ]
+    },
+    {
+      "id": "3067:174007",
+      "role": "composed-region",
+      "name": "Frame 632932",
+      "children_ids": [
+        "3067:174009"
+      ]
+    },
+    {
+      "id": "3067:174880",
+      "role": "instance",
+      "name": "Table/Empty State",
+      "children_ids": []
+    },
+    {
+      "id": "3067:174879",
+      "role": "composed-region",
+      "name": "Table Body",
+      "children_ids": [
+        "3067:174880"
+      ]
+    },
+    {
+      "id": "3067:174020",
+      "role": "composed-region",
+      "name": "Frame 632933",
+      "children_ids": [
+        "3067:174879"
+      ]
+    },
+    {
+      "id": "3067:174019",
+      "role": "layout-container",
+      "name": "Frame 632937",
+      "children_ids": [
+        "3067:174020"
+      ]
+    },
+    {
+      "id": "3067:173993",
+      "role": "layout-container",
+      "name": "Content",
+      "children_ids": [
+        "3067:174007"
+      ]
+    },
+    {
+      "id": "8464:80286",
+      "role": "component",
+      "name": "Results - Test Details - Progress Empty",
+      "children_ids": [
+        "3067:173945",
+        "3067:173973"
+      ]
+    }
+  ],
+  "dropped_by_reason": {
+    "explicit_hidden": 17,
+    "captured_as_content_slot": 92,
+    "same_bbox_passthrough_collapsed": 2,
+    "tiny_decorative": 2,
+    "icon_internal": 4,
+    "folded_into_pattern": 493
+  },
+  "warnings": []
+}

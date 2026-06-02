@@ -1,19 +1,20 @@
 {
   "summary": {
     "input_nodes": 350,
-    "kept_for_mapping": 130,
-    "dropped_total": 187,
-    "agenda_size": 130,
-    "tokens_count": 5,
+    "kept_for_mapping": 50,
+    "dropped_total": 273,
+    "agenda_size": 50,
+    "tokens_count": 4,
     "warnings_count": 1,
     "max_depth": 20,
     "max_agenda": 50,
-    "dropped_icon_internal": 42,
-    "dropped_captured_as_content_slot": 81,
+    "dropped_icon_internal": 32,
+    "dropped_captured_as_content_slot": 168,
     "dropped_tiny_decorative": 11,
-    "dropped_invisible_decoration": 37,
-    "dropped_same_bbox_passthrough_collapsed": 11,
-    "dropped_folded_into_pattern": 5
+    "dropped_invisible_decoration": 34,
+    "dropped_same_bbox_passthrough_collapsed": 6,
+    "dropped_folded_into_pattern": 5,
+    "dropped_agenda_truncated": 17
   },
   "agenda": [
     {
@@ -32,19 +33,9 @@
       "name": "Icon - Alert Large"
     },
     {
-      "id": "I667:223;0:2846",
-      "role": "icon",
-      "name": "Color"
-    },
-    {
       "id": "667:223",
       "role": "instance",
       "name": "Counter"
-    },
-    {
-      "id": "I667:225;0:2850",
-      "role": "instance",
-      "name": "Color"
     },
     {
       "id": "667:225",
@@ -70,31 +61,6 @@
       "id": "667:232",
       "role": "composed-region",
       "name": "User"
-    },
-    {
-      "id": "I667:236;0:2729;0:2889",
-      "role": "icon",
-      "name": "Popup"
-    },
-    {
-      "id": "I667:236;0:2729;0:2888",
-      "role": "icon",
-      "name": "Popup"
-    },
-    {
-      "id": "I667:236;0:2729",
-      "role": "instance",
-      "name": "Tile"
-    },
-    {
-      "id": "I667:236;0:2731",
-      "role": "icon",
-      "name": "Header"
-    },
-    {
-      "id": "I667:236;0:2730",
-      "role": "composed-region",
-      "name": "Header"
     },
     {
       "id": "667:236",
@@ -152,39 +118,9 @@
       "name": "Row Copy 7"
     },
     {
-      "id": "I667:279;0:2729;0:2889",
-      "role": "icon",
-      "name": "Popup"
-    },
-    {
-      "id": "I667:279;0:2729;0:2888",
-      "role": "icon",
-      "name": "Popup"
-    },
-    {
-      "id": "I667:279;0:2729",
-      "role": "instance",
-      "name": "Tile"
-    },
-    {
-      "id": "I667:279;0:2731",
-      "role": "icon",
-      "name": "Header"
-    },
-    {
-      "id": "I667:279;0:2730",
-      "role": "composed-region",
-      "name": "Header"
-    },
-    {
       "id": "667:279",
       "role": "instance",
       "name": "Tile"
-    },
-    {
-      "id": "667:283",
-      "role": "icon",
-      "name": "Double Arrow"
     },
     {
       "id": "667:281",
@@ -207,41 +143,6 @@
       "name": "Row"
     },
     {
-      "id": "667:300",
-      "role": "composed-region",
-      "name": "Row"
-    },
-    {
-      "id": "667:305",
-      "role": "composed-region",
-      "name": "Row"
-    },
-    {
-      "id": "I667:309;0:2729;0:2889",
-      "role": "icon",
-      "name": "Popup"
-    },
-    {
-      "id": "I667:309;0:2729;0:2888",
-      "role": "icon",
-      "name": "Popup"
-    },
-    {
-      "id": "I667:309;0:2729",
-      "role": "instance",
-      "name": "Tile"
-    },
-    {
-      "id": "I667:309;0:2731",
-      "role": "icon",
-      "name": "Header"
-    },
-    {
-      "id": "I667:309;0:2730",
-      "role": "composed-region",
-      "name": "Header"
-    },
-    {
       "id": "667:309",
       "role": "instance",
       "name": "Tile"
@@ -252,29 +153,9 @@
       "name": "Bounds"
     },
     {
-      "id": "667:315",
-      "role": "icon",
-      "name": "Section"
-    },
-    {
-      "id": "667:316",
-      "role": "icon",
-      "name": "Section"
-    },
-    {
-      "id": "667:317",
-      "role": "icon",
-      "name": "Section"
-    },
-    {
       "id": "667:310",
       "role": "composed-region",
       "name": "Pie Chart"
-    },
-    {
-      "id": "667:323",
-      "role": "icon",
-      "name": "Row"
     },
     {
       "id": "667:322",
@@ -282,19 +163,9 @@
       "name": "Label"
     },
     {
-      "id": "667:328",
-      "role": "icon",
-      "name": "Row"
-    },
-    {
       "id": "667:327",
       "role": "composed-region",
       "name": "Label"
-    },
-    {
-      "id": "667:333",
-      "role": "icon",
-      "name": "Row"
     },
     {
       "id": "667:332",
@@ -307,11 +178,6 @@
       "name": "Tooltip"
     },
     {
-      "id": "667:339",
-      "role": "icon",
-      "name": "Tip"
-    },
-    {
       "id": "667:337",
       "role": "composed-region",
       "name": "Current Value"
@@ -320,31 +186,6 @@
       "id": "667:344",
       "role": "icon",
       "name": "Cursor"
-    },
-    {
-      "id": "I667:350;0:2729;0:2889",
-      "role": "icon",
-      "name": "Popup"
-    },
-    {
-      "id": "I667:350;0:2729;0:2888",
-      "role": "icon",
-      "name": "Popup"
-    },
-    {
-      "id": "I667:350;0:2729",
-      "role": "instance",
-      "name": "Tile"
-    },
-    {
-      "id": "I667:350;0:2731",
-      "role": "icon",
-      "name": "Header"
-    },
-    {
-      "id": "I667:350;0:2730",
-      "role": "composed-region",
-      "name": "Header"
     },
     {
       "id": "667:350",
@@ -367,69 +208,9 @@
       "name": "Line"
     },
     {
-      "id": "667:377",
-      "role": "icon",
-      "name": "Line"
-    },
-    {
-      "id": "667:381",
-      "role": "icon",
-      "name": "Line"
-    },
-    {
-      "id": "667:385",
-      "role": "icon",
-      "name": "Line"
-    },
-    {
-      "id": "I667:393;0:2729;0:2889",
-      "role": "icon",
-      "name": "Popup"
-    },
-    {
-      "id": "I667:393;0:2729;0:2888",
-      "role": "icon",
-      "name": "Popup"
-    },
-    {
-      "id": "I667:393;0:2729",
-      "role": "instance",
-      "name": "Tile"
-    },
-    {
-      "id": "I667:393;0:2731",
-      "role": "icon",
-      "name": "Header"
-    },
-    {
-      "id": "I667:393;0:2730",
-      "role": "composed-region",
-      "name": "Header"
-    },
-    {
       "id": "667:393",
       "role": "instance",
       "name": "Tile"
-    },
-    {
-      "id": "667:396",
-      "role": "composed-region",
-      "name": "Row"
-    },
-    {
-      "id": "667:401",
-      "role": "composed-region",
-      "name": "Row Copy"
-    },
-    {
-      "id": "667:405",
-      "role": "composed-region",
-      "name": "Row Copy 8"
-    },
-    {
-      "id": "667:410",
-      "role": "composed-region",
-      "name": "Row Copy 9"
     },
     {
       "id": "667:415",
@@ -462,74 +243,9 @@
       "name": "Link"
     },
     {
-      "id": "I667:438;0:2868;0:2897",
-      "role": "icon",
-      "name": "Mask"
-    },
-    {
-      "id": "I667:438;0:2868;0:2898",
-      "role": "icon",
-      "name": "Icon / Accented"
-    },
-    {
-      "id": "I667:438;0:2868",
-      "role": "instance",
-      "name": "Chevron"
-    },
-    {
       "id": "667:438",
       "role": "instance",
       "name": "Link"
-    },
-    {
-      "id": "I667:440;0:2870;0:2901",
-      "role": "icon",
-      "name": "Button"
-    },
-    {
-      "id": "I667:440;0:2870;0:2902;0:2916",
-      "role": "icon",
-      "name": "Color"
-    },
-    {
-      "id": "I667:440;0:2870;0:2902",
-      "role": "instance",
-      "name": "Color"
-    },
-    {
-      "id": "I667:440;0:2870;0:2900",
-      "role": "composed-region",
-      "name": "Fill"
-    },
-    {
-      "id": "I667:440;0:2870;0:2906",
-      "role": "icon",
-      "name": "Button - Outline"
-    },
-    {
-      "id": "I667:440;0:2870;0:2907;0:2918",
-      "role": "icon",
-      "name": "Color"
-    },
-    {
-      "id": "I667:440;0:2870;0:2907",
-      "role": "instance",
-      "name": "Color"
-    },
-    {
-      "id": "I667:440;0:2870;0:2903",
-      "role": "composed-region",
-      "name": "Outline"
-    },
-    {
-      "id": "I667:440;0:2870",
-      "role": "instance",
-      "name": "Button"
-    },
-    {
-      "id": "I667:440;0:2874",
-      "role": "instance",
-      "name": "Padding"
     },
     {
       "id": "667:440",
@@ -537,134 +253,19 @@
       "name": "Button"
     },
     {
-      "id": "I667:442;0:2870;0:2901",
-      "role": "icon",
-      "name": "Button"
-    },
-    {
-      "id": "I667:442;0:2870;0:2902;0:2916",
-      "role": "icon",
-      "name": "Color"
-    },
-    {
-      "id": "I667:442;0:2870;0:2902",
-      "role": "instance",
-      "name": "Color"
-    },
-    {
-      "id": "I667:442;0:2870;0:2900",
-      "role": "composed-region",
-      "name": "Fill"
-    },
-    {
-      "id": "I667:442;0:2870;0:2906",
-      "role": "icon",
-      "name": "Button - Outline"
-    },
-    {
-      "id": "I667:442;0:2870;0:2907;0:2918",
-      "role": "icon",
-      "name": "Color"
-    },
-    {
-      "id": "I667:442;0:2870;0:2907",
-      "role": "instance",
-      "name": "Color"
-    },
-    {
-      "id": "I667:442;0:2870;0:2903",
-      "role": "composed-region",
-      "name": "Outline"
-    },
-    {
-      "id": "I667:442;0:2870",
-      "role": "instance",
-      "name": "Button"
-    },
-    {
-      "id": "I667:442;0:2874",
-      "role": "instance",
-      "name": "Padding"
-    },
-    {
       "id": "667:442",
       "role": "instance",
       "name": "Button"
     },
     {
-      "id": "I667:444;0:2876;0:2901",
-      "role": "icon",
-      "name": "Button"
-    },
-    {
-      "id": "I667:444;0:2876;0:2902;0:2916",
-      "role": "icon",
-      "name": "Color"
-    },
-    {
-      "id": "I667:444;0:2876;0:2902",
-      "role": "instance",
-      "name": "Color"
-    },
-    {
-      "id": "I667:444;0:2876;0:2900",
-      "role": "composed-region",
-      "name": "Fill"
-    },
-    {
-      "id": "I667:444;0:2876;0:2906",
-      "role": "icon",
-      "name": "Button - Outline"
-    },
-    {
-      "id": "I667:444;0:2876;0:2907;0:2918",
-      "role": "icon",
-      "name": "Color"
-    },
-    {
-      "id": "I667:444;0:2876;0:2907",
-      "role": "instance",
-      "name": "Color"
-    },
-    {
-      "id": "I667:444;0:2876;0:2903",
-      "role": "composed-region",
-      "name": "Outline"
-    },
-    {
-      "id": "I667:444;0:2876",
-      "role": "instance",
-      "name": "Button"
-    },
-    {
-      "id": "I667:444;0:2880;0:2911",
-      "role": "icon",
-      "name": "Mask"
-    },
-    {
-      "id": "I667:444;0:2880;0:2912",
-      "role": "icon",
-      "name": "Icon / Primary"
-    },
-    {
-      "id": "I667:444;0:2880",
-      "role": "instance",
-      "name": "Chevron"
-    },
-    {
-      "id": "I667:444;0:2877",
-      "role": "composed-region",
-      "name": "Data"
-    },
-    {
-      "id": "I667:444;0:2882",
-      "role": "instance",
-      "name": "Padding"
-    },
-    {
       "id": "667:444",
       "role": "instance",
       "name": "Button"
+    },
+    {
+      "id": "667:211",
+      "role": "composed-region",
+      "name": "E01 - Share Summary"
     }
   ],
   "layout_tree": [
@@ -689,18 +290,10 @@
       "children_ids": []
     },
     {
-      "id": "I667:223;0:2846",
-      "role": "icon",
-      "name": "Color",
-      "children_ids": []
-    },
-    {
       "id": "667:223",
       "role": "instance",
       "name": "Counter",
-      "children_ids": [
-        "I667:223;0:2846"
-      ]
+      "children_ids": []
     },
     {
       "id": "667:221",
@@ -712,18 +305,10 @@
       ]
     },
     {
-      "id": "I667:225;0:2850",
-      "role": "instance",
-      "name": "Color",
-      "children_ids": []
-    },
-    {
       "id": "667:225",
       "role": "instance",
       "name": "Counter",
-      "children_ids": [
-        "I667:225;0:2850"
-      ]
+      "children_ids": []
     },
     {
       "id": "667:226",
@@ -761,48 +346,10 @@
       ]
     },
     {
-      "id": "I667:236;0:2729;0:2889",
-      "role": "icon",
-      "name": "Popup",
-      "children_ids": []
-    },
-    {
-      "id": "I667:236;0:2729;0:2888",
-      "role": "icon",
-      "name": "Popup",
-      "children_ids": []
-    },
-    {
-      "id": "I667:236;0:2729",
-      "role": "instance",
-      "name": "Tile",
-      "children_ids": [
-        "I667:236;0:2729;0:2889",
-        "I667:236;0:2729;0:2888"
-      ]
-    },
-    {
-      "id": "I667:236;0:2731",
-      "role": "icon",
-      "name": "Header",
-      "children_ids": []
-    },
-    {
-      "id": "I667:236;0:2730",
-      "role": "composed-region",
-      "name": "Header",
-      "children_ids": [
-        "I667:236;0:2731"
-      ]
-    },
-    {
       "id": "667:236",
       "role": "instance",
       "name": "Tile",
-      "children_ids": [
-        "I667:236;0:2729",
-        "I667:236;0:2730"
-      ]
+      "children_ids": []
     },
     {
       "id": "667:238",
@@ -890,48 +437,10 @@
       ]
     },
     {
-      "id": "I667:279;0:2729;0:2889",
-      "role": "icon",
-      "name": "Popup",
-      "children_ids": []
-    },
-    {
-      "id": "I667:279;0:2729;0:2888",
-      "role": "icon",
-      "name": "Popup",
-      "children_ids": []
-    },
-    {
-      "id": "I667:279;0:2729",
-      "role": "instance",
-      "name": "Tile",
-      "children_ids": [
-        "I667:279;0:2729;0:2889",
-        "I667:279;0:2729;0:2888"
-      ]
-    },
-    {
-      "id": "I667:279;0:2731",
-      "role": "icon",
-      "name": "Header",
-      "children_ids": []
-    },
-    {
-      "id": "I667:279;0:2730",
-      "role": "composed-region",
-      "name": "Header",
-      "children_ids": [
-        "I667:279;0:2731"
-      ]
-    },
-    {
       "id": "667:279",
       "role": "instance",
       "name": "Tile",
-      "children_ids": [
-        "I667:279;0:2729",
-        "I667:279;0:2730"
-      ]
+      "children_ids": []
     },
     {
       "id": "667:283",
@@ -1006,48 +515,10 @@
       ]
     },
     {
-      "id": "I667:309;0:2729;0:2889",
-      "role": "icon",
-      "name": "Popup",
-      "children_ids": []
-    },
-    {
-      "id": "I667:309;0:2729;0:2888",
-      "role": "icon",
-      "name": "Popup",
-      "children_ids": []
-    },
-    {
-      "id": "I667:309;0:2729",
-      "role": "instance",
-      "name": "Tile",
-      "children_ids": [
-        "I667:309;0:2729;0:2889",
-        "I667:309;0:2729;0:2888"
-      ]
-    },
-    {
-      "id": "I667:309;0:2731",
-      "role": "icon",
-      "name": "Header",
-      "children_ids": []
-    },
-    {
-      "id": "I667:309;0:2730",
-      "role": "composed-region",
-      "name": "Header",
-      "children_ids": [
-        "I667:309;0:2731"
-      ]
-    },
-    {
       "id": "667:309",
       "role": "instance",
       "name": "Tile",
-      "children_ids": [
-        "I667:309;0:2729",
-        "I667:309;0:2730"
-      ]
+      "children_ids": []
     },
     {
       "id": "667:311",
@@ -1182,48 +653,10 @@
       ]
     },
     {
-      "id": "I667:350;0:2729;0:2889",
-      "role": "icon",
-      "name": "Popup",
-      "children_ids": []
-    },
-    {
-      "id": "I667:350;0:2729;0:2888",
-      "role": "icon",
-      "name": "Popup",
-      "children_ids": []
-    },
-    {
-      "id": "I667:350;0:2729",
-      "role": "instance",
-      "name": "Tile",
-      "children_ids": [
-        "I667:350;0:2729;0:2889",
-        "I667:350;0:2729;0:2888"
-      ]
-    },
-    {
-      "id": "I667:350;0:2731",
-      "role": "icon",
-      "name": "Header",
-      "children_ids": []
-    },
-    {
-      "id": "I667:350;0:2730",
-      "role": "composed-region",
-      "name": "Header",
-      "children_ids": [
-        "I667:350;0:2731"
-      ]
-    },
-    {
       "id": "667:350",
       "role": "instance",
       "name": "Tile",
-      "children_ids": [
-        "I667:350;0:2729",
-        "I667:350;0:2730"
-      ]
+      "children_ids": []
     },
     {
       "id": "667:365",
@@ -1318,48 +751,10 @@
       ]
     },
     {
-      "id": "I667:393;0:2729;0:2889",
-      "role": "icon",
-      "name": "Popup",
-      "children_ids": []
-    },
-    {
-      "id": "I667:393;0:2729;0:2888",
-      "role": "icon",
-      "name": "Popup",
-      "children_ids": []
-    },
-    {
-      "id": "I667:393;0:2729",
-      "role": "instance",
-      "name": "Tile",
-      "children_ids": [
-        "I667:393;0:2729;0:2889",
-        "I667:393;0:2729;0:2888"
-      ]
-    },
-    {
-      "id": "I667:393;0:2731",
-      "role": "icon",
-      "name": "Header",
-      "children_ids": []
-    },
-    {
-      "id": "I667:393;0:2730",
-      "role": "composed-region",
-      "name": "Header",
-      "children_ids": [
-        "I667:393;0:2731"
-      ]
-    },
-    {
       "id": "667:393",
       "role": "instance",
       "name": "Tile",
-      "children_ids": [
-        "I667:393;0:2729",
-        "I667:393;0:2730"
-      ]
+      "children_ids": []
     },
     {
       "id": "667:396",
@@ -1462,313 +857,32 @@
       ]
     },
     {
-      "id": "I667:438;0:2868;0:2897",
-      "role": "icon",
-      "name": "Mask",
-      "children_ids": []
-    },
-    {
-      "id": "I667:438;0:2868;0:2898",
-      "role": "icon",
-      "name": "Icon / Accented",
-      "children_ids": []
-    },
-    {
-      "id": "I667:438;0:2868",
-      "role": "instance",
-      "name": "Chevron",
-      "children_ids": [
-        "I667:438;0:2868;0:2897",
-        "I667:438;0:2868;0:2898"
-      ]
-    },
-    {
       "id": "667:438",
       "role": "instance",
       "name": "Link",
-      "children_ids": [
-        "I667:438;0:2868"
-      ]
-    },
-    {
-      "id": "I667:440;0:2870;0:2901",
-      "role": "icon",
-      "name": "Button",
-      "children_ids": []
-    },
-    {
-      "id": "I667:440;0:2870;0:2902;0:2916",
-      "role": "icon",
-      "name": "Color",
-      "children_ids": []
-    },
-    {
-      "id": "I667:440;0:2870;0:2902",
-      "role": "instance",
-      "name": "Color",
-      "children_ids": [
-        "I667:440;0:2870;0:2902;0:2916"
-      ]
-    },
-    {
-      "id": "I667:440;0:2870;0:2900",
-      "role": "composed-region",
-      "name": "Fill",
-      "children_ids": [
-        "I667:440;0:2870;0:2901",
-        "I667:440;0:2870;0:2902"
-      ]
-    },
-    {
-      "id": "I667:440;0:2870;0:2906",
-      "role": "icon",
-      "name": "Button - Outline",
-      "children_ids": []
-    },
-    {
-      "id": "I667:440;0:2870;0:2907;0:2918",
-      "role": "icon",
-      "name": "Color",
-      "children_ids": []
-    },
-    {
-      "id": "I667:440;0:2870;0:2907",
-      "role": "instance",
-      "name": "Color",
-      "children_ids": [
-        "I667:440;0:2870;0:2907;0:2918"
-      ]
-    },
-    {
-      "id": "I667:440;0:2870;0:2903",
-      "role": "composed-region",
-      "name": "Outline",
-      "children_ids": [
-        "I667:440;0:2870;0:2906",
-        "I667:440;0:2870;0:2907"
-      ]
-    },
-    {
-      "id": "I667:440;0:2870",
-      "role": "instance",
-      "name": "Button",
-      "children_ids": [
-        "I667:440;0:2870;0:2900",
-        "I667:440;0:2870;0:2903"
-      ]
-    },
-    {
-      "id": "I667:440;0:2874",
-      "role": "instance",
-      "name": "Padding",
       "children_ids": []
     },
     {
       "id": "667:440",
       "role": "instance",
       "name": "Button",
-      "children_ids": [
-        "I667:440;0:2870",
-        "I667:440;0:2874"
-      ]
-    },
-    {
-      "id": "I667:442;0:2870;0:2901",
-      "role": "icon",
-      "name": "Button",
-      "children_ids": []
-    },
-    {
-      "id": "I667:442;0:2870;0:2902;0:2916",
-      "role": "icon",
-      "name": "Color",
-      "children_ids": []
-    },
-    {
-      "id": "I667:442;0:2870;0:2902",
-      "role": "instance",
-      "name": "Color",
-      "children_ids": [
-        "I667:442;0:2870;0:2902;0:2916"
-      ]
-    },
-    {
-      "id": "I667:442;0:2870;0:2900",
-      "role": "composed-region",
-      "name": "Fill",
-      "children_ids": [
-        "I667:442;0:2870;0:2901",
-        "I667:442;0:2870;0:2902"
-      ]
-    },
-    {
-      "id": "I667:442;0:2870;0:2906",
-      "role": "icon",
-      "name": "Button - Outline",
-      "children_ids": []
-    },
-    {
-      "id": "I667:442;0:2870;0:2907;0:2918",
-      "role": "icon",
-      "name": "Color",
-      "children_ids": []
-    },
-    {
-      "id": "I667:442;0:2870;0:2907",
-      "role": "instance",
-      "name": "Color",
-      "children_ids": [
-        "I667:442;0:2870;0:2907;0:2918"
-      ]
-    },
-    {
-      "id": "I667:442;0:2870;0:2903",
-      "role": "composed-region",
-      "name": "Outline",
-      "children_ids": [
-        "I667:442;0:2870;0:2906",
-        "I667:442;0:2870;0:2907"
-      ]
-    },
-    {
-      "id": "I667:442;0:2870",
-      "role": "instance",
-      "name": "Button",
-      "children_ids": [
-        "I667:442;0:2870;0:2900",
-        "I667:442;0:2870;0:2903"
-      ]
-    },
-    {
-      "id": "I667:442;0:2874",
-      "role": "instance",
-      "name": "Padding",
       "children_ids": []
     },
     {
       "id": "667:442",
       "role": "instance",
       "name": "Button",
-      "children_ids": [
-        "I667:442;0:2870",
-        "I667:442;0:2874"
-      ]
-    },
-    {
-      "id": "I667:444;0:2876;0:2901",
-      "role": "icon",
-      "name": "Button",
-      "children_ids": []
-    },
-    {
-      "id": "I667:444;0:2876;0:2902;0:2916",
-      "role": "icon",
-      "name": "Color",
-      "children_ids": []
-    },
-    {
-      "id": "I667:444;0:2876;0:2902",
-      "role": "instance",
-      "name": "Color",
-      "children_ids": [
-        "I667:444;0:2876;0:2902;0:2916"
-      ]
-    },
-    {
-      "id": "I667:444;0:2876;0:2900",
-      "role": "composed-region",
-      "name": "Fill",
-      "children_ids": [
-        "I667:444;0:2876;0:2901",
-        "I667:444;0:2876;0:2902"
-      ]
-    },
-    {
-      "id": "I667:444;0:2876;0:2906",
-      "role": "icon",
-      "name": "Button - Outline",
-      "children_ids": []
-    },
-    {
-      "id": "I667:444;0:2876;0:2907;0:2918",
-      "role": "icon",
-      "name": "Color",
-      "children_ids": []
-    },
-    {
-      "id": "I667:444;0:2876;0:2907",
-      "role": "instance",
-      "name": "Color",
-      "children_ids": [
-        "I667:444;0:2876;0:2907;0:2918"
-      ]
-    },
-    {
-      "id": "I667:444;0:2876;0:2903",
-      "role": "composed-region",
-      "name": "Outline",
-      "children_ids": [
-        "I667:444;0:2876;0:2906",
-        "I667:444;0:2876;0:2907"
-      ]
-    },
-    {
-      "id": "I667:444;0:2876",
-      "role": "instance",
-      "name": "Button",
-      "children_ids": [
-        "I667:444;0:2876;0:2900",
-        "I667:444;0:2876;0:2903"
-      ]
-    },
-    {
-      "id": "I667:444;0:2880;0:2911",
-      "role": "icon",
-      "name": "Mask",
-      "children_ids": []
-    },
-    {
-      "id": "I667:444;0:2880;0:2912",
-      "role": "icon",
-      "name": "Icon / Primary",
-      "children_ids": []
-    },
-    {
-      "id": "I667:444;0:2880",
-      "role": "instance",
-      "name": "Chevron",
-      "children_ids": [
-        "I667:444;0:2880;0:2911",
-        "I667:444;0:2880;0:2912"
-      ]
-    },
-    {
-      "id": "I667:444;0:2877",
-      "role": "composed-region",
-      "name": "Data",
-      "children_ids": [
-        "I667:444;0:2880"
-      ]
-    },
-    {
-      "id": "I667:444;0:2882",
-      "role": "instance",
-      "name": "Padding",
       "children_ids": []
     },
     {
       "id": "667:444",
       "role": "instance",
       "name": "Button",
-      "children_ids": [
-        "I667:444;0:2876",
-        "I667:444;0:2877",
-        "I667:444;0:2882"
-      ]
+      "children_ids": []
     },
     {
       "id": "667:211",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "E01 - Share Summary",
       "children_ids": [
         "667:213",
@@ -1782,14 +896,15 @@
     }
   ],
   "dropped_by_reason": {
-    "icon_internal": 42,
-    "captured_as_content_slot": 81,
+    "icon_internal": 32,
+    "captured_as_content_slot": 168,
     "tiny_decorative": 11,
-    "invisible_decoration": 37,
-    "same_bbox_passthrough_collapsed": 11,
-    "folded_into_pattern": 5
+    "invisible_decoration": 34,
+    "same_bbox_passthrough_collapsed": 6,
+    "folded_into_pattern": 5,
+    "agenda_truncated": 17
   },
   "warnings": [
-    "agenda_size=130 exceeded max_agenda=50; consider raising max_agenda or grouping sub-regions in composition"
+    "agenda_size=67 exceeded max_agenda=50; truncated 17 low-importance region(s); see dropped_agenda_truncated"
   ]
 }

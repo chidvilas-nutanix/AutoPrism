@@ -1,30 +1,25 @@
 {
   "summary": {
     "input_nodes": 278,
-    "kept_for_mapping": 37,
-    "dropped_total": 224,
-    "agenda_size": 37,
+    "kept_for_mapping": 36,
+    "dropped_total": 227,
+    "agenda_size": 36,
     "tokens_count": 0,
     "warnings_count": 0,
     "max_depth": 20,
     "max_agenda": 50,
     "dropped_unknown_type_fallback": 1,
-    "dropped_icon_internal": 111,
-    "dropped_invisible_decoration": 6,
-    "dropped_same_bbox_passthrough_collapsed": 3,
-    "dropped_captured_as_content_slot": 95,
-    "dropped_tiny_decorative": 8
+    "dropped_icon_internal": 109,
+    "dropped_captured_as_content_slot": 104,
+    "dropped_same_bbox_passthrough_collapsed": 2,
+    "dropped_tiny_decorative": 8,
+    "dropped_invisible_decoration": 3
   },
   "agenda": [
     {
       "id": "602:58",
       "role": "icon",
       "name": "Left"
-    },
-    {
-      "id": "I602:63;0:99765",
-      "role": "icon",
-      "name": "Button - Outline"
     },
     {
       "id": "602:63",
@@ -172,11 +167,6 @@
       "name": "Icon - Chevron Right"
     },
     {
-      "id": "I602:227;0:99808",
-      "role": "icon",
-      "name": "Double Arrow"
-    },
-    {
       "id": "602:227",
       "role": "instance",
       "name": "Select - Rows"
@@ -200,6 +190,11 @@
       "id": "602:245",
       "role": "composed-region",
       "name": "Group"
+    },
+    {
+      "id": "602:57",
+      "role": "composed-region",
+      "name": "Opportunities_List View Copy"
     }
   ],
   "layout_tree": [
@@ -210,18 +205,10 @@
       "children_ids": []
     },
     {
-      "id": "I602:63;0:99765",
-      "role": "icon",
-      "name": "Button - Outline",
-      "children_ids": []
-    },
-    {
       "id": "602:63",
       "role": "instance",
       "name": "Button",
-      "children_ids": [
-        "I602:63;0:99765"
-      ]
+      "children_ids": []
     },
     {
       "id": "602:65",
@@ -446,18 +433,10 @@
       ]
     },
     {
-      "id": "I602:227;0:99808",
-      "role": "icon",
-      "name": "Double Arrow",
-      "children_ids": []
-    },
-    {
       "id": "602:227",
       "role": "instance",
       "name": "Select - Rows",
-      "children_ids": [
-        "I602:227;0:99808"
-      ]
+      "children_ids": []
     },
     {
       "id": "602:225",
@@ -497,7 +476,7 @@
     },
     {
       "id": "602:57",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "Opportunities_List View Copy",
       "children_ids": [
         "602:58",
@@ -523,15 +502,23 @@
         "602:215",
         "602:245"
       ]
+    },
+    {
+      "id": "1669:162202",
+      "role": "layout-container",
+      "name": "Figma Basics",
+      "children_ids": [
+        "602:57"
+      ]
     }
   ],
   "dropped_by_reason": {
     "unknown_type_fallback": 1,
-    "icon_internal": 111,
-    "invisible_decoration": 6,
-    "same_bbox_passthrough_collapsed": 3,
-    "captured_as_content_slot": 95,
-    "tiny_decorative": 8
+    "icon_internal": 109,
+    "captured_as_content_slot": 104,
+    "same_bbox_passthrough_collapsed": 2,
+    "tiny_decorative": 8,
+    "invisible_decoration": 3
   },
   "warnings": []
 }

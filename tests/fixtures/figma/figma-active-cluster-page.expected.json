@@ -1,50 +1,21 @@
 {
   "summary": {
     "input_nodes": 1126,
-    "kept_for_mapping": 71,
-    "dropped_total": 1042,
-    "agenda_size": 71,
-    "tokens_count": 6,
-    "warnings_count": 1,
+    "kept_for_mapping": 22,
+    "dropped_total": 1097,
+    "agenda_size": 22,
+    "tokens_count": 3,
+    "warnings_count": 0,
     "max_depth": 20,
     "max_agenda": 50,
-    "dropped_folded_into_pattern": 796,
-    "dropped_captured_as_content_slot": 12,
-    "dropped_explicit_hidden": 175,
-    "dropped_icon_internal": 55,
-    "dropped_same_bbox_passthrough_collapsed": 3,
-    "dropped_tiny_decorative": 1
+    "dropped_folded_into_pattern": 658,
+    "dropped_captured_as_content_slot": 439
   },
   "agenda": [
     {
       "id": "624:6832",
       "role": "button-group",
       "name": "Frame 977"
-    },
-    {
-      "id": "I624:6837;1928:17443;1928:7034",
-      "role": "icon",
-      "name": "Icon/Controls/Information"
-    },
-    {
-      "id": "I624:6837;1928:17443;42060:35383",
-      "role": "icon",
-      "name": "Icon/Special/Double Arrow"
-    },
-    {
-      "id": "I624:6837;1928:17443;42060:35950",
-      "role": "composed-region",
-      "name": "2 Icon"
-    },
-    {
-      "id": "I624:6837;1928:17443;1928:7033",
-      "role": "composed-region",
-      "name": "Input Field"
-    },
-    {
-      "id": "I624:6837;1928:17443",
-      "role": "instance",
-      "name": "_Structure/Input/Select"
     },
     {
       "id": "624:6837",
@@ -55,31 +26,6 @@
       "id": "624:6835",
       "role": "composed-region",
       "name": "Frame 2836"
-    },
-    {
-      "id": "I624:6838;5803:59417",
-      "role": "icon",
-      "name": "Icon/Actions/Star"
-    },
-    {
-      "id": "I624:6838;5803:59418",
-      "role": "icon",
-      "name": "Icon/Special/Chevron"
-    },
-    {
-      "id": "I624:6838;5803:59415",
-      "role": "composed-region",
-      "name": "Favortie Prefix"
-    },
-    {
-      "id": "I624:6838;5803:59425",
-      "role": "icon",
-      "name": "Icon/Actions/Filter"
-    },
-    {
-      "id": "I624:6838;5803:59424",
-      "role": "composed-region",
-      "name": "Link"
     },
     {
       "id": "624:6838",
@@ -127,14 +73,14 @@
       "name": "Table/Column"
     },
     {
+      "id": "624:6842",
+      "role": "composed-region",
+      "name": "Table Body"
+    },
+    {
       "id": "624:6840",
       "role": "composed-region",
       "name": "Table"
-    },
-    {
-      "id": "I624:7155;451:23",
-      "role": "tab-strip",
-      "name": "Container"
     },
     {
       "id": "624:7155",
@@ -147,11 +93,6 @@
       "name": "table"
     },
     {
-      "id": "I624:7159;490:211",
-      "role": "icon",
-      "name": "Tooltip/Tooltip Caret"
-    },
-    {
       "id": "624:7159",
       "role": "instance",
       "name": "Tooltip/Normal \u2705"
@@ -162,204 +103,14 @@
       "name": "content"
     },
     {
-      "id": "624:7162",
-      "role": "icon",
-      "name": "Icon/Product/Community Edition"
-    },
-    {
-      "id": "624:7161",
-      "role": "composed-region",
-      "name": "Product"
-    },
-    {
-      "id": "I624:7167;48569:40843",
-      "role": "icon",
-      "name": "Icon/Actions/Search"
-    },
-    {
-      "id": "I624:7167;48569:40842",
-      "role": "composed-region",
-      "name": "Frame 1321314818"
-    },
-    {
-      "id": "I624:7167;48569:40846",
-      "role": "icon",
-      "name": "Icon/Controls/Information"
-    },
-    {
-      "id": "I624:7167;48569:40847",
-      "role": "icon",
-      "name": "Icon/Actions/Empty Star"
-    },
-    {
-      "id": "I624:7167;48569:40845",
-      "role": "composed-region",
-      "name": "2 Icon"
-    },
-    {
-      "id": "624:7167",
-      "role": "instance",
-      "name": "Nav Search"
-    },
-    {
-      "id": "624:7168",
-      "role": "icon",
-      "name": "Icon/Controls/List View"
-    },
-    {
-      "id": "I624:7170;1928:17443;1928:7034",
-      "role": "icon",
-      "name": "Icon/Controls/Information"
-    },
-    {
-      "id": "I624:7170;1928:17443;42060:35383",
-      "role": "icon",
-      "name": "Icon/Special/Double Arrow"
-    },
-    {
-      "id": "I624:7170;1928:17443;42060:35950",
-      "role": "composed-region",
-      "name": "2 Icon"
-    },
-    {
-      "id": "I624:7170;1928:17443;1928:7033",
-      "role": "composed-region",
-      "name": "Input Field"
-    },
-    {
-      "id": "I624:7170;1928:17443",
-      "role": "instance",
-      "name": "_Structure/Input/Select"
-    },
-    {
-      "id": "624:7170",
-      "role": "instance",
-      "name": "Input/Select"
-    },
-    {
-      "id": "624:7173",
-      "role": "icon",
-      "name": "Icon/Actions/Empty Star"
-    },
-    {
-      "id": "624:7174",
-      "role": "icon",
-      "name": "Icon/Special/Alert Large"
-    },
-    {
-      "id": "624:7175",
-      "role": "instance",
-      "name": "Badge/Badge"
-    },
-    {
-      "id": "624:7172",
-      "role": "composed-region",
-      "name": "Alerts"
-    },
-    {
-      "id": "624:7176",
-      "role": "icon",
-      "name": "Icon/Controls/Question Mark"
-    },
-    {
-      "id": "624:7180",
-      "role": "icon",
-      "name": "Icon/System/User"
-    },
-    {
-      "id": "624:7181",
-      "role": "icon",
-      "name": "Button Icon"
-    },
-    {
-      "id": "624:7178",
-      "role": "composed-region",
-      "name": "Frame 2800"
-    },
-    {
-      "id": "624:7171",
-      "role": "composed-region",
-      "name": "Status + Name"
-    },
-    {
-      "id": "624:7169",
-      "role": "composed-region",
-      "name": "Frame 1"
-    },
-    {
       "id": "624:7160",
       "role": "frame",
       "name": "Navigation/Header"
     },
     {
-      "id": "I624:7182;576:19",
-      "role": "instance",
-      "name": "Navigation/Side Menu Page/Subtext - 2/False/False"
-    },
-    {
-      "id": "I624:7182;392:62;394:3761;394:3532",
-      "role": "icon",
-      "name": "Icon + Text"
-    },
-    {
-      "id": "I624:7182;392:62;394:3761;394:3533",
-      "role": "icon",
-      "name": "Icon/Special/Chevron"
-    },
-    {
-      "id": "I624:7182;392:62;394:3761",
-      "role": "instance",
-      "name": "Table/Column/_Structure/Side Menu Page"
-    },
-    {
-      "id": "I624:7182;392:62",
-      "role": "instance",
-      "name": "Page 2"
-    },
-    {
-      "id": "I624:7182;392:66;394:3612;394:3532",
-      "role": "icon",
-      "name": "Icon + Text"
-    },
-    {
-      "id": "I624:7182;392:66;394:3612",
-      "role": "instance",
-      "name": "Table/Column/_Structure/Side Menu Page"
-    },
-    {
-      "id": "I624:7182;392:66",
-      "role": "instance",
-      "name": "Navigation/Side Menu Page"
-    },
-    {
-      "id": "I624:7182;392:68;394:3562;394:3532",
-      "role": "icon",
-      "name": "Icon + Text"
-    },
-    {
-      "id": "I624:7182;392:68;394:3562",
-      "role": "instance",
-      "name": "Table/Column/_Structure/Side Menu Page"
-    },
-    {
-      "id": "I624:7182;392:68",
-      "role": "instance",
-      "name": "Page 8"
-    },
-    {
       "id": "624:7182",
       "role": "instance",
       "name": "Navigation/Side Menu"
-    },
-    {
-      "id": "I624:7183;1049:2130",
-      "role": "tab-strip",
-      "name": "Tabs"
-    },
-    {
-      "id": "I624:7183;809:22",
-      "role": "composed-region",
-      "name": "Container"
     },
     {
       "id": "624:7183",
@@ -388,49 +139,10 @@
       ]
     },
     {
-      "id": "I624:6837;1928:17443;1928:7034",
-      "role": "icon",
-      "name": "Icon/Controls/Information",
-      "children_ids": []
-    },
-    {
-      "id": "I624:6837;1928:17443;42060:35383",
-      "role": "icon",
-      "name": "Icon/Special/Double Arrow",
-      "children_ids": []
-    },
-    {
-      "id": "I624:6837;1928:17443;42060:35950",
-      "role": "composed-region",
-      "name": "2 Icon",
-      "children_ids": [
-        "I624:6837;1928:17443;1928:7034",
-        "I624:6837;1928:17443;42060:35383"
-      ]
-    },
-    {
-      "id": "I624:6837;1928:17443;1928:7033",
-      "role": "composed-region",
-      "name": "Input Field",
-      "children_ids": [
-        "I624:6837;1928:17443;42060:35950"
-      ]
-    },
-    {
-      "id": "I624:6837;1928:17443",
-      "role": "instance",
-      "name": "_Structure/Input/Select",
-      "children_ids": [
-        "I624:6837;1928:17443;1928:7033"
-      ]
-    },
-    {
       "id": "624:6837",
       "role": "instance",
       "name": "Input/Select",
-      "children_ids": [
-        "I624:6837;1928:17443"
-      ]
+      "children_ids": []
     },
     {
       "id": "624:6835",
@@ -449,55 +161,10 @@
       ]
     },
     {
-      "id": "I624:6838;5803:59417",
-      "role": "icon",
-      "name": "Icon/Actions/Star",
-      "children_ids": []
-    },
-    {
-      "id": "I624:6838;5803:59418",
-      "role": "icon",
-      "name": "Icon/Special/Chevron",
-      "children_ids": []
-    },
-    {
-      "id": "I624:6838;5803:59415",
-      "role": "composed-region",
-      "name": "Favortie Prefix",
-      "children_ids": [
-        "I624:6838;5803:59417",
-        "I624:6838;5803:59418"
-      ]
-    },
-    {
-      "id": "I624:6838;5803:59425",
-      "role": "icon",
-      "name": "Icon/Actions/Filter",
-      "children_ids": []
-    },
-    {
-      "id": "I624:6838;5803:59424",
-      "role": "composed-region",
-      "name": "Link",
-      "children_ids": [
-        "I624:6838;5803:59425"
-      ]
-    },
-    {
-      "id": "I624:6838;5803:59423",
-      "role": "layout-container",
-      "name": "Controls",
-      "children_ids": [
-        "I624:6838;5803:59424"
-      ]
-    },
-    {
       "id": "624:6838",
       "role": "instance",
       "name": "Entity Browser/Filter Bar",
-      "children_ids": [
-        "I624:6838;5803:59415"
-      ]
+      "children_ids": []
     },
     {
       "id": "624:6841",
@@ -549,7 +216,7 @@
     },
     {
       "id": "624:6842",
-      "role": "layout-container",
+      "role": "composed-region",
       "name": "Table Body",
       "children_ids": [
         "624:6843",
@@ -566,22 +233,15 @@
       "role": "composed-region",
       "name": "Table",
       "children_ids": [
-        "624:6841"
+        "624:6841",
+        "624:6842"
       ]
-    },
-    {
-      "id": "I624:7155;451:23",
-      "role": "tab-strip",
-      "name": "Container",
-      "children_ids": []
     },
     {
       "id": "624:7155",
       "role": "instance",
       "name": "Navigation/Subheader/Tabs",
-      "children_ids": [
-        "I624:7155;451:23"
-      ]
+      "children_ids": []
     },
     {
       "id": "624:6839",
@@ -593,19 +253,10 @@
       ]
     },
     {
-      "id": "I624:7159;490:211",
-      "role": "icon",
-      "name": "Tooltip/Tooltip Caret",
-      "children_ids": []
-    },
-    {
       "id": "624:7159",
       "role": "instance",
       "name": "Tooltip/Normal \u2705",
-      "children_ids": [
-        "I624:7159;490:208",
-        "I624:7159;490:211"
-      ]
+      "children_ids": []
     },
     {
       "id": "624:6829",
@@ -618,288 +269,10 @@
       ]
     },
     {
-      "id": "624:7162",
-      "role": "icon",
-      "name": "Icon/Product/Community Edition",
-      "children_ids": []
-    },
-    {
-      "id": "624:7161",
-      "role": "composed-region",
-      "name": "Product",
-      "children_ids": [
-        "624:7162"
-      ]
-    },
-    {
-      "id": "I624:7167;48569:40843",
-      "role": "icon",
-      "name": "Icon/Actions/Search",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7167;48569:40842",
-      "role": "composed-region",
-      "name": "Frame 1321314818",
-      "children_ids": [
-        "I624:7167;48569:40843"
-      ]
-    },
-    {
-      "id": "I624:7167;48569:40846",
-      "role": "icon",
-      "name": "Icon/Controls/Information",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7167;48569:40847",
-      "role": "icon",
-      "name": "Icon/Actions/Empty Star",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7167;48569:40845",
-      "role": "composed-region",
-      "name": "2 Icon",
-      "children_ids": [
-        "I624:7167;48569:40846",
-        "I624:7167;48569:40847"
-      ]
-    },
-    {
-      "id": "624:7167",
-      "role": "instance",
-      "name": "Nav Search",
-      "children_ids": [
-        "I624:7167;48569:40842",
-        "I624:7167;48569:40845"
-      ]
-    },
-    {
-      "id": "624:7168",
-      "role": "icon",
-      "name": "Icon/Controls/List View",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7170;1928:17443;1928:7034",
-      "role": "icon",
-      "name": "Icon/Controls/Information",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7170;1928:17443;42060:35383",
-      "role": "icon",
-      "name": "Icon/Special/Double Arrow",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7170;1928:17443;42060:35950",
-      "role": "composed-region",
-      "name": "2 Icon",
-      "children_ids": [
-        "I624:7170;1928:17443;1928:7034",
-        "I624:7170;1928:17443;42060:35383"
-      ]
-    },
-    {
-      "id": "I624:7170;1928:17443;1928:7033",
-      "role": "composed-region",
-      "name": "Input Field",
-      "children_ids": [
-        "I624:7170;1928:17443;42060:35950"
-      ]
-    },
-    {
-      "id": "I624:7170;1928:17443",
-      "role": "instance",
-      "name": "_Structure/Input/Select",
-      "children_ids": [
-        "I624:7170;1928:17443;1928:7033"
-      ]
-    },
-    {
-      "id": "624:7170",
-      "role": "instance",
-      "name": "Input/Select",
-      "children_ids": [
-        "I624:7170;1928:17443"
-      ]
-    },
-    {
-      "id": "624:7173",
-      "role": "icon",
-      "name": "Icon/Actions/Empty Star",
-      "children_ids": []
-    },
-    {
-      "id": "624:7174",
-      "role": "icon",
-      "name": "Icon/Special/Alert Large",
-      "children_ids": []
-    },
-    {
-      "id": "624:7175",
-      "role": "instance",
-      "name": "Badge/Badge",
-      "children_ids": []
-    },
-    {
-      "id": "624:7172",
-      "role": "composed-region",
-      "name": "Alerts",
-      "children_ids": [
-        "624:7173",
-        "624:7174",
-        "624:7175"
-      ]
-    },
-    {
-      "id": "624:7176",
-      "role": "icon",
-      "name": "Icon/Controls/Question Mark",
-      "children_ids": []
-    },
-    {
-      "id": "624:7180",
-      "role": "icon",
-      "name": "Icon/System/User",
-      "children_ids": []
-    },
-    {
-      "id": "624:7181",
-      "role": "icon",
-      "name": "Button Icon",
-      "children_ids": []
-    },
-    {
-      "id": "624:7178",
-      "role": "composed-region",
-      "name": "Frame 2800",
-      "children_ids": [
-        "624:7180",
-        "624:7181"
-      ]
-    },
-    {
-      "id": "624:7171",
-      "role": "composed-region",
-      "name": "Status + Name",
-      "children_ids": [
-        "624:7172",
-        "624:7176",
-        "624:7178"
-      ]
-    },
-    {
-      "id": "624:7169",
-      "role": "composed-region",
-      "name": "Frame 1",
-      "children_ids": [
-        "624:7170",
-        "624:7171"
-      ]
-    },
-    {
       "id": "624:7160",
       "role": "frame",
       "name": "Navigation/Header",
-      "children_ids": [
-        "624:7161",
-        "624:7167",
-        "624:7168",
-        "624:7169"
-      ]
-    },
-    {
-      "id": "I624:7182;576:19",
-      "role": "instance",
-      "name": "Navigation/Side Menu Page/Subtext - 2/False/False",
       "children_ids": []
-    },
-    {
-      "id": "I624:7182;392:62;394:3761;394:3532",
-      "role": "icon",
-      "name": "Icon + Text",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7182;392:62;394:3761;394:3533",
-      "role": "icon",
-      "name": "Icon/Special/Chevron",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7182;392:62;394:3761",
-      "role": "instance",
-      "name": "Table/Column/_Structure/Side Menu Page",
-      "children_ids": [
-        "I624:7182;392:62;394:3761;394:3532",
-        "I624:7182;392:62;394:3761;394:3533"
-      ]
-    },
-    {
-      "id": "I624:7182;392:62",
-      "role": "instance",
-      "name": "Page 2",
-      "children_ids": [
-        "I624:7182;392:62;394:3761"
-      ]
-    },
-    {
-      "id": "I624:7182;392:66;394:3612;394:3532",
-      "role": "icon",
-      "name": "Icon + Text",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7182;392:66;394:3612",
-      "role": "instance",
-      "name": "Table/Column/_Structure/Side Menu Page",
-      "children_ids": [
-        "I624:7182;392:66;394:3612;394:3532"
-      ]
-    },
-    {
-      "id": "I624:7182;392:66",
-      "role": "instance",
-      "name": "Navigation/Side Menu Page",
-      "children_ids": [
-        "I624:7182;392:66;394:3612"
-      ]
-    },
-    {
-      "id": "I624:7182;392:68;394:3562;394:3532",
-      "role": "icon",
-      "name": "Icon + Text",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7182;392:68;394:3562",
-      "role": "instance",
-      "name": "Table/Column/_Structure/Side Menu Page",
-      "children_ids": [
-        "I624:7182;392:68;394:3562;394:3532"
-      ]
-    },
-    {
-      "id": "I624:7182;392:68",
-      "role": "instance",
-      "name": "Page 8",
-      "children_ids": [
-        "I624:7182;392:68;394:3562"
-      ]
-    },
-    {
-      "id": "I624:7182;392:54",
-      "role": "layout-container",
-      "name": "Content",
-      "children_ids": [
-        "I624:7182;576:19",
-        "I624:7182;392:62",
-        "I624:7182;392:66",
-        "I624:7182;392:68"
-      ]
     },
     {
       "id": "624:7182",
@@ -908,26 +281,10 @@
       "children_ids": []
     },
     {
-      "id": "I624:7183;1049:2130",
-      "role": "tab-strip",
-      "name": "Tabs",
-      "children_ids": []
-    },
-    {
-      "id": "I624:7183;809:22",
-      "role": "composed-region",
-      "name": "Container",
-      "children_ids": [
-        "I624:7183;1049:2130"
-      ]
-    },
-    {
       "id": "624:7183",
       "role": "instance",
       "name": "Navigation/Subheader/Navigation",
-      "children_ids": [
-        "I624:7183;809:22"
-      ]
+      "children_ids": []
     },
     {
       "id": "624:6826",
@@ -942,14 +299,8 @@
     }
   ],
   "dropped_by_reason": {
-    "folded_into_pattern": 796,
-    "captured_as_content_slot": 12,
-    "explicit_hidden": 175,
-    "icon_internal": 55,
-    "same_bbox_passthrough_collapsed": 3,
-    "tiny_decorative": 1
+    "folded_into_pattern": 658,
+    "captured_as_content_slot": 439
   },
-  "warnings": [
-    "agenda_size=71 exceeded max_agenda=50; consider raising max_agenda or grouping sub-regions in composition"
-  ]
+  "warnings": []
 }

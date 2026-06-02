@@ -202,10 +202,18 @@ _TABLE_CELL_NAME_RE = re.compile(
 
 
 def match_column_of_cells(node: dict[str, Any]) -> PatternMatch | None:
-    """A FRAME named ``Table/Column`` with one ``Table/Table Title``
-    and N ``Table/Table Cell`` (or ``Cell``) children.
+    """A FRAME or INSTANCE named ``Table/Column`` with one
+    ``Table/Table Title`` and N ``Table/Table Cell`` (or ``Cell``)
+    children.
 
-    Real example: §8.2. The Opportunities page has 7 such columns.
+    Real examples: §8.2. The Opportunities page has 7 such columns
+    built as one-off FRAMEs; the X-Ray Master File pages use the
+    published ``Table/Column`` component which materialises as
+    ``INSTANCE`` nodes with the same name + same children topology.
+    Both shapes carry the same semantic — one logical table column
+    that absorbs its header + cell sub-tree — so we accept both
+    Figma types here. See ``docs/x-ray-walker-investigation.md`` §8
+    "Fix A — pattern guards".
 
     The title text is allowed to be nested inside the
     ``Table/Table Title`` frame — real Nutanix designs wrap the
@@ -215,7 +223,7 @@ def match_column_of_cells(node: dict[str, Any]) -> PatternMatch | None:
     those production designs without losing the strong
     ``Table/Column`` name anchor.
     """
-    if node.get("type") != "FRAME":
+    if node.get("type") not in {"FRAME", "INSTANCE"}:
         return None
     if not _TABLE_COLUMN_NAME_RE.match(str(node.get("name", "")).strip()):
         return None
@@ -262,9 +270,17 @@ _TAB_NAME_RE = re.compile(
 
 
 def match_tab_strip(node: dict[str, Any]) -> PatternMatch | None:
-    """A FRAME containing 2+ INSTANCEs whose names match the tab
-    convention. The container itself may also be named tabs/segment."""
-    if node.get("type") != "FRAME":
+    """A FRAME or INSTANCE containing 2+ INSTANCEs whose names match
+    the tab convention. The container itself may also be named
+    tabs/segment.
+
+    Both FRAME and INSTANCE shapes are accepted because production
+    pages frequently materialise the tab bar as a published
+    ``Tabs`` component (INSTANCE) rather than a one-off FRAME. See
+    ``docs/x-ray-walker-investigation.md`` §8 "Fix A — pattern
+    guards".
+    """
+    if node.get("type") not in {"FRAME", "INSTANCE"}:
         return None
     children = iter_children(node)
     instances = [c for c in children if c.get("type") == "INSTANCE"]

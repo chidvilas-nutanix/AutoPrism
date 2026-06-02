@@ -24,6 +24,7 @@ from prism_mcp.workflow.figma_mapping import (
     FigmaNodeMapping,
     _build_lexical_query,
     _build_semantic_query,
+    _normalise_component_name,
     map_figma_node,
 )
 
@@ -602,6 +603,103 @@ def test_build_semantic_query_text_content_before_reference_code() -> None:
 
 
 # --------------------------------------------------------------------------
+# Fix E — ``Domain/Type`` Figma naming rewriting (§11.6 + §12 "Fix E").
+# --------------------------------------------------------------------------
+
+
+def test_fix_e_lexical_query_splits_slash_namespaced_name() -> None:
+    """``"Action/Link"`` MUST contribute both the literal and the
+    space-split tokens so BM25 has matchable individual tokens. See
+    ``docs/x-ray-walker-investigation.md`` §11.6 + §12 "Fix E".
+    """
+    result = _build_lexical_query(
+        node_name="Action/Link",
+        node_type="INSTANCE",
+        reference_code=None,
+    )
+    assert "Action/Link" in result, (
+        "literal must be preserved so descriptions that contain the "
+        "literal still match"
+    )
+    assert "action" in result and "link" in result, (
+        "split tokens must be added so BM25 has matchable individual "
+        f"terms; got: {result!r}"
+    )
+
+
+def test_fix_e_lexical_query_applies_alias_table_for_link() -> None:
+    """``"Action/Link"`` is in the alias table → ``"Link Action"`` hint
+    must be appended so the Prism ``Link`` entity surfaces in the
+    BM25 results."""
+    result = _build_lexical_query(
+        node_name="Action/Link",
+        node_type="INSTANCE",
+        reference_code=None,
+    )
+    assert "Link" in result and "Action" in result.split(), (
+        f"alias hint missing; got: {result!r}"
+    )
+
+
+def test_fix_e_lexical_query_applies_alias_for_table_cell() -> None:
+    """``"Table/Table Cell"`` → adds ``"TableCell Cell"`` so the
+    Prism ``TableCell`` entity is reachable from the literal name."""
+    result = _build_lexical_query(
+        node_name="Table/Table Cell",
+        node_type="INSTANCE",
+        reference_code=None,
+    )
+    assert "TableCell" in result, (
+        f"alias 'TableCell Cell' missing; got: {result!r}"
+    )
+
+
+def test_fix_e_lexical_query_preserves_unnamespaced_names() -> None:
+    """A name without ``/`` MUST be left alone — Fix E is a no-op for
+    regular product-page layer names and must not double-count
+    tokens for them."""
+    result = _build_lexical_query(
+        node_name="Header",
+        node_type="INSTANCE",
+        reference_code=None,
+    )
+    assert result == "Header INSTANCE", (
+        f"Fix E altered a non-namespaced name; got: {result!r}"
+    )
+
+
+def test_fix_e_lexical_query_rewrites_parent_chain_too() -> None:
+    """Ancestors are also rewritten so a ``Modal/Empty`` parent
+    contributes ``"modal empty"`` tokens to the child's query."""
+    result = _build_lexical_query(
+        node_name="Body Copy",
+        node_type="TEXT",
+        reference_code=None,
+        parent_chain=["Page", "Workspace", "Modal/Empty", "Card/Normal"],
+    )
+    assert "modal empty" in result, (
+        f"parent chain rewrite missing; got: {result!r}"
+    )
+    assert "card normal" in result, (
+        f"parent chain rewrite missing; got: {result!r}"
+    )
+
+
+def test_fix_e_semantic_query_rewrites_name_too() -> None:
+    """The dense / hybrid semantic query also benefits from the
+    rewrite — same logic, same alias table."""
+    result = _build_semantic_query(
+        node_name="Modal/Fullpage", reference_code=None
+    )
+    assert "Modal/Fullpage" in result, (
+        "literal must be preserved in semantic query"
+    )
+    assert "FullPageModal" in result, (
+        f"alias hint missing in semantic query; got: {result!r}"
+    )
+
+
+# --------------------------------------------------------------------------
 # Positive: enrichment surfaces a better candidate.
 # --------------------------------------------------------------------------
 
@@ -656,3 +754,254 @@ def test_map_figma_node_text_content_improves_candidate_score() -> None:
         f"expected Paragraph in enriched candidates, got {enriched_names} "
         f"(bare top was {bare_top})"
     )
+
+
+# --------------------------------------------------------------------------
+# Layer D — role-synonym and shape-bucket bonuses.
+#
+# These tests pin the +0.15 / +0.05 boost mechanics from
+# ``docs/handoff-spatial-and-ranker.md`` §3. Each test isolates one
+# branch so a future tweak to either bonus constant can't silently
+# regress the other.
+# --------------------------------------------------------------------------
+
+
+def _two_candidate_setup(
+    role_winner: str, generic_runner_up: str
+) -> tuple[Index, _StubHybridSearcher]:
+    """Construct an index + hybrid stub where ``role_winner`` arrives
+    via the hybrid ranker and ``generic_runner_up`` via BM25 with
+    identical RRF rank.
+
+    The fused scores tie at ``1/61`` before any bonus, so the
+    sort tie-break runs alphabetically. Applying a role or
+    shape-bucket boost to ``role_winner`` is the only way it can
+    win — which makes the boost the variable under test.
+    """
+    index = Index(
+        entities=[
+            _component_entity(role_winner),
+            _component_entity(generic_runner_up),
+        ],
+        version="t",
+    )
+    searcher = _StubHybridSearcher(
+        [_hit("<X/>", component_name=role_winner)]
+    )
+    return index, searcher
+
+
+def test_region_role_kpi_tile_boost_lifts_tile_above_card() -> None:
+    """``region_role='kpi-tile'`` adds +0.15 to Tile, beating Card.
+
+    Construction guarantees a fused tie before the boost so the
+    role bonus is the only thing that can flip the order. If the
+    bonus regresses to zero (or the synonyms entry vanishes) this
+    test flips first.
+    """
+    # node_name "Card" so BM25 finds the "Card" entity; hybrid
+    # contributes "Tile". Without the role boost they tie.
+    index, searcher = _two_candidate_setup("Tile", "Card")
+    graph = build_composition_graph(chunks=[], version="t")
+    kwargs = dict(
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+
+    no_role = map_figma_node(node_name="Card", **kwargs)
+    with_role = map_figma_node(
+        node_name="Card", region_role="kpi-tile", **kwargs
+    )
+
+    no_names = [c.name for c in no_role.candidates]
+    with_names = [c.name for c in with_role.candidates]
+    assert no_names.index("Card") < no_names.index("Tile")
+    assert with_names.index("Tile") < with_names.index("Card")
+    assert with_role.suggested_component_name == "Tile"
+
+
+def test_region_role_table_column_boost_lifts_table_above_panel() -> None:
+    """``region_role='table-column'`` lifts ``Table`` above an
+    equally-scored ``Panel`` candidate.
+
+    Covers a second entry in :data:`ROLE_TO_COMPONENT_SYNONYMS` so
+    a future shrink to the synonym table (e.g. dropping
+    ``"table"``) fails this case too.
+    """
+    index, searcher = _two_candidate_setup("Table", "Panel")
+    graph = build_composition_graph(chunks=[], version="t")
+    mapping = map_figma_node(
+        node_name="Panel",
+        region_role="table-column",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    assert mapping.suggested_component_name == "Table"
+
+
+def test_region_role_with_unknown_role_does_not_boost() -> None:
+    """Roles outside :data:`ROLE_TO_COMPONENT_SYNONYMS` (``"frame"``
+    / ``"composed-region"`` / random strings) leave the fused
+    ranking untouched.
+
+    This is the guard against drive-by changes to the synonym map
+    that accidentally widen the boost to noisy roles.
+    """
+    index, searcher = _two_candidate_setup("Tile", "Card")
+    graph = build_composition_graph(chunks=[], version="t")
+    mapping = map_figma_node(
+        node_name="Card",
+        region_role="composed-region",  # not in the synonyms map
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    names = [c.name for c in mapping.candidates]
+    assert names.index("Card") < names.index("Tile")
+
+
+def test_region_role_none_matches_v1_byte_for_byte() -> None:
+    """Passing ``region_role=None`` reproduces v1's pure-RRF
+    candidates list bit-for-bit — the additive-only guarantee that
+    Slice 12 promised when this kwarg was introduced.
+    """
+    index, searcher = _two_candidate_setup("Tile", "Card")
+    graph = build_composition_graph(chunks=[], version="t")
+    kwargs = dict(
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    v1 = map_figma_node(node_name="Card", **kwargs)
+    explicit_none = map_figma_node(
+        node_name="Card", region_role=None, **kwargs
+    )
+    assert [
+        (c.name, c.score, c.source) for c in v1.candidates
+    ] == [
+        (c.name, c.score, c.source) for c in explicit_none.candidates
+    ]
+
+
+def test_region_shape_bucket_modal_lifts_dialog_above_card() -> None:
+    """``region_shape_bucket="modal"`` adds +0.05 to ``Dialog``, just
+    enough to overtake a fused-tie ``Card`` (smaller boost than
+    role's, but still decisive on a clean tie).
+    """
+    index, searcher = _two_candidate_setup("Dialog", "Card")
+    graph = build_composition_graph(chunks=[], version="t")
+    with_bucket = map_figma_node(
+        node_name="Card",
+        region_shape_bucket="modal",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    assert with_bucket.suggested_component_name == "Dialog"
+
+
+def test_role_and_shape_bucket_bonuses_stack() -> None:
+    """When the role AND shape-bucket synonym sets BOTH contain the
+    same candidate, the bonuses stack (+0.15 + +0.05 = +0.20) and
+    that candidate wins over an even-stronger BM25-only runner-up.
+
+    Constructs a runner-up with a TWO-hit BM25 head start (≈ +0.16
+    on its own) so that only the *stacked* bonus can overtake it.
+    """
+    # Make "Other" win on BM25 alone by repeating its lexical hit.
+    index = Index(
+        entities=[
+            _component_entity("Tile"),
+            _component_entity(
+                "OtherTileWidget", summary="other component widget thing"
+            ),
+        ],
+        version="t",
+    )
+    searcher = _StubHybridSearcher(
+        [_hit("<X/>", component_name="Tile")]
+    )
+    graph = build_composition_graph(chunks=[], version="t")
+    mapping = map_figma_node(
+        # The lexical query will only match the runner-up's summary
+        # tokens; the hybrid hit covers Tile.
+        node_name="other widget thing",
+        region_role="kpi-tile",  # +0.15 to "Tile"
+        region_shape_bucket="tile",  # +0.05 to "Tile"
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    assert mapping.suggested_component_name == "Tile"
+
+
+def test_normalise_component_name_strips_punct_and_lowercases() -> None:
+    """The synonym lookup uses normalised names; verify the helper
+    handles slashes, hyphens, and mixed case the same way the
+    walker emits component names.
+    """
+    assert _normalise_component_name("Action/Button") == "actionbutton"
+    assert _normalise_component_name("Stat-Card") == "statcard"
+    assert _normalise_component_name("KPI Tile v2") == "kpitilev2"
+    assert _normalise_component_name("") == ""
+
+
+# --------------------------------------------------------------------------
+# Layer B — primary_recommendation derived from PATTERN_TO_PRIMARY.
+# --------------------------------------------------------------------------
+
+
+def test_primary_recommendation_set_for_pattern_role() -> None:
+    """``region_role='kpi-tile'`` populates
+    ``primary_recommendation='Tile'`` with confidence 1.0 and a
+    descriptive rationale.
+    """
+    index, searcher = _two_candidate_setup("Tile", "Card")
+    graph = build_composition_graph(chunks=[], version="t")
+    mapping = map_figma_node(
+        node_name="Card",
+        region_role="kpi-tile",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    assert mapping.primary_recommendation == "Tile"
+    assert mapping.primary_recommendation_confidence == 1.0
+    assert "kpi-tile" in mapping.primary_recommendation_rationale
+
+
+def test_primary_recommendation_none_for_unmapped_role() -> None:
+    """Roles outside :data:`PATTERN_TO_PRIMARY` leave
+    ``primary_recommendation`` as ``None`` with empty rationale and
+    zero confidence (the v1 default).
+    """
+    index, searcher = _two_candidate_setup("Tile", "Card")
+    graph = build_composition_graph(chunks=[], version="t")
+    mapping = map_figma_node(
+        node_name="Card",
+        region_role="composed-region",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    assert mapping.primary_recommendation is None
+    assert mapping.primary_recommendation_rationale == ""
+    assert mapping.primary_recommendation_confidence == 0.0

@@ -44,6 +44,17 @@ def test_drop_reasons_have_stable_string_values() -> None:
         # skill's audit step keys off this string; if you rename it
         # update the skill in lockstep.
         "pattern_oversized_reject",
+        # Fix C — added when ``max_agenda`` became a hard cap; the
+        # post-DFS importance-ranking pass uses this reason for
+        # regions it truncates. See
+        # ``docs/x-ray-walker-investigation.md`` §8 + §12 "Fix C".
+        "agenda_truncated",
+        # Fix D — added for documentation-style variant stacks
+        # (e.g. ``Modal/Empty`` next to ``Modal/Filled`` next to
+        # ``Modal/Error``). The walker keeps one variant and drops
+        # the rest with this reason. See
+        # ``docs/x-ray-walker-investigation.md`` §11.5 + §12 "Fix D".
+        "variant_alternative",
     }
     actual = {str(reason) for reason in DropReason}
     assert actual == expected

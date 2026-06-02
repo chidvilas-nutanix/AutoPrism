@@ -12,6 +12,8 @@ See design doc §4.1 (input), §4.2 (output), and §10.1.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from prism_mcp.workflow.figma_mapping import FigmaNodeMapping
@@ -121,6 +123,129 @@ class DroppedNode(BaseModel):
     detail: str = ""
 
 
+class LayoutAnalysis(BaseModel):
+    """Deterministic flex / grid / stack inference for one parent
+    node's immediate children.
+
+    The walker fills this from
+    :func:`prism_mcp.figma.layout_inference.analyze_layout` whenever a
+    :class:`LayoutNode` has two or more children. The downstream
+    generator reads the field to render the parent with the right
+    ``flexDirection`` / ``gap`` / ``justifyContent`` / ``alignItems``
+    instead of having to re-derive geometry from raw bboxes.
+
+    Two trust sources feed this:
+
+    * Figma's own ``layoutMode`` / ``itemSpacing`` /
+      ``primaryAxisAlignItems`` / ``counterAxisAlignItems`` /
+      ``paddingTop|Right|Bottom|Left`` (the auto-layout fast path).
+      When present we trust them verbatim and emit ``confidence=1.0``
+      with ``rationale="figma_auto_layout"``.
+    * The Figma-Context-MCP layout-detection algorithm
+      (https://github.com/1yhy/Figma-Context-MCP/blob/main/docs/en/layout-detection.md)
+      for the absolute-positioned fallback. We score row-vs-column
+      from bbox geometry and require the winner to exceed 0.4, else
+      collapse to ``direction="stack"``.
+
+    Args:
+        direction (Literal[...] | None): one of ``"row"`` /
+            ``"column"`` / ``"grid"`` / ``"stack"`` / ``"single"`` or
+            ``None`` when the parent has no children. ``"stack"``
+            means the children overlap enough that flex flow does not
+            make sense — every child needs ``position: absolute``.
+            ``"single"`` means exactly one child, no flow required.
+        justify_content (Literal[...] | None): main-axis alignment in
+            CSS terms (``"start"`` / ``"end"`` / ``"center"`` /
+            ``"space-between"`` / ``"space-around"`` /
+            ``"space-evenly"``). ``None`` when not confidently
+            inferable.
+        align_items (Literal[...] | None): cross-axis alignment in
+            CSS terms (``"start"`` / ``"end"`` / ``"center"`` /
+            ``"stretch"`` / ``"baseline"``). ``None`` when not
+            confidently inferable.
+        gap (float | None): spacing between siblings in pixels,
+            rounded to the nearest 4-px grid. ``None`` when
+            ``gap_consistent`` is False (per-child margins should be
+            used instead).
+        gap_consistent (bool): True when the sibling gap standard
+            deviation is within 20% of the mean — i.e. the children
+            are evenly spaced. False signals "use per-child margins".
+        confidence (float): 0–1 from the row/column scoring formula.
+            ``1.0`` for the auto-layout fast path; ``0.0`` for
+            children with no detectable structure.
+        absolute_children (list[str]): ids of children that overlap
+            another sibling (IoU > 0.1 measured with
+            ``min(area_a, area_b)`` denominator) and must render
+            with ``position: absolute``. ``MappedRegion.absolute_pos``
+            on each of these ids carries the per-child offset.
+        flow_children (list[str]): ids of children that flow in
+            ``direction`` order. Empty when ``direction="stack"``.
+        rationale (str): one-line human-readable explanation
+            (``"row score 0.78 (3 children left→right with 16 px gaps,
+            top-aligned within 2 px)"``). Empty for auto-layout
+            fast-path nodes since the source is self-describing.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    direction: Literal["row", "column", "grid", "stack", "single"] | None = (
+        None
+    )
+    justify_content: (
+        Literal[
+            "start",
+            "end",
+            "center",
+            "space-between",
+            "space-around",
+            "space-evenly",
+        ]
+        | None
+    ) = None
+    align_items: (
+        Literal["start", "end", "center", "stretch", "baseline"] | None
+    ) = None
+    gap: float | None = None
+    gap_consistent: bool = True
+    confidence: float = 0.0
+    absolute_children: list[str] = Field(default_factory=list)
+    flow_children: list[str] = Field(default_factory=list)
+    rationale: str = ""
+
+
+class AbsolutePos(BaseModel):
+    """Per-child absolute-position offset within its parent.
+
+    The walker attaches this to :class:`MappedRegion.absolute_pos`
+    when (and only when) the region's id appears in some parent's
+    :attr:`LayoutAnalysis.absolute_children`. The generator should
+    render the parent with ``position: relative`` and the child with
+    ``position: absolute; top: ...; left: ...``.
+
+    Args:
+        top (float): vertical offset from the parent's bbox top in
+            pixels. Always non-negative; clamped to 0 if the child
+            overflows above the parent.
+        left (float): horizontal offset from the parent's bbox left
+            in pixels. Always non-negative; clamped to 0 if the child
+            overflows left of the parent.
+        width (float): child bbox width in pixels.
+        height (float): child bbox height in pixels.
+        z_order (int): stacking order rank — 0 is the bottom-most
+            (largest area), higher integers are on top (smaller area
+            wins because designers stack badges / overlays on top of
+            their host). Mirrors the Figma-Context-MCP convention.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    top: float
+    left: float
+    width: float
+    height: float
+    z_order: int
+
+
 class LayoutNode(BaseModel):
     """One node in the pruned layout tree.
 
@@ -142,6 +267,11 @@ class LayoutNode(BaseModel):
         children_ids (list[str]): ids of sub-regions that nest
             inside this one. Order is the walker's DFS order,
             which mirrors the Figma layer order.
+        layout (LayoutAnalysis | None): deterministic flex / grid /
+            stack inference over the immediate children's bboxes.
+            ``None`` when the node has fewer than two children OR
+            when the inference produced no useful signal. See
+            :class:`LayoutAnalysis` for the full field reference.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -151,6 +281,82 @@ class LayoutNode(BaseModel):
     role: str
     bbox: tuple[float, float, float, float]
     children_ids: list[str] = Field(default_factory=list)
+    layout: LayoutAnalysis | None = None
+
+
+class BoxStyle(BaseModel):
+    """The CSS-aligned box style of one :class:`MappedRegion`.
+
+    The walker fills this from
+    :func:`prism_mcp.figma.utils.extract_box_style` at region-
+    emission time, so the LLM downstream receives background colour,
+    border, corner radius, padding, gap and shadow as structured
+    facts instead of having to re-derive them from raw Figma JSON.
+
+    All fields are optional and absent by default — the model is
+    constructed with whichever keys the helper decided to emit, and
+    Pydantic's default JSON serialisation will drop ``None`` values
+    so empty styles round-trip as ``{}``.
+
+    Property names are deliberately CSS-aligned (``background_color``
+    rather than ``fills``, ``corner_radius`` rather than
+    ``cornerRadius``, ``padding`` as a ``(T, R, B, L)`` tuple in CSS
+    shorthand order) to maximise overlap with the conventions the
+    LLM already knows. This mirrors the approach used by the
+    open-source Figma-Context-MCP and figma-to-code-mcp projects.
+
+    Args:
+        background_color (str | None): hex of the first visible
+            SOLID fill (``"#EDF0F2"``). ``None`` when the node has
+            no visible solid fill — gradients and image fills are
+            intentionally not surfaced here (they'd need richer
+            structure than a single hex).
+        border_color (str | None): hex of the first visible SOLID
+            stroke.
+        border_width (float | None): stroke weight in pixels,
+            present only when ``border_color`` is set and the
+            REST API reports a positive ``strokeWeight``.
+        corner_radius (float | list[float] | None): single float
+            when all corners share the same radius;
+            ``[tl, tr, br, bl]`` when corners differ. ``None`` for
+            sharp-cornered FRAMEs (cleanest agenda output).
+        padding (tuple[float, float, float, float] | None): inset
+            in ``(top, right, bottom, left)`` order, matching CSS
+            shorthand. Auto-layout FRAMEs pull from Figma's own
+            ``paddingTop`` / ``paddingRight`` / ``paddingBottom`` /
+            ``paddingLeft`` fields; absolute-positioned FRAMEs
+            have padding inferred from parent-child bbox offsets
+            per :func:`prism_mcp.figma.utils.infer_padding`.
+        gap (float | None): ``itemSpacing`` for auto-layout
+            FRAMEs. Inferred-padding regions never set this — we
+            don't try to infer flex gap from absolute coordinates
+            because the chance of a wrong call is high.
+        layout_mode (str | None): one of ``"HORIZONTAL"`` /
+            ``"VERTICAL"`` / ``"GRID"`` when the FRAME uses
+            Figma auto-layout. ``None`` for absolute-positioned
+            FRAMEs (the walker still infers padding for those).
+        has_shadow (bool): True iff the node has at least one
+            visible drop / inner shadow effect. Kept as a bool
+            (rather than a full effect spec) because the
+            downstream generator usually only needs the binary
+            "is this card elevated?".
+        opacity (float | None): node-level opacity in
+            ``(0, 1.0)`` when meaningfully transparent. ``None``
+            when fully opaque (the common case) so the agenda
+            stays compact.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    background_color: str | None = None
+    border_color: str | None = None
+    border_width: float | None = None
+    corner_radius: float | list[float] | None = None
+    padding: tuple[float, float, float, float] | None = None
+    gap: float | None = None
+    layout_mode: str | None = None
+    has_shadow: bool = False
+    opacity: float | None = None
 
 
 class MappedRegion(BaseModel):
@@ -197,6 +403,14 @@ class MappedRegion(BaseModel):
             ``"3 FRAME Row"``. Feeds the BM25 query.
         hex_colors (list[str]): unique visible fill hexes
             (``"#XXXXXX"``, uppercased), in first-seen order.
+        box_style (BoxStyle): CSS-aligned style snapshot of the
+            FRAME — background colour, border, corner radius,
+            padding (auto-layout or inferred), gap, shadow,
+            opacity. Empty when the node has no styling worth
+            surfacing. Crucially this is how visual containers
+            (``Status/Alert Banner``, cards, panels) carry their
+            grey-fill-and-rounded-corner identity through to the
+            generator instead of vanishing as bare layout wrappers.
         reference_jsx_slice (str | None): the per-region slice
             of the input ``reference_jsx``, matched by Figma
             node-id comments. ``None`` when the caller did not
@@ -208,6 +422,20 @@ class MappedRegion(BaseModel):
             ``candidates`` (the top-k Prism component picks),
             ``related``, ``a11y_blocks``, ``token_mappings``,
             ``examples``, and ``candidate_decompositions``.
+        absolute_pos (AbsolutePos | None): per-child offset to apply
+            when this region's id appears in some parent's
+            :attr:`LayoutAnalysis.absolute_children`. The generator
+            should set ``position: absolute`` on the rendered element
+            and use ``top`` / ``left`` from this field. ``None`` for
+            regions that flow normally (the common case).
+        shape_bucket (str): coarse-grained geometric category for
+            this region's bbox (``"tile"`` / ``"card"`` /
+            ``"banner"`` / ``"icon"`` / ``"sidebar"`` /
+            ``"modal"`` / ``"page"`` / ``"block"``; ``""`` when
+            the bbox is empty). Produced by
+            :func:`prism_mcp.figma.utils.shape_bucket`. The ranker
+            in :mod:`prism_mcp.workflow.figma_mapping` uses this
+            to apply a tiny shape-aware bonus.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -224,8 +452,11 @@ class MappedRegion(BaseModel):
     structural_hints: list[str] = Field(default_factory=list)
     children_summary: str = ""
     hex_colors: list[str] = Field(default_factory=list)
+    box_style: BoxStyle = Field(default_factory=BoxStyle)
     reference_jsx_slice: str | None = None
     mapping: FigmaNodeMapping
+    absolute_pos: AbsolutePos | None = None
+    shape_bucket: str = ""
 
 
 class FigmaTreeMapping(BaseModel):

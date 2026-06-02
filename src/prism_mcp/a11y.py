@@ -36,7 +36,7 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from prism_mcp.parsers.examples_md_code import ExampleChunk
 
@@ -105,11 +105,43 @@ class A11yRules(BaseModel):
         per_component (list[ComponentA11y]): one entry per component
             that has at least one ``is_a11y_block=True`` chunk in
             its ``*.examples.md`` file.
+
+    Lookup performance: :meth:`find_by_component` builds a one-shot
+    ``component_name → ComponentA11y`` dict on first call (cached as
+    a private attribute) so subsequent lookups are O(1). The Figma
+    walker calls into this path once per agenda row; on big pages
+    (~50 regions) the linear scan would otherwise dominate the
+    aggregator's cost. Build is lazy so the per-walk overhead is
+    paid only when a real lookup happens.
     """
 
     title: str | None = None
     global_rules: list[A11ySection] = Field(default_factory=list)
     per_component: list[ComponentA11y] = Field(default_factory=list)
+
+    _by_component_cache: dict[str, ComponentA11y] | None = PrivateAttr(
+        default=None
+    )
+
+    def find_by_component(self, name: str) -> ComponentA11y | None:
+        """Return the :class:`ComponentA11y` for ``name`` in O(1).
+
+        The lookup is case-sensitive (Prism component identifiers
+        are case-sensitive) and mirrors the contract of the
+        module-level :func:`get_a11y_for_component` helper.
+
+        First call materialises the lookup dict from
+        :attr:`per_component`; subsequent calls reuse it. Safe to
+        call from multiple threads in practice — concurrent first
+        callers race to build the same dict but both write the same
+        value, and dict assignment in CPython is atomic, so the
+        worst case is one extra rebuild on a cold cache.
+        """
+        cache = self._by_component_cache
+        if cache is None:
+            cache = {c.component_name: c for c in self.per_component}
+            self._by_component_cache = cache
+        return cache.get(name)
 
 
 def build_a11y_rules(
@@ -145,6 +177,11 @@ def get_a11y_for_component(name: str, rules: A11yRules) -> ComponentA11y | None:
     are case-sensitive identifiers (``Modal`` vs ``modal`` are
     different).
 
+    Delegates to :meth:`A11yRules.find_by_component` so the lazy
+    dict cache is shared with the Figma walker's per-region lookup
+    path. Backward-compatible — the public signature and behaviour
+    are unchanged.
+
     Args:
         name (str): component name (e.g. ``"Modal"``).
         rules (A11yRules): the aggregated rules.
@@ -152,10 +189,7 @@ def get_a11y_for_component(name: str, rules: A11yRules) -> ComponentA11y | None:
     Returns:
         ComponentA11y | None: the row for that component, if any.
     """
-    for row in rules.per_component:
-        if row.component_name == name:
-            return row
-    return None
+    return rules.find_by_component(name)
 
 
 def _parse_llms_md(

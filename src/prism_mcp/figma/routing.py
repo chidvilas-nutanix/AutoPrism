@@ -22,6 +22,7 @@ from enum import StrEnum
 from typing import Any
 
 from prism_mcp.figma.types import MAPPABLE_TYPES
+from prism_mcp.figma.utils import has_visual_presence
 
 
 class RouterDecision(StrEnum):
@@ -253,6 +254,19 @@ def classify_frame_role(node: dict[str, Any]) -> FrameRole:
     # children it's likely a pattern cluster (a long list / table
     # column) — defer to pattern detection.
     if 2 <= len(children) <= 10 and (has_instance or has_text_directly):
+        return FrameRole.composed_region
+
+    # Visual-container promotion: a FRAME that *paints* something —
+    # visible fill, visible stroke, corner radius, or shadow effect
+    # — is never just a layout wrapper. It's a card / panel / banner
+    # that needs to survive as its own MappedRegion so its
+    # background colour, border, corner radius and shadow reach the
+    # generator. Without this gate, FRAMEs like ``Status/Alert
+    # Banner`` (one FRAME child but visible grey fill +
+    # cornerRadius=2) were silently classified as
+    # ``layout-container`` and dropped from the agenda, costing the
+    # entire visual identity of the alert. See design doc §4.4.1.
+    if has_visual_presence(node):
         return FrameRole.composed_region
 
     if only_layout_children and not has_instance:

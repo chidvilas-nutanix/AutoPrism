@@ -1,0 +1,576 @@
+{
+  "summary": {
+    "input_nodes": 2254,
+    "kept_for_mapping": 41,
+    "dropped_total": 2198,
+    "agenda_size": 41,
+    "tokens_count": 4,
+    "warnings_count": 0,
+    "max_depth": 20,
+    "max_agenda": 50,
+    "dropped_captured_as_content_slot": 700,
+    "dropped_icon_internal": 12,
+    "dropped_same_bbox_passthrough_collapsed": 5,
+    "dropped_tiny_decorative": 1,
+    "dropped_variant_alternative": 24,
+    "dropped_folded_into_pattern": 1234,
+    "dropped_explicit_hidden": 222
+  },
+  "agenda": [
+    {
+      "id": "954:132282",
+      "role": "instance",
+      "name": "header"
+    },
+    {
+      "id": "954:132289",
+      "role": "icon",
+      "name": "Icons/Actions/Search"
+    },
+    {
+      "id": "954:132294",
+      "role": "instance",
+      "name": "Action/Link"
+    },
+    {
+      "id": "954:132296",
+      "role": "composed-region",
+      "name": "toggle/pressed"
+    },
+    {
+      "id": "954:132300",
+      "role": "composed-region",
+      "name": "toggle/pressed"
+    },
+    {
+      "id": "954:132307",
+      "role": "icon",
+      "name": "Icons/System/Dashboard"
+    },
+    {
+      "id": "954:132316",
+      "role": "icon",
+      "name": "Icons/System/Navigation"
+    },
+    {
+      "id": "954:132293",
+      "role": "composed-region",
+      "name": "Frame 18"
+    },
+    {
+      "id": "954:132322",
+      "role": "composed-region",
+      "name": "Frame 22"
+    },
+    {
+      "id": "954:132326",
+      "role": "instance",
+      "name": "Card/Normal"
+    },
+    {
+      "id": "954:132325",
+      "role": "composed-region",
+      "name": "Frame 36"
+    },
+    {
+      "id": "954:132330",
+      "role": "instance",
+      "name": "Modal/Fullpage"
+    },
+    {
+      "id": "4844:150698",
+      "role": "instance",
+      "name": "Action/Button"
+    },
+    {
+      "id": "4844:150699",
+      "role": "instance",
+      "name": "Action/Text Button"
+    },
+    {
+      "id": "4844:150697",
+      "role": "composed-region",
+      "name": "Frame 632930"
+    },
+    {
+      "id": "954:132334",
+      "role": "composed-region",
+      "name": "Frame 528"
+    },
+    {
+      "id": "2554:125050",
+      "role": "instance",
+      "name": "Action/Button"
+    },
+    {
+      "id": "2554:125051",
+      "role": "button-group",
+      "name": "Buttons"
+    },
+    {
+      "id": "2554:125049",
+      "role": "composed-region",
+      "name": "Footer"
+    },
+    {
+      "id": "4830:143902",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:143903",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:143904",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:143905",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:143906",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4701:164495",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:141060",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:141630",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4701:164488",
+      "role": "composed-region",
+      "name": "Table Body"
+    },
+    {
+      "id": "4830:144160",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:144161",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:144162",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:144163",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:144164",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:141582",
+      "role": "table-column",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:141321",
+      "role": "frame",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4830:141886",
+      "role": "frame",
+      "name": "Table/Column"
+    },
+    {
+      "id": "4701:164546",
+      "role": "composed-region",
+      "name": "Table Body"
+    },
+    {
+      "id": "4701:164487",
+      "role": "composed-region",
+      "name": "Table"
+    },
+    {
+      "id": "4830:143893",
+      "role": "instance",
+      "name": "Input/Nested"
+    },
+    {
+      "id": "4701:164485",
+      "role": "composed-region",
+      "name": "Table/Normal(Detach Asset)"
+    },
+    {
+      "id": "954:132281",
+      "role": "composed-region",
+      "name": "Gold Image List"
+    }
+  ],
+  "layout_tree": [
+    {
+      "id": "954:132282",
+      "role": "instance",
+      "name": "header",
+      "children_ids": []
+    },
+    {
+      "id": "954:132289",
+      "role": "icon",
+      "name": "Icons/Actions/Search",
+      "children_ids": []
+    },
+    {
+      "id": "954:132287",
+      "role": "layout-container",
+      "name": "Group 22",
+      "children_ids": [
+        "954:132289"
+      ]
+    },
+    {
+      "id": "954:132294",
+      "role": "instance",
+      "name": "Action/Link",
+      "children_ids": []
+    },
+    {
+      "id": "954:132296",
+      "role": "composed-region",
+      "name": "toggle/pressed",
+      "children_ids": []
+    },
+    {
+      "id": "954:132300",
+      "role": "composed-region",
+      "name": "toggle/pressed",
+      "children_ids": []
+    },
+    {
+      "id": "954:132295",
+      "role": "layout-container",
+      "name": "Group 17",
+      "children_ids": [
+        "954:132296",
+        "954:132300"
+      ]
+    },
+    {
+      "id": "954:132307",
+      "role": "icon",
+      "name": "Icons/System/Dashboard",
+      "children_ids": []
+    },
+    {
+      "id": "954:132304",
+      "role": "layout-container",
+      "name": "Group 36",
+      "children_ids": [
+        "954:132307"
+      ]
+    },
+    {
+      "id": "954:132316",
+      "role": "icon",
+      "name": "Icons/System/Navigation",
+      "children_ids": []
+    },
+    {
+      "id": "954:132313",
+      "role": "layout-container",
+      "name": "Group 35",
+      "children_ids": [
+        "954:132316"
+      ]
+    },
+    {
+      "id": "954:132293",
+      "role": "composed-region",
+      "name": "Frame 18",
+      "children_ids": [
+        "954:132294"
+      ]
+    },
+    {
+      "id": "954:132286",
+      "role": "layout-container",
+      "name": "Frame 20",
+      "children_ids": [
+        "954:132293"
+      ]
+    },
+    {
+      "id": "954:132322",
+      "role": "composed-region",
+      "name": "Frame 22",
+      "children_ids": []
+    },
+    {
+      "id": "954:132326",
+      "role": "instance",
+      "name": "Card/Normal",
+      "children_ids": []
+    },
+    {
+      "id": "954:132325",
+      "role": "composed-region",
+      "name": "Frame 36",
+      "children_ids": [
+        "954:132326"
+      ]
+    },
+    {
+      "id": "954:132285",
+      "role": "layout-container",
+      "name": "Frame 21",
+      "children_ids": [
+        "954:132322",
+        "954:132325"
+      ]
+    },
+    {
+      "id": "954:132330",
+      "role": "instance",
+      "name": "Modal/Fullpage",
+      "children_ids": []
+    },
+    {
+      "id": "4844:150698",
+      "role": "instance",
+      "name": "Action/Button",
+      "children_ids": []
+    },
+    {
+      "id": "4844:150699",
+      "role": "instance",
+      "name": "Action/Text Button",
+      "children_ids": []
+    },
+    {
+      "id": "4844:150697",
+      "role": "composed-region",
+      "name": "Frame 632930",
+      "children_ids": [
+        "4844:150698",
+        "4844:150699"
+      ]
+    },
+    {
+      "id": "954:132334",
+      "role": "composed-region",
+      "name": "Frame 528",
+      "children_ids": [
+        "4844:150697"
+      ]
+    },
+    {
+      "id": "2554:125050",
+      "role": "instance",
+      "name": "Action/Button",
+      "children_ids": []
+    },
+    {
+      "id": "2554:125051",
+      "role": "button-group",
+      "name": "Buttons",
+      "children_ids": []
+    },
+    {
+      "id": "2554:125049",
+      "role": "composed-region",
+      "name": "Footer",
+      "children_ids": [
+        "2554:125050",
+        "2554:125051"
+      ]
+    },
+    {
+      "id": "4830:143902",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:143903",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:143904",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:143905",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:143906",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4701:164495",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:141060",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:141630",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4701:164488",
+      "role": "composed-region",
+      "name": "Table Body",
+      "children_ids": [
+        "4830:143902",
+        "4830:143903",
+        "4830:143904",
+        "4830:143905",
+        "4830:143906",
+        "4701:164495",
+        "4830:141060",
+        "4830:141630"
+      ]
+    },
+    {
+      "id": "4830:144160",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:144161",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:144162",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:144163",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:144164",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:141582",
+      "role": "table-column",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:141321",
+      "role": "frame",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4830:141886",
+      "role": "frame",
+      "name": "Table/Column",
+      "children_ids": []
+    },
+    {
+      "id": "4701:164546",
+      "role": "composed-region",
+      "name": "Table Body",
+      "children_ids": [
+        "4830:144160",
+        "4830:144161",
+        "4830:144162",
+        "4830:144163",
+        "4830:144164",
+        "4830:141582",
+        "4830:141321",
+        "4830:141886"
+      ]
+    },
+    {
+      "id": "4701:164487",
+      "role": "composed-region",
+      "name": "Table",
+      "children_ids": [
+        "4701:164488",
+        "4701:164546"
+      ]
+    },
+    {
+      "id": "4830:143893",
+      "role": "instance",
+      "name": "Input/Nested",
+      "children_ids": []
+    },
+    {
+      "id": "4701:164485",
+      "role": "composed-region",
+      "name": "Table/Normal(Detach Asset)",
+      "children_ids": [
+        "4701:164487",
+        "4830:143893"
+      ]
+    },
+    {
+      "id": "954:132281",
+      "role": "composed-region",
+      "name": "Gold Image List",
+      "children_ids": [
+        "954:132282",
+        "954:132330",
+        "954:132334",
+        "2554:125049",
+        "4701:164483"
+      ]
+    }
+  ],
+  "dropped_by_reason": {
+    "captured_as_content_slot": 700,
+    "icon_internal": 12,
+    "same_bbox_passthrough_collapsed": 5,
+    "tiny_decorative": 1,
+    "variant_alternative": 24,
+    "folded_into_pattern": 1234,
+    "explicit_hidden": 222
+  },
+  "warnings": []
+}
