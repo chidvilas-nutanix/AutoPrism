@@ -180,3 +180,77 @@ def test_example_titles_are_part_of_the_doc() -> None:
 
     assert results
     assert results[0]["name"] == "Modal"
+
+
+def test_figma_synonyms_route_navigation_queries_to_navbar_layout() -> None:
+    """``NavBarLayout`` carries Figma-vocabulary synonyms
+    (``navigation header navbar nav topbar appbar subheader``)
+    so a BM25 query containing those Figma layer-name tokens
+    surfaces the right Prism component even when the entity's
+    own name/summary doesn't carry them.
+
+    Pre-fix the b213fac1 / 753:27069 trace produced
+    ``Navigation/Header`` → ``HeaderFooterLayout`` (single
+    token match ``"header"``) at score 0.029, because no
+    Prism entity actually contains the literal token
+    ``"navigation"`` or ``"navbar"``. The synonym injection
+    closes that gap without changing the entity model.
+    """
+    searcher = Searcher(
+        [
+            _component("NavBarLayout", summary=""),
+            _component("Tooltip", summary="hover hint"),
+        ]
+    )
+
+    results = searcher.search("navigation navbar nav")
+
+    assert results
+    assert results[0]["name"] == "NavBarLayout"
+    # The matched tokens should reflect the synonym entries —
+    # which proves they were indexed into the synthetic doc.
+    matched = set(results[0]["why_matched"])
+    assert {"navigation", "navbar", "nav"} & matched
+
+
+def test_figma_synonyms_route_status_tag_to_badge() -> None:
+    """``Badge`` carries the ``status tag pill chip`` synonyms
+    so the X-Ray ``Status/Tag`` layer name finds ``Badge`` even
+    though Badge's own entity name doesn't contain ``"status"``
+    or ``"tag"``.
+    """
+    searcher = Searcher(
+        [
+            _component("Badge", summary=""),
+            _component("Loader", summary="spinner"),
+        ]
+    )
+
+    results = searcher.search("status tag")
+
+    assert results
+    assert results[0]["name"] == "Badge"
+
+
+def test_figma_synonyms_only_apply_to_their_named_entity() -> None:
+    """An entity NOT in :data:`_FIGMA_SYNONYM_TOKENS` does not get
+    the synonym tokens — the table is gated on
+    ``(type, name)`` so adding a row for ``NavBarLayout`` does
+    NOT accidentally widen the search for ``Tooltip`` or
+    ``Modal`` or any other component.
+    """
+    searcher = Searcher(
+        [
+            _component("Tooltip", summary="hover hint"),
+            _component("Loader", summary="spinner"),
+        ]
+    )
+
+    # ``navigation`` is a NavBarLayout synonym — neither Tooltip
+    # nor Loader is in the synonym table, so neither should match.
+    results = searcher.search("navigation")
+
+    assert results == [], (
+        f"unexpected match for an entity that isn't in the synonym "
+        f"table: {results!r}"
+    )

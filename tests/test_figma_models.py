@@ -36,7 +36,7 @@ def test_map_figma_tree_input_minimal_required_fields() -> None:
     assert input_obj.figma_token is None
     assert input_obj.max_depth == 20
     assert input_obj.max_nodes == 5000
-    assert input_obj.max_agenda == 50
+    assert input_obj.max_agenda == 100
     assert input_obj.bypass_cache is False
 
 

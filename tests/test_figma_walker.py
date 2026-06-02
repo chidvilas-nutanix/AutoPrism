@@ -805,8 +805,9 @@ def test_d02_share_summary_keeps_working() -> None:
 
 
 def test_low_confidence_warning_surfaces_when_top_score_below_threshold() -> None:
-    """A stubbed mapper that always returns ``score=0.1`` causes the
-    walker to emit a ``low_confidence`` warning per emitted region.
+    """A stubbed mapper that always returns a sub-threshold score
+    causes the walker to emit a ``low_confidence`` warning per
+    emitted region.
 
     Pins the soft mitigation described in
     ``docs/handoff-spatial-and-ranker.md`` §3.4: low scores are
@@ -814,6 +815,12 @@ def test_low_confidence_warning_surfaces_when_top_score_below_threshold() -> Non
     :attr:`FigmaTreeMapping.warnings`) rather than as hard rail
     failures. The LLM consumes the warning string and can disclaim
     or fall back to atomic tools accordingly.
+
+    The stub score (``0.01``) is set below
+    :data:`_LOW_CONFIDENCE_THRESHOLD` (``0.05``) so the warning
+    fires; bumping the threshold should NOT silently disable this
+    test — pick a value that's still sub-threshold or update both
+    in lockstep.
     """
     from prism_mcp.figma import walk_tree
     from prism_mcp.workflow.figma_mapping import (
@@ -829,7 +836,7 @@ def test_low_confidence_warning_surfaces_when_top_score_below_threshold() -> Non
                 CandidateMatch(
                     name="Generic",
                     type="component",
-                    score=0.1,
+                    score=0.01,
                     why_matched=[],
                     summary="",
                     source="bm25",

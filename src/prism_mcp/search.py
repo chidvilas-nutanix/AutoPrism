@@ -129,6 +129,15 @@ def _entity_tokens(entity: Entity) -> list[str]:
 
     Per PRD section 5 the doc is
     ``name + type + category + summary + section-headings``.
+    We additionally append a short list of *Figma-vocabulary
+    synonyms* (see :data:`_FIGMA_SYNONYM_TOKENS`) so layer names
+    the design team uses — like ``Navigation/Header`` or
+    ``Status/Tag`` — find their natural Prism component even
+    when the entity's own name and summary don't carry those
+    tokens.
+
+    Synonyms are append-only and gated on ``(type, name)``, so
+    they never pollute the corpus IDF of an unrelated entity.
 
     Args:
         entity (Entity): entity to tokenize.
@@ -142,9 +151,82 @@ def _entity_tokens(entity: Entity) -> list[str]:
         entity.category or "",
         entity.summary,
         " ".join(ex.title for ex in entity.examples),
+        _figma_synonyms_for_entity(entity),
     ]
     text = " ".join(parts)
     return _tokenize(text)
+
+
+# Figma-vocabulary synonyms appended to each entity's synthetic
+# doc so BM25 can connect Figma-named layers to the right Prism
+# component.
+#
+# Each row maps ``(entity_type, entity_name)`` to a whitespace-
+# joined token list. The tokens are added verbatim to the
+# tokenizer input — the same camelCase / suffix-stripping
+# pipeline that runs on the rest of the doc applies, so a synonym
+# like ``"navbar"`` will also match a query containing
+# ``"nav"`` once both have been tokenized.
+#
+# Curation criteria (deliberately conservative):
+#
+# * Only Figma layer-name vocabulary that Nutanix designers
+#   actually ship — sourced from the b213fac1 / 753:27069 trace
+#   and the X-Ray Master Files. No speculative synonyms.
+# * Only ``component`` entries — token synonyms would pollute
+#   token search; hook/util synonyms aren't a real failure mode
+#   we've observed.
+# * Tokens that already appear in the entity's own name or
+#   summary are still listed for clarity but contribute nothing
+#   extra at tokenization time.
+#
+# Growing the table is safe: the search corpus stays small (~110
+# entities) and BM25 IDF naturally down-weights tokens that
+# appear across many entities.
+_FIGMA_SYNONYM_TOKENS: dict[tuple[str, str], str] = {
+    ("component", "HeaderFooterLayout"): (
+        "navigation header navbar nav topbar appbar"
+    ),
+    ("component", "NavBarLayout"): (
+        "navigation header navbar nav topbar appbar subheader"
+    ),
+    ("component", "Breadcrumb"): "navigation breadcrumb crumb trail",
+    ("component", "Tabs"): (
+        "tab tabs tabstrip tabbar segmented navigation subheader"
+    ),
+    ("component", "Badge"): "status tag pill chip label indicator",
+    ("component", "Alert"): (
+        "status alert banner callout warning info notification"
+    ),
+    ("component", "Modal"): "modal dialog popover overlay sheet",
+    ("component", "FullPageModal"): (
+        "fullpage modal dialog overlay sheet"
+    ),
+    ("component", "Pagination"): "pager paginator pageselector",
+    ("component", "Title"): "heading title pagetitle pageheader h1 h2 h3",
+    ("component", "Link"): "action link anchor hyperlink href",
+    ("component", "Button"): "action button cta primaryaction",
+    ("component", "Steps"): "navigation steps stepper wizard progress",
+    ("component", "TableHeader"): "table header headerrow tableheaderrow",
+    ("component", "TableRow"): "table row tablerow",
+}
+"""Figma-vocabulary synonym tokens by entity ``(type, name)``.
+
+The values are tokenizer-input strings (whitespace-joined,
+lowercase); they pass through :func:`_tokenize` exactly like
+the rest of the synthetic doc.
+"""
+
+
+def _figma_synonyms_for_entity(entity: Entity) -> str:
+    """Return the synonym tokens for ``entity`` or an empty
+    string.
+
+    Lookup is keyed on ``(entity.type, entity.name)`` against
+    :data:`_FIGMA_SYNONYM_TOKENS`. Unknown entities contribute
+    nothing — backward-compatible by construction.
+    """
+    return _FIGMA_SYNONYM_TOKENS.get((entity.type, entity.name), "")
 
 
 def _tokenize(text: str) -> list[str]:

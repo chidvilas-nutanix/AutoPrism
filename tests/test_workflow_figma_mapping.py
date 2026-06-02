@@ -825,11 +825,21 @@ def test_region_role_kpi_tile_boost_lifts_tile_above_card() -> None:
 
 def test_region_role_table_column_boost_lifts_table_above_panel() -> None:
     """``region_role='table-column'`` lifts ``Table`` above an
-    equally-scored ``Panel`` candidate.
+    equally-scored ``Panel`` candidate **in the candidates list**.
 
     Covers a second entry in :data:`ROLE_TO_COMPONENT_SYNONYMS` so
     a future shrink to the synonym table (e.g. dropping
     ``"table"``) fails this case too.
+
+    Note: ``suggested_component_name`` is asserted to be
+    ``TableColumn`` (the deterministic
+    :data:`PATTERN_TO_PRIMARY` pick) rather than the
+    role-boosted ``Table`` candidate — that's the headline-wiring
+    fix introduced after the b213fac1 / 753:27069 trace, where
+    every ``Table/Column`` agenda row shipped ``Table`` in the
+    headline despite ``primary_recommendation='TableColumn'`` at
+    confidence 1.0. The role-bonus mechanism is still verified
+    via ``candidates[0]``.
     """
     index, searcher = _two_candidate_setup("Table", "Panel")
     graph = build_composition_graph(chunks=[], version="t")
@@ -842,13 +852,129 @@ def test_region_role_table_column_boost_lifts_table_above_panel() -> None:
         color_token_index=_color_index([]),
         a11y_rules=_a11y_rules(),
     )
-    assert mapping.suggested_component_name == "Table"
+    assert mapping.candidates[0].name == "Table"
+    assert mapping.suggested_component_name == "TableColumn"
+    assert mapping.primary_recommendation == "TableColumn"
+    assert mapping.primary_recommendation_confidence == 1.0
+
+
+def test_hybrid_only_candidate_carries_semantic_example_breadcrumb_in_why_matched() -> None:
+    """Hybrid-only candidates ship a ``semantic-example: <title>``
+    breadcrumb in ``why_matched`` so the LLM can triage the
+    semantic match.
+
+    Pre-fix the hybrid path populated ``sources`` but left
+    ``why_matched`` empty (BM25 contributes per-token overlap,
+    hybrid doesn't), so any candidate that came in only through
+    the embedding ranker looked indistinguishable from "no
+    signal". The b213fac1 / 753:27069 trace produced rows like
+    ``Navigation/Subheader`` → ``NavigationIcon`` with
+    ``why_matched=[]`` and the agent discarded the suggestion.
+
+    Post-fix the breadcrumb names the example title that anchored
+    the hybrid hit, so the LLM has a verifiable handle.
+    """
+    # Distinct title so the assertion is unambiguous about which
+    # example produced the breadcrumb.
+    custom_hit = ExampleHit(
+        component_name="NavBar",
+        title="Sticky header with logo and primary tabs",
+        code="<NavBar/>",
+        imports=["NavBar"],
+        score=1.0,
+    )
+    searcher = _StubHybridSearcher([custom_hit])
+    # BM25 corpus has NavBar so the candidate exists, but the
+    # query won't match any of NavBar's tokens — guaranteeing the
+    # candidate enters fused ranking only via the hybrid path.
+    index = Index(
+        entities=[_component_entity("NavBar", summary="nav bar")],
+        version="t",
+    )
+    graph = build_composition_graph(chunks=[], version="t")
+
+    mapping = map_figma_node(
+        node_name="Frame 632963",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+
+    nav_bar = next(
+        (c for c in mapping.candidates if c.name == "NavBar"), None
+    )
+    assert nav_bar is not None, (
+        f"NavBar should appear in candidates via hybrid; "
+        f"got {[c.name for c in mapping.candidates]!r}"
+    )
+    assert nav_bar.source == "hybrid"
+    assert (
+        "semantic-example: Sticky header with logo and primary tabs"
+        in nav_bar.why_matched
+    ), (
+        f"hybrid-only candidate should carry a semantic-example "
+        f"breadcrumb; got why_matched={nav_bar.why_matched!r}"
+    )
+
+
+def test_suggested_component_name_prefers_primary_recommendation_at_full_confidence() -> None:
+    """When ``primary_recommendation`` is set at confidence 1.0,
+    ``suggested_component_name`` reports the deterministic pick
+    rather than the RRF-fused ``candidates[0].name``.
+
+    The b213fac1 / 753:27069 trace surfaced this gap: every
+    ``Table/Column`` agenda row had
+    ``primary_recommendation='TableColumn'`` at confidence 1.0
+    AND ``candidates[0].name='Table'`` (because BM25 surfaces
+    ``Table`` for any query containing the token ``"table"``).
+    Pre-fix the headline shipped ``Table``, masking the
+    higher-confidence pick. Post-fix the headline ships the
+    primary pick so the LLM's first-glance read of
+    :attr:`FigmaNodeMapping.suggested_component_name` matches
+    the deterministic ground truth.
+    """
+    index, searcher = _two_candidate_setup("Table", "Panel")
+    graph = build_composition_graph(chunks=[], version="t")
+    mapping = map_figma_node(
+        node_name="Panel",
+        region_role="table-column",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    assert mapping.suggested_component_name == "TableColumn"
+    assert mapping.candidates[0].name == "Table"
+
+
+def test_suggested_component_name_falls_back_to_top_candidate_when_no_primary() -> None:
+    """When no pattern role is supplied (``region_role=None``),
+    ``primary_recommendation`` stays ``None`` and the headline
+    falls back to ``candidates[0].name`` — the v1 behaviour for
+    non-pattern regions like ``frame`` / ``composed-region`` /
+    ``layout-container``.
+    """
+    index, searcher = _two_candidate_setup("Tile", "Card")
+    graph = build_composition_graph(chunks=[], version="t")
+    mapping = map_figma_node(
+        node_name="Card",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    assert mapping.primary_recommendation is None
+    assert mapping.suggested_component_name == mapping.candidates[0].name
 
 
 def test_region_role_with_unknown_role_does_not_boost() -> None:
     """Roles outside :data:`ROLE_TO_COMPONENT_SYNONYMS` (``"frame"``
-    / ``"composed-region"`` / random strings) leave the fused
-    ranking untouched.
+    / ``"text"`` / random strings) leave the fused ranking
+    untouched.
 
     This is the guard against drive-by changes to the synonym map
     that accidentally widen the boost to noisy roles.
@@ -857,7 +983,7 @@ def test_region_role_with_unknown_role_does_not_boost() -> None:
     graph = build_composition_graph(chunks=[], version="t")
     mapping = map_figma_node(
         node_name="Card",
-        region_role="composed-region",  # not in the synonyms map
+        region_role="frame",  # not in the synonyms map
         index=index,
         hybrid_searcher=searcher,
         composition_graph=graph,
@@ -866,6 +992,63 @@ def test_region_role_with_unknown_role_does_not_boost() -> None:
     )
     names = [c.name for c in mapping.candidates]
     assert names.index("Card") < names.index("Tile")
+
+
+def test_region_role_composed_region_boosts_layout_components_only() -> None:
+    """``region_role='composed-region'`` boosts layout-family
+    components (``ContainerLayout``/``StackingLayout``/
+    ``FlexLayout``) but NOT non-layout components like
+    ``Tile``/``Card``/``Modal`` — those live in
+    :data:`SHAPE_BUCKET_TO_COMPONENT_SYNONYMS` instead so we
+    don't double-boost when both signals point the same way.
+
+    Without this boost a ``composed-region`` whose name suggests
+    a layout (e.g. ``"Frame 632963"`` containing a horizontal
+    flex strip) ranked ``FrameLogoIcon`` first because the BM25
+    token ``"frame"`` outweighed the layout signal — see the
+    b213fac1 / 753:27069 trace's ``Subpage``/``Frame 632934``
+    rows.
+    """
+    # Tie BM25 ("Card") with hybrid ("FlexLayout") so the role
+    # bonus is the only thing that can flip the order.
+    index, searcher = _two_candidate_setup("FlexLayout", "Card")
+    graph = build_composition_graph(chunks=[], version="t")
+    mapping = map_figma_node(
+        node_name="Card",
+        region_role="composed-region",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    names = [c.name for c in mapping.candidates]
+    assert names.index("FlexLayout") < names.index("Card"), (
+        f"composed-region should boost FlexLayout above Card; "
+        f"got order={names!r}"
+    )
+
+
+def test_region_role_layout_container_boosts_layout_components() -> None:
+    """``region_role='layout-container'`` lifts layout-family
+    Prism components above an equally-scored generic candidate.
+    """
+    index, searcher = _two_candidate_setup("StackingLayout", "Card")
+    graph = build_composition_graph(chunks=[], version="t")
+    mapping = map_figma_node(
+        node_name="Card",
+        region_role="layout-container",
+        index=index,
+        hybrid_searcher=searcher,
+        composition_graph=graph,
+        color_token_index=_color_index([]),
+        a11y_rules=_a11y_rules(),
+    )
+    names = [c.name for c in mapping.candidates]
+    assert names.index("StackingLayout") < names.index("Card"), (
+        f"layout-container should boost StackingLayout above Card; "
+        f"got order={names!r}"
+    )
 
 
 def test_region_role_none_matches_v1_byte_for_byte() -> None:

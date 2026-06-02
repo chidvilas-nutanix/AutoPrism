@@ -55,9 +55,18 @@ class MapFigmaTreeInput(BaseModel):
         max_depth (int): hard cap on traversal depth. Default 20.
         max_nodes (int): hard cap on total nodes visited.
             Default 5000.
-        max_agenda (int): soft cap on agenda size. Default 50.
+        max_agenda (int): soft cap on agenda size. Default 100.
             When exceeded the walker emits a warning and groups
             the smallest siblings into a generic "container" row.
+            The default was bumped from 50 → 100 after the
+            b213fac1 / 753:27069 trace showed real X-Ray pages
+            routinely truncating 50+ semantically-meaningful
+            regions (Status/Tag, Subpage, Icon/Actions/Edit, …);
+            losing them forced the LLM to hand-roll their
+            equivalents. Library callers of
+            :func:`prism_mcp.figma.walk_tree` still default to
+            50 — the bump is tool-input-only so the unit-fixture
+            tests stay pinned at their existing baselines.
         bypass_cache (bool): if True, skip the disk cache for the
             REST fetch (useful when the user has just edited the
             design and wants a fresh pull). Default False.
@@ -79,7 +88,7 @@ class MapFigmaTreeInput(BaseModel):
     figma_token: str | None = None
     max_depth: int = 20
     max_nodes: int = 5000
-    max_agenda: int = 50
+    max_agenda: int = 100
     bypass_cache: bool = False
     figma_depth: int | None = None
 

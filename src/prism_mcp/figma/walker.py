@@ -1885,16 +1885,29 @@ def _resolve_pending_mappings(ctx: _WalkContext) -> None:
     ctx.mapping_jobs.clear()
 
 
-_LOW_CONFIDENCE_THRESHOLD = 0.3
+_LOW_CONFIDENCE_THRESHOLD = 0.05
 """Top-candidate score below which the walker emits a
 ``low_confidence`` warning for the region.
 
-The fused RRF score for a candidate matched by both BM25 AND
-hybrid lives around 0.033; adding the role bonus (+0.15) takes
-that comfortably above 0.18. A top score below 0.3 means *no*
-strong signal from any combination — the LLM downstream should
-disclaim the auto-pick or fall back to ``search_entities``. See
-``docs/handoff-spatial-and-ranker.md`` §3.4."""
+Calibrated against the actual RRF ceiling produced by
+:func:`prism_mcp.workflow.figma_mapping._build_candidates`:
+
+    BM25 rank 0           1/(60+0+1) = 0.01639
+    Hybrid rank 0         1/(60+0+1) = 0.01639
+    Both rankers agree    0.01639 + 0.01639 = 0.03279
+    + role bonus (+0.15)  0.183
+    + shape bonus (+0.05) 0.233  ← absolute max achievable
+
+The previous value (0.3) was 30% above this absolute ceiling,
+so every non-pattern region was flagged ``low_confidence`` by
+construction — the b213fac1 / 753:27069 trace surfaced 93
+warnings on 50 agenda rows. With 0.05 the warning only fires
+when neither ranker had a real signal (single-token hit at
+rank ≥ 1, no role/shape bonus), preserving the original intent
+of "tell the LLM when we're guessing" without crying wolf.
+
+See ``docs/handoff-spatial-and-ranker.md`` §3.4 for the
+original calibration discussion."""
 
 
 def _maybe_emit_low_confidence_warning(

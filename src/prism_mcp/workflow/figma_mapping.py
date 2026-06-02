@@ -275,12 +275,30 @@ deterministically. See ``docs/handoff-spatial-and-ranker.md``
 
 ROLE_TO_COMPONENT_SYNONYMS: dict[str, frozenset[str]] = {
     # Pattern roles emitted by :mod:`prism_mcp.figma.patterns`.
-    "icon": frozenset({"icon", "iconbutton", "iconwithtext"}),
+    "icon": frozenset(
+        {"icon", "iconbutton", "iconwithtext", "actionicon"}
+    ),
     "stat-list": frozenset(
-        {"stat", "statlist", "statgroup", "list", "datalist"}
+        {
+            "stat",
+            "statlist",
+            "statgroup",
+            "list",
+            "datalist",
+            "keyvaluelist",
+            "definitionlist",
+        }
     ),
     "table-column": frozenset(
-        {"table", "tablecolumn", "datatable", "grid", "gridcolumn"}
+        {
+            "table",
+            "tablecolumn",
+            "tablecell",
+            "tableheader",
+            "datatable",
+            "grid",
+            "gridcolumn",
+        }
     ),
     "tab-strip": frozenset(
         {"tab", "tabs", "tabbar", "tabstrip", "tabgroup", "tabsbar"}
@@ -294,7 +312,25 @@ ROLE_TO_COMPONENT_SYNONYMS: dict[str, frozenset[str]] = {
             "splitbutton",
         }
     ),
-    "kpi-tile": frozenset({"tile", "metric", "metriccard", "stat", "kpi"}),
+    "kpi-tile": frozenset(
+        {"tile", "metric", "metriccard", "stat", "kpi", "dashboardtile"}
+    ),
+    # Generic Figma roles that the walker emits when no pattern
+    # detector fired. The bonus is intentionally restricted to
+    # layout-family components — the same regions could legitimately
+    # render as Card / Panel / Modal / Section, but those names live
+    # in :data:`SHAPE_BUCKET_TO_COMPONENT_SYNONYMS` (the geometric
+    # signal) so we avoid double-boosting. ``frame`` / ``instance`` /
+    # ``component`` / ``group`` / ``text`` deliberately remain
+    # unmapped because their node names span the whole vocabulary
+    # and a broad bonus would inject more false positives than it
+    # would resolve. See ``docs/x-ray-walker-investigation.md`` §12.
+    "layout-container": frozenset(
+        {"flexlayout", "stackinglayout", "containerlayout", "gridlayout"}
+    ),
+    "composed-region": frozenset(
+        {"containerlayout", "stackinglayout", "flexlayout"}
+    ),
 }
 
 
@@ -754,11 +790,33 @@ def map_figma_node(
         region_role
     )
 
+    # Honour the deterministic pattern recommendation in the
+    # headline ``suggested_component_name`` field when it landed
+    # at full confidence — the walker's pattern detectors are
+    # ground-truth for the 6 ``PATTERN_TO_PRIMARY`` roles, and
+    # a row's ``Table/Column`` instance should ship
+    # ``TableColumn`` in the headline rather than whatever the
+    # RRF fusion happened to surface (often ``Table`` because the
+    # BM25 doc for ``Table`` contains the token ``"column"``).
+    # See the b213fac1 / 753:27069 trace: every
+    # ``"Table/Column ✅"`` row had primary_recommendation=
+    # ``TableColumn`` at confidence 1.0 yet ``suggested_component
+    # _name`` reported ``Table`` because the field was wired to
+    # ``candidates[0].name`` only.
+    if (
+        primary is not None
+        and confidence >= _PRIMARY_RECOMMENDATION_CONFIDENCE
+    ):
+        suggested = primary
+    else:
+        suggested = top.name if top else None
+
     logger.info(
-        "mapped figma node name=%s top=%s candidates=%d related=%d "
-        "tokens=%d examples=%d primary=%s",
+        "mapped figma node name=%s top=%s suggested=%s candidates=%d "
+        "related=%d tokens=%d examples=%d primary=%s",
         node_name,
         top.name if top else None,
+        suggested,
         len(candidates),
         len(related),
         len(token_mappings),
@@ -768,7 +826,7 @@ def map_figma_node(
 
     return FigmaNodeMapping(
         node_name=node_name,
-        suggested_component_name=top.name if top else None,
+        suggested_component_name=suggested,
         candidates=candidates,
         related=related,
         a11y_blocks=a11y_blocks,
@@ -812,6 +870,43 @@ def _resolve_primary_recommendation(
 # Sub-gatherers (one per output field). Kept narrow so a future
 # maintainer can swap any single stage independently.
 # --------------------------------------------------------------------------
+
+
+def _hybrid_breadcrumb(hit: ExampleHit) -> str:
+    """Build a one-line ``semantic-example: <title>`` breadcrumb
+    that the candidate's ``why_matched`` carries when the only
+    signal for the candidate came from the hybrid searcher.
+
+    Returns an empty string when the hit has no usable title,
+    so the caller can skip appending instead of cluttering
+    ``why_matched`` with bare prefixes.
+
+    Examples:
+        >>> _hybrid_breadcrumb(
+        ...     ExampleHit(
+        ...         component_name="NavBar",
+        ...         title="Sticky header with logo",
+        ...         code="<NavBar/>",
+        ...         imports=["NavBar"],
+        ...         score=1.0,
+        ...     )
+        ... )
+        'semantic-example: Sticky header with logo'
+        >>> _hybrid_breadcrumb(
+        ...     ExampleHit(
+        ...         component_name="NavBar",
+        ...         title="",
+        ...         code="<NavBar/>",
+        ...         imports=["NavBar"],
+        ...         score=1.0,
+        ...     )
+        ... )
+        ''
+    """
+    title = (hit.title or "").strip()
+    if not title:
+        return ""
+    return f"semantic-example: {title}"
 
 
 def _build_candidates(
@@ -869,12 +964,21 @@ def _build_candidates(
             query=semantic_query, top_k=hybrid_pool
         )
     # Each hybrid hit is per-*example*; collapse to per-component
-    # by keeping the highest-ranked hit per component_name.
-    hybrid_first_rank: dict[str, int] = {}
+    # by keeping the highest-ranked hit per component_name. We
+    # retain the full :class:`ExampleHit` (not just the rank) so
+    # the candidate's ``why_matched`` field can carry a
+    # human-readable ``semantic-example: <title>`` breadcrumb —
+    # without it, hybrid-only candidates ship ``why_matched=[]``
+    # and the LLM has no way to triage a semantic match. See the
+    # b213fac1 / 753:27069 trace: ``Navigation/Subheader`` →
+    # ``NavigationIcon`` was a hybrid-only hit with empty
+    # ``why_matched``; the agent discarded the suggestion because
+    # it couldn't verify the signal.
+    hybrid_first_hit: dict[str, tuple[int, ExampleHit]] = {}
     for rank, hit in enumerate(hybrid_rows):
         comp_name = hit.component_name
-        if comp_name not in hybrid_first_rank:
-            hybrid_first_rank[comp_name] = rank
+        if comp_name not in hybrid_first_hit:
+            hybrid_first_hit[comp_name] = (rank, hit)
 
     fused: dict[str, float] = {}
     sources: dict[str, set[str]] = {}
@@ -888,12 +992,19 @@ def _build_candidates(
         why.setdefault(name, list(row.get("why_matched", [])))
         summaries.setdefault(name, row.get("summary", ""))
         types.setdefault(name, row.get("type", "component"))
-    for comp_name, rank in hybrid_first_rank.items():
+    for comp_name, (rank, hit) in hybrid_first_hit.items():
         fused[comp_name] = fused.get(comp_name, 0.0) + 1.0 / (_RRF_K + rank + 1)
         sources.setdefault(comp_name, set()).add("hybrid")
-        # Hybrid hits don't carry BM25's ``why_matched`` or
-        # ``summary``; fall back to whatever BM25 contributed
-        # (or leave blank when only hybrid matched).
+        # Append a ``semantic-example: <title>`` rationale so the
+        # LLM knows WHICH example anchored the hybrid hit. This
+        # is the only signal hybrid-only candidates carry — BM25
+        # ``why_matched`` is per-token-overlap, but hybrid is
+        # per-embedding so the closest we can come to an
+        # explanation is the example whose embedding won.
+        existing = why.setdefault(comp_name, [])
+        breadcrumb = _hybrid_breadcrumb(hit)
+        if breadcrumb and breadcrumb not in existing:
+            existing.append(breadcrumb)
         summaries.setdefault(comp_name, "")
         types.setdefault(comp_name, "component")
 
