@@ -21,8 +21,8 @@ File name convention
 
 Examples (canonical → file name):
 
-* ``SzP22zLyApL9R5nsQYheeo`` + ``3800:49763`` →
-  ``SzP22zLyApL9R5nsQYheeo__3800_49763.json``
+* ``QjBuSKHooZN4GEzA2rJy6P`` + ``753:20750`` →
+  ``QjBuSKHooZN4GEzA2rJy6P__753_20750.json``
 * ``abc123`` + ``1:1`` → ``abc123__1_1.json``
 
 Mocks directory resolution

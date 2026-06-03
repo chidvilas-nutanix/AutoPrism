@@ -12,7 +12,7 @@ These tests pin three things:
    returns ``None`` — never silently serves bad data.
 
 We also confirm the curated mock that ships with the repo
-(``mocks/figma_tree/SzP22zLyApL9R5nsQYheeo__3800_49763.json``)
+(``mocks/figma_tree/QjBuSKHooZN4GEzA2rJy6P__753_20750.json``)
 validates against the current Pydantic model.
 """
 
@@ -28,9 +28,9 @@ from prism_mcp.figma import FigmaTreeMapping, mock_path_for, try_load_mock
 from prism_mcp.figma.fetch import ParsedFigmaUrl
 from prism_mcp.figma.mocks import _ENV_VAR
 
-
-_REPO_ROOT_MOCK_KEY = "SzP22zLyApL9R5nsQYheeo"
-_REPO_ROOT_MOCK_NODE = "3800:49763"
+_REPO_ROOT_MOCK_KEY = "QjBuSKHooZN4GEzA2rJy6P"
+_REPO_ROOT_MOCK_NODE = "753:20750"
+_REPO_DRIFT_MOCK_NODE = "752:13805"
 
 
 def _parsed(file_key: str = "abc123", node_id: str = "1:1") -> ParsedFigmaUrl:
@@ -137,7 +137,7 @@ def _repo_mocks_dir() -> Path:
     reason="curated mock not present in this checkout",
 )
 def test_curated_repo_mock_validates(monkeypatch):
-    """The shipped 3800:49763 mock round-trips through the model."""
+    """The shipped 753:20750 mock round-trips through the model."""
     monkeypatch.setenv(_ENV_VAR, str(_repo_mocks_dir()))
     parsed = _parsed(
         file_key=_REPO_ROOT_MOCK_KEY,
@@ -153,3 +153,43 @@ def test_curated_repo_mock_validates(monkeypatch):
     assert len(loaded.tokens) > 0
     assert "agenda_size" in loaded.summary
     assert loaded.summary["agenda_size"] == len(loaded.agenda)
+    # The root agenda entry must alias the URL's node-id so Cursor can
+    # cross-reference the response back to the original request.
+    root = loaded.agenda[0]
+    assert _REPO_ROOT_MOCK_NODE in (root.aliased_ids or []), (
+        "root agenda entry must alias the URL node-id so the mock makes "
+        "sense for the requested URL"
+    )
+
+
+@pytest.mark.skipif(
+    not (
+        _repo_mocks_dir()
+        / f"{_REPO_ROOT_MOCK_KEY}__{_REPO_DRIFT_MOCK_NODE.replace(':', '_')}.json"
+    ).exists(),
+    reason="curated mock not present in this checkout",
+)
+def test_curated_drift_mock_validates(monkeypatch):
+    """The shipped 752:13805 NCM Drift Management mock round-trips."""
+    monkeypatch.setenv(_ENV_VAR, str(_repo_mocks_dir()))
+    parsed = _parsed(
+        file_key=_REPO_ROOT_MOCK_KEY,
+        node_id=_REPO_DRIFT_MOCK_NODE,
+    )
+    loaded = try_load_mock(parsed)
+    assert loaded is not None, (
+        "the curated drift mock should load when the mocks directory is "
+        "pointed at the repo's mocks/figma_tree folder"
+    )
+    assert len(loaded.layout_tree) > 0
+    assert len(loaded.agenda) > 0
+    assert len(loaded.tokens) > 0
+    assert "agenda_size" in loaded.summary
+    assert loaded.summary["agenda_size"] == len(loaded.agenda)
+    # The root agenda entry must alias the URL's node-id so Cursor can
+    # cross-reference the response back to the original request.
+    root = loaded.agenda[0]
+    assert _REPO_DRIFT_MOCK_NODE in (root.aliased_ids or []), (
+        "root agenda entry must alias the URL node-id so the mock makes "
+        "sense for the requested URL"
+    )

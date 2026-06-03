@@ -1,5 +1,14 @@
-"""Build the curated FigmaTreeMapping mock for node 3800:49763
-("Networking ~ Expanded Row" inside the Expand Clusters in PC file).
+"""Build the curated FigmaTreeMapping mock for node 753:20750
+(Figma-basics file copy of the original 3800:49763 "Networking ~
+Expanded Row" frame from Expand Clusters in PC).
+
+The original Figma file (file key ``SzP22zLyApL9R5nsQYheeo``) is not
+reachable through the Cursor Figma plugin, so the design was duplicated
+into a permission-friendly file (``QjBuSKHooZN4GEzA2rJy6P``) and
+re-anchored on node ``753:20750``. The mock content (agenda IDs,
+bboxes, hex colours, …) is preserved verbatim — the only thing that
+changed is the (file_key, node_id) the loader keys on, i.e. the
+filename produced by ``main()``.
 
 This is a hand-curated "perfect ideal output" — only the
 high-quality, semantically meaningful regions appear in the
@@ -12,7 +21,7 @@ makes sure the resulting JSON round-trips through
 ``FigmaTreeMapping.model_validate``.
 
 Output:
-    mocks/figma_tree/SzP22zLyApL9R5nsQYheeo__3800_49763.json
+    mocks/figma_tree/QjBuSKHooZN4GEzA2rJy6P__753_20750.json
 """
 
 from __future__ import annotations
@@ -21,7 +30,6 @@ import json
 from pathlib import Path
 
 from prism_mcp.figma.models import (
-    AbsolutePos,
     BoxStyle,
     DroppedNode,
     FigmaTreeMapping,
@@ -34,7 +42,6 @@ from prism_mcp.workflow.figma_mapping import (
     FigmaNodeMapping,
     TokenMapping,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers — these mirror what the real walker emits so the JSON looks
@@ -352,7 +359,7 @@ AGENDA: list[MappedRegion] = [
     # ----- Modal shell -----
     MappedRegion(
         id="3800:49764",
-        aliased_ids=["3800:49763"],
+        aliased_ids=["3800:49763", "753:20750"],
         name="Modal/Fullpage",
         role="composed-region",
         bbox=(7783.0, 10347.0, 1440.0, 1004.0),
@@ -1833,7 +1840,7 @@ def main() -> None:
         Path(__file__).resolve().parent.parent
         / "mocks"
         / "figma_tree"
-        / "SzP22zLyApL9R5nsQYheeo__3800_49763.json"
+        / "QjBuSKHooZN4GEzA2rJy6P__753_20750.json"
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     # mode="json" emits primitives only (tuples → lists, BaseModel→dict).
