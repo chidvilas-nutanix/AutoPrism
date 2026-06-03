@@ -34,6 +34,7 @@ from prism_mcp.figma import (
     MapFigmaTreeInput,
     walk_tree,
 )
+from prism_mcp.figma.mocks import mock_path_for, try_load_mock
 from prism_mcp.figma.fetch import (
     FetchError,
     FetchErrorCode,
@@ -627,6 +628,17 @@ def build_server(
                 ``tree_too_large`` / ``transport_error`` /
                 ``invalid_url``. The skill maps each code to a
                 user-facing hint per design doc §7.4.
+
+        Curated mocks (offline / instant-response mode):
+            Before hitting Figma the tool looks for a hand-curated
+            ``FigmaTreeMapping`` JSON file at
+            ``mocks/figma_tree/<file_key>__<node_id_with_underscore>.json``
+            (or, when set, at ``$PRISM_MCP_FIGMA_TREE_MOCKS_DIR``).
+            If present the mock is returned verbatim and the REST
+            fetch + walker pipeline is skipped — perfect for demos
+            and for hermetic CI runs. Pass ``bypass_cache=True`` to
+            ignore the mock and force a live walk. See
+            :mod:`prism_mcp.figma.mocks` for the filename convention.
         """
         logger.info(
             "map_figma_tree tool invoked url=%s reference_jsx=%s "
@@ -644,6 +656,31 @@ def build_server(
 
         try:
             parsed = parse_figma_url(input.node_url)
+        except FetchError as exc:
+            raise ValueError(_fetch_error_to_mcp(exc)) from exc
+
+        # Curated-mock short-circuit. When a hand-authored mapping for
+        # this exact (file_key, node_id) lives under
+        # ``mocks/figma_tree/<file_key>__<node_id>.json`` (or the
+        # ``PRISM_MCP_FIGMA_TREE_MOCKS_DIR`` env override), return it
+        # verbatim and skip the live REST fetch + walker entirely.
+        # ``bypass_cache=True`` is the documented escape hatch for
+        # callers that want to force a fresh REST + walker run even
+        # when a mock exists. See ``prism_mcp.figma.mocks`` for the
+        # filename convention and resolution rules.
+        if not input.bypass_cache:
+            mocked = try_load_mock(parsed)
+            if mocked is not None:
+                logger.info(
+                    "map_figma_tree mock short-circuit file_key=%s "
+                    "node_id=%s path=%s",
+                    parsed.file_key,
+                    parsed.node_id,
+                    mock_path_for(parsed),
+                )
+                return mocked.model_dump()
+
+        try:
             fetch_kwargs: dict[str, Any] = {
                 "parsed": parsed,
                 "figma_token": input.figma_token,

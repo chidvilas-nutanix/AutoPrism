@@ -1,0 +1,2544 @@
+{
+  "layout_tree": [
+    {
+      "id": "3800:49764",
+      "name": "Modal/Fullpage",
+      "role": "composed-region",
+      "bbox": [
+        7783.0,
+        10347.0,
+        1440.0,
+        1004.0
+      ],
+      "children_ids": [
+        "3800:49807",
+        "3800:49780",
+        "3800:50100",
+        "3800:49765"
+      ],
+      "layout": {
+        "direction": "column",
+        "justify_content": "start",
+        "align_items": "stretch",
+        "gap": 0.0,
+        "gap_consistent": true,
+        "confidence": 1.0,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:49807",
+          "3800:49780",
+          "3800:50100",
+          "3800:49765"
+        ],
+        "rationale": "figma_auto_layout"
+      }
+    },
+    {
+      "id": "3800:49807",
+      "name": "Header",
+      "role": "layout-container",
+      "bbox": [
+        7783.0,
+        10347.0,
+        1440.0,
+        50.0
+      ],
+      "children_ids": [
+        "3800:49816",
+        "3800:49810"
+      ],
+      "layout": {
+        "direction": "row",
+        "justify_content": "space-between",
+        "align_items": "center",
+        "gap": null,
+        "gap_consistent": false,
+        "confidence": 0.92,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:49816",
+          "3800:49810"
+        ],
+        "rationale": "row score 0.92 (title left @x=7803, controls right @x=9148, centered within 50 px header)"
+      }
+    },
+    {
+      "id": "3800:49810",
+      "name": "Controls",
+      "role": "button-group",
+      "bbox": [
+        9148.0,
+        10366.0,
+        55.0,
+        12.0
+      ],
+      "children_ids": [
+        "3800:49811",
+        "3800:49813",
+        "3800:49814"
+      ],
+      "layout": {
+        "direction": "row",
+        "justify_content": "end",
+        "align_items": "center",
+        "gap": 12.0,
+        "gap_consistent": true,
+        "confidence": 0.95,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:49811",
+          "3800:49813",
+          "3800:49814"
+        ],
+        "rationale": "row score 0.95 (3 children left\u2192right with 12 px gaps)"
+      }
+    },
+    {
+      "id": "3800:49780",
+      "name": "Navigation/Subheader/Steps",
+      "role": "tab-strip",
+      "bbox": [
+        7783.0,
+        10397.0,
+        1440.0,
+        50.0
+      ],
+      "children_ids": [
+        "3800:49782"
+      ],
+      "layout": {
+        "direction": "single",
+        "justify_content": "center",
+        "align_items": "center",
+        "gap": null,
+        "gap_consistent": true,
+        "confidence": 1.0,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:49782"
+        ],
+        "rationale": "single child container"
+      }
+    },
+    {
+      "id": "3800:49782",
+      "name": "Steps container",
+      "role": "composed-region",
+      "bbox": [
+        8100.0,
+        10412.0,
+        806.0,
+        20.0
+      ],
+      "children_ids": [
+        "3800:49783",
+        "3800:49787",
+        "3800:49791",
+        "3800:49795",
+        "3800:49799",
+        "3800:49803"
+      ],
+      "layout": {
+        "direction": "row",
+        "justify_content": "center",
+        "align_items": "center",
+        "gap": 30.0,
+        "gap_consistent": true,
+        "confidence": 1.0,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:49783",
+          "3800:49787",
+          "3800:49791",
+          "3800:49795",
+          "3800:49799",
+          "3800:49803"
+        ],
+        "rationale": "row score 1.00 (6 step items left\u2192right with 30 px gaps, top-aligned within 0 px)"
+      }
+    },
+    {
+      "id": "3800:50100",
+      "name": "Body",
+      "role": "layout-container",
+      "bbox": [
+        7783.0,
+        10457.0,
+        1440.0,
+        844.0
+      ],
+      "children_ids": [
+        "3800:49817",
+        "3800:50101",
+        "3800:49818"
+      ],
+      "layout": {
+        "direction": "column",
+        "justify_content": "start",
+        "align_items": "stretch",
+        "gap": 12.0,
+        "gap_consistent": false,
+        "confidence": 0.9,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:49817",
+          "3800:50101",
+          "3800:49818"
+        ],
+        "rationale": "column score 0.90 (instruction \u2192 label \u2192 table, left-aligned within 0 px)"
+      }
+    },
+    {
+      "id": "3800:49818",
+      "name": "Selected Hosts Table",
+      "role": "composed-region",
+      "bbox": [
+        7803.0,
+        10534.0,
+        1400.0,
+        501.0
+      ],
+      "children_ids": [
+        "3800:49819",
+        "3800:50130"
+      ],
+      "layout": {
+        "direction": "column",
+        "justify_content": "start",
+        "align_items": "stretch",
+        "gap": 0.0,
+        "gap_consistent": true,
+        "confidence": 1.0,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:49819",
+          "3800:50130"
+        ],
+        "rationale": "figma_auto_layout"
+      }
+    },
+    {
+      "id": "3800:49819",
+      "name": "Table/Normal Hosts",
+      "role": "table-column",
+      "bbox": [
+        7803.0,
+        10534.0,
+        1400.0,
+        101.0
+      ],
+      "children_ids": [
+        "3800:50120"
+      ],
+      "layout": {
+        "direction": "single",
+        "justify_content": null,
+        "align_items": null,
+        "gap": null,
+        "gap_consistent": true,
+        "confidence": 1.0,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:50120"
+        ],
+        "rationale": "single child container"
+      }
+    },
+    {
+      "id": "3800:50130",
+      "name": "Uplinks sub-table (expanded)",
+      "role": "composed-region",
+      "bbox": [
+        7803.0,
+        10650.0,
+        1400.0,
+        350.0
+      ],
+      "children_ids": [
+        "3800:50131",
+        "3800:50132"
+      ],
+      "layout": {
+        "direction": "column",
+        "justify_content": "start",
+        "align_items": "stretch",
+        "gap": 8.0,
+        "gap_consistent": true,
+        "confidence": 1.0,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:50131",
+          "3800:50132"
+        ],
+        "rationale": "figma_auto_layout"
+      }
+    },
+    {
+      "id": "3800:49765",
+      "name": "Footer",
+      "role": "layout-container",
+      "bbox": [
+        7783.0,
+        11301.0,
+        1440.0,
+        50.0
+      ],
+      "children_ids": [
+        "3800:49767",
+        "3800:49772"
+      ],
+      "layout": {
+        "direction": "row",
+        "justify_content": "space-between",
+        "align_items": "center",
+        "gap": null,
+        "gap_consistent": false,
+        "confidence": 0.94,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:49767",
+          "3800:49772"
+        ],
+        "rationale": "row score 0.94 (back-button left @x=7794, action-group right @x=8928, centered within 50 px footer)"
+      }
+    },
+    {
+      "id": "3800:49772",
+      "name": "Footer action group",
+      "role": "button-group",
+      "bbox": [
+        8928.0,
+        11310.0,
+        285.0,
+        32.0
+      ],
+      "children_ids": [
+        "3800:49773",
+        "3800:49775",
+        "3800:49777"
+      ],
+      "layout": {
+        "direction": "row",
+        "justify_content": "end",
+        "align_items": "center",
+        "gap": 10.0,
+        "gap_consistent": true,
+        "confidence": 1.0,
+        "absolute_children": [],
+        "flow_children": [
+          "3800:49773",
+          "3800:49775",
+          "3800:49777"
+        ],
+        "rationale": "row score 1.00 (3 buttons left\u2192right with 10 px gaps, vertically centered)"
+      }
+    }
+  ],
+  "agenda": [
+    {
+      "id": "3800:49764",
+      "aliased_ids": [
+        "3800:49763"
+      ],
+      "name": "Modal/Fullpage",
+      "role": "composed-region",
+      "bbox": [
+        7783.0,
+        10347.0,
+        1440.0,
+        1004.0
+      ],
+      "parent_chain": [
+        "Networking ~ Expanded Row"
+      ],
+      "content_slots": {
+        "title": "Expand Cluster - bigtwin11"
+      },
+      "structural_hints": [
+        "1440x1004 fullpage modal",
+        "vertical stack: header / steps / body / footer"
+      ],
+      "children_summary": "GROUP Header(1 TEXT title + 1 FRAME Controls) FRAME Navigation/Subheader/Steps(1 FRAME Container) FRAME Body(1 TEXT instruction + 1 TEXT label + 1 FRAME table) GROUP Footer(1 FRAME Action/Button + 1 FRAME Buttons)",
+      "hex_colors": [
+        "#FFFFFF",
+        "#EDF0F2"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": null,
+        "padding": null,
+        "gap": null,
+        "layout_mode": "VERTICAL",
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49764 */}\n<FullPageModal title=\"Expand Cluster - bigtwin11\" visible={true} onClose={...}>...</FullPageModal>",
+      "mapping": {
+        "node_name": "Modal/Fullpage",
+        "suggested_component_name": "FullPageModal",
+        "candidates": [
+          {
+            "name": "FullPageModal",
+            "type": "component",
+            "score": 0.42,
+            "why_matched": [
+              "modal",
+              "fullpage",
+              "fullpagemodal"
+            ],
+            "summary": "Full-viewport modal with header, step nav, body, footer slots.",
+            "source": "both"
+          },
+          {
+            "name": "Modal",
+            "type": "component",
+            "score": 0.18,
+            "why_matched": [
+              "modal"
+            ],
+            "summary": "Generic dialog wrapper.",
+            "source": "both"
+          },
+          {
+            "name": "Dialog",
+            "type": "component",
+            "score": 0.09,
+            "why_matched": [
+              "modal",
+              "dialog"
+            ],
+            "summary": "Dialog primitive used inside the modal family.",
+            "source": "hybrid"
+          }
+        ],
+        "related": [
+          "NavigationHeader",
+          "Steps",
+          "Footer",
+          "Button"
+        ],
+        "a11y_blocks": [
+          "Set role=\"dialog\" and aria-modal=\"true\". Use aria-labelledby to point at the title text.",
+          "Trap focus inside the modal while it's open."
+        ],
+        "token_mappings": [
+          {
+            "hex": "#FFFFFF",
+            "token_name": "color/background/primary",
+            "token_hex": "#FFFFFF",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#15171A",
+            "token_name": "color/text/primary",
+            "token_hex": "#15171A",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#586678",
+            "token_name": "color/text/secondary",
+            "token_hex": "#586678",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#EDF0F2",
+            "token_name": "color/border/secondary",
+            "token_hex": "#EDF0F2",
+            "bucket": "exact"
+          }
+        ],
+        "examples": [],
+        "candidate_decompositions": [
+          "FullPageModal + NavigationHeader",
+          "FullPageModal + Steps"
+        ],
+        "primary_recommendation": "FullPageModal",
+        "primary_recommendation_rationale": "name 'Modal/Fullpage' matches alias hint 'FullPageModal Modal'",
+        "primary_recommendation_confidence": 1.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "modal"
+    },
+    {
+      "id": "3800:49807",
+      "aliased_ids": [],
+      "name": "Header",
+      "role": "layout-container",
+      "bbox": [
+        7783.0,
+        10347.0,
+        1440.0,
+        50.0
+      ],
+      "parent_chain": [
+        "Networking ~ Expanded Row",
+        "Modal/Fullpage"
+      ],
+      "content_slots": {
+        "title": "Expand Cluster - bigtwin11"
+      },
+      "structural_hints": [
+        "1440x50 horizontal header strip",
+        "title left, controls right"
+      ],
+      "children_summary": "TEXT Title + FRAME Controls(QuestionMark + Cross)",
+      "hex_colors": [
+        "#FFFFFF",
+        "#EDF0F2",
+        "#15171A"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": "#EDF0F2",
+        "border_width": 1.0,
+        "corner_radius": null,
+        "padding": [
+          0.0,
+          20.0,
+          0.0,
+          20.0
+        ],
+        "gap": null,
+        "layout_mode": "HORIZONTAL",
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49807 */}\n<FlexLayout className=\"header\" alignItems=\"center\" justifyContent=\"space-between\">{title}{controls}</FlexLayout>",
+      "mapping": {
+        "node_name": "Header",
+        "suggested_component_name": "FlexLayout",
+        "candidates": [
+          {
+            "name": "FlexLayout",
+            "type": "component",
+            "score": 0.31,
+            "why_matched": [
+              "header",
+              "row",
+              "flex"
+            ],
+            "summary": "Row/column wrapper with gap and alignment.",
+            "source": "both"
+          },
+          {
+            "name": "NavigationHeader",
+            "type": "component",
+            "score": 0.22,
+            "why_matched": [
+              "header",
+              "navigation"
+            ],
+            "summary": "App-level navigation bar with title + controls slots.",
+            "source": "both"
+          }
+        ],
+        "related": [
+          "Paragraph",
+          "IconButton"
+        ],
+        "a11y_blocks": [],
+        "token_mappings": [
+          {
+            "hex": "#FFFFFF",
+            "token_name": "color/background/primary",
+            "token_hex": "#FFFFFF",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#15171A",
+            "token_name": "color/text/primary",
+            "token_hex": "#15171A",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#586678",
+            "token_name": "color/text/secondary",
+            "token_hex": "#586678",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#EDF0F2",
+            "token_name": "color/border/secondary",
+            "token_hex": "#EDF0F2",
+            "bucket": "exact"
+          }
+        ],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "banner"
+    },
+    {
+      "id": "3800:49816",
+      "aliased_ids": [],
+      "name": "Header Title",
+      "role": "text",
+      "bbox": [
+        7803.0,
+        10364.0,
+        164.0,
+        16.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Header"
+      ],
+      "content_slots": {
+        "value": "Expand Cluster - bigtwin11"
+      },
+      "structural_hints": [
+        "14px semibold text"
+      ],
+      "children_summary": "single TEXT node",
+      "hex_colors": [
+        "#15171A"
+      ],
+      "box_style": {
+        "background_color": null,
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": null,
+        "padding": null,
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49816 */}\n<Paragraph weight=\"medium\">Expand Cluster - bigtwin11</Paragraph>",
+      "mapping": {
+        "node_name": "Header Title",
+        "suggested_component_name": "Paragraph",
+        "candidates": [
+          {
+            "name": "Paragraph",
+            "type": "component",
+            "score": 0.27,
+            "why_matched": [
+              "text",
+              "title"
+            ],
+            "summary": "Body text primitive (size, weight, color props).",
+            "source": "both"
+          },
+          {
+            "name": "TextLabel",
+            "type": "component",
+            "score": 0.18,
+            "why_matched": [
+              "title",
+              "label"
+            ],
+            "summary": "Inline label primitive.",
+            "source": "both"
+          },
+          {
+            "name": "Title",
+            "type": "component",
+            "score": 0.12,
+            "why_matched": [
+              "title"
+            ],
+            "summary": "Heading primitive.",
+            "source": "hybrid"
+          }
+        ],
+        "related": [],
+        "a11y_blocks": [],
+        "token_mappings": [
+          {
+            "hex": "#15171A",
+            "token_name": "color/text/primary",
+            "token_hex": "#15171A",
+            "bucket": "exact"
+          }
+        ],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:49810",
+      "aliased_ids": [],
+      "name": "Header Controls",
+      "role": "button-group",
+      "bbox": [
+        9148.0,
+        10366.0,
+        55.0,
+        12.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Header"
+      ],
+      "content_slots": {
+        "items": [
+          "help",
+          "divider",
+          "close"
+        ]
+      },
+      "structural_hints": [
+        "horizontal cluster of 2 icon buttons separated by a 1px divider"
+      ],
+      "children_summary": "FRAME Icon/Controls/Question Mark + RECTANGLE Divider + FRAME Icon/System/Cross",
+      "hex_colors": [
+        "#586678",
+        "#B8BFCA"
+      ],
+      "box_style": {
+        "background_color": null,
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": null,
+        "padding": null,
+        "gap": 12.0,
+        "layout_mode": "HORIZONTAL",
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49810 */}\n<FlexLayout itemGap=\"M\" alignItems=\"center\">{helpBtn}{divider}{closeBtn}</FlexLayout>",
+      "mapping": {
+        "node_name": "Header Controls",
+        "suggested_component_name": "ButtonGroup",
+        "candidates": [
+          {
+            "name": "ButtonGroup",
+            "type": "component",
+            "score": 0.38,
+            "why_matched": [
+              "button",
+              "controls",
+              "group"
+            ],
+            "summary": "Group of related buttons sharing context.",
+            "source": "both"
+          },
+          {
+            "name": "FlexLayout",
+            "type": "component",
+            "score": 0.21,
+            "why_matched": [
+              "controls",
+              "row"
+            ],
+            "summary": "Row/column wrapper with gap and alignment.",
+            "source": "both"
+          }
+        ],
+        "related": [
+          "IconButton",
+          "Button"
+        ],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": "ButtonGroup",
+        "primary_recommendation_rationale": "pattern role 'button-group' \u2192 ButtonGroup",
+        "primary_recommendation_confidence": 1.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:49811",
+      "aliased_ids": [],
+      "name": "Help icon button",
+      "role": "icon",
+      "bbox": [
+        9148.0,
+        10366.0,
+        12.0,
+        12.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Header",
+        "Controls"
+      ],
+      "content_slots": {
+        "icon_name_hint": "QuestionIcon",
+        "label": "Help"
+      },
+      "structural_hints": [
+        "12x12 icon trigger"
+      ],
+      "children_summary": "VECTOR Icon Background",
+      "hex_colors": [
+        "#586678"
+      ],
+      "box_style": {
+        "background_color": null,
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": null,
+        "padding": null,
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49811 */}\n<IconButton aria-label=\"Help\"><QuestionIcon size=\"small\" /></IconButton>",
+      "mapping": {
+        "node_name": "Help icon button",
+        "suggested_component_name": "IconButton",
+        "candidates": [
+          {
+            "name": "IconButton",
+            "type": "component",
+            "score": 0.34,
+            "why_matched": [
+              "icon",
+              "button",
+              "help"
+            ],
+            "summary": "Icon-only button (a11y label required).",
+            "source": "both"
+          },
+          {
+            "name": "QuestionIcon",
+            "type": "icon",
+            "score": 0.3,
+            "why_matched": [
+              "question",
+              "help",
+              "icon"
+            ],
+            "summary": "Question-mark icon glyph.",
+            "source": "both"
+          },
+          {
+            "name": "Icon",
+            "type": "component",
+            "score": 0.12,
+            "why_matched": [
+              "icon"
+            ],
+            "summary": "Generic icon primitive.",
+            "source": "both"
+          }
+        ],
+        "related": [],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": "Icon",
+        "primary_recommendation_rationale": "pattern role 'icon' \u2192 Icon (used inside IconButton)",
+        "primary_recommendation_confidence": 1.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "icon"
+    },
+    {
+      "id": "3800:49814",
+      "aliased_ids": [],
+      "name": "Close icon button",
+      "role": "icon",
+      "bbox": [
+        9191.0,
+        10366.0,
+        12.0,
+        12.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Header",
+        "Controls"
+      ],
+      "content_slots": {
+        "icon_name_hint": "CloseIcon",
+        "label": "Close"
+      },
+      "structural_hints": [
+        "12x12 close-X glyph"
+      ],
+      "children_summary": "VECTOR Icon Background",
+      "hex_colors": [
+        "#586678"
+      ],
+      "box_style": {
+        "background_color": null,
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": null,
+        "padding": null,
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49814 */}\n<IconButton aria-label=\"Close\"><CloseIcon size=\"small\" /></IconButton>",
+      "mapping": {
+        "node_name": "Close icon button",
+        "suggested_component_name": "IconButton",
+        "candidates": [
+          {
+            "name": "IconButton",
+            "type": "component",
+            "score": 0.36,
+            "why_matched": [
+              "icon",
+              "button",
+              "close"
+            ],
+            "summary": "Icon-only button (a11y label required).",
+            "source": "both"
+          },
+          {
+            "name": "CloseIcon",
+            "type": "icon",
+            "score": 0.32,
+            "why_matched": [
+              "close",
+              "cross",
+              "icon"
+            ],
+            "summary": "Close/cross icon glyph.",
+            "source": "both"
+          }
+        ],
+        "related": [],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": "Icon",
+        "primary_recommendation_rationale": "pattern role 'icon' \u2192 Icon (used inside IconButton)",
+        "primary_recommendation_confidence": 1.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "icon"
+    },
+    {
+      "id": "3800:49780",
+      "aliased_ids": [
+        "3800:49782"
+      ],
+      "name": "Navigation/Subheader/Steps",
+      "role": "tab-strip",
+      "bbox": [
+        7783.0,
+        10397.0,
+        1440.0,
+        50.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage"
+      ],
+      "content_slots": {
+        "items": [
+          "Select Host",
+          "Choose Host Type",
+          "Configure Host",
+          "Networking",
+          "Software Check",
+          "Review"
+        ],
+        "value": "Networking",
+        "cell_count": 6
+      },
+      "structural_hints": [
+        "horizontal step bar, 6 items, current=4 (Networking)",
+        "first 3 marked finish, current process, last 2 wait"
+      ],
+      "children_summary": "FRAME Container(6 FRAME 'Step N' each with Status/Badge + TEXT)",
+      "hex_colors": [
+        "#1B6DC6",
+        "#586678",
+        "#FFFFFF",
+        "#B8BFCA"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": "#EDF0F2",
+        "border_width": 1.0,
+        "corner_radius": null,
+        "padding": [
+          15.0,
+          0.0,
+          15.0,
+          0.0
+        ],
+        "gap": null,
+        "layout_mode": "HORIZONTAL",
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49780 */}\n<Steps current={3} data={[\n  { title: 'Select Host' }, { title: 'Choose Host Type' },\n  { title: 'Configure Host' }, { title: 'Networking' },\n  { title: 'Software Check' }, { title: 'Review' }\n]} />",
+      "mapping": {
+        "node_name": "Navigation/Subheader/Steps",
+        "suggested_component_name": "Steps",
+        "candidates": [
+          {
+            "name": "Steps",
+            "type": "component",
+            "score": 0.46,
+            "why_matched": [
+              "steps",
+              "navigation",
+              "subheader"
+            ],
+            "summary": "Step indicator for multi-step workflows with finish/process/wait states.",
+            "source": "both"
+          },
+          {
+            "name": "TabBar",
+            "type": "component",
+            "score": 0.21,
+            "why_matched": [
+              "tab",
+              "navigation"
+            ],
+            "summary": "Horizontal tab strip.",
+            "source": "both"
+          },
+          {
+            "name": "NavigationHeader",
+            "type": "component",
+            "score": 0.14,
+            "why_matched": [
+              "navigation",
+              "header"
+            ],
+            "summary": "Top app-bar.",
+            "source": "hybrid"
+          }
+        ],
+        "related": [
+          "StepItem"
+        ],
+        "a11y_blocks": [
+          "Render role=\"tablist\" with aria-orientation=\"horizontal\".",
+          "Each step is role=\"tab\" with aria-selected and aria-current=\"step\" for the active item."
+        ],
+        "token_mappings": [
+          {
+            "hex": "#1B6DC6",
+            "token_name": "color/primary/500",
+            "token_hex": "#1B6DC6",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#B8BFCA",
+            "token_name": "color/border/interactive",
+            "token_hex": "#B8BFCA",
+            "bucket": "exact"
+          }
+        ],
+        "examples": [],
+        "candidate_decompositions": [
+          "Steps + StepItem"
+        ],
+        "primary_recommendation": "TabBar",
+        "primary_recommendation_rationale": "pattern role 'tab-strip' \u2192 TabBar (overridden to Steps by alias hint 'Subheader Nav Header')",
+        "primary_recommendation_confidence": 1.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:49817",
+      "aliased_ids": [],
+      "name": "Instruction",
+      "role": "text",
+      "bbox": [
+        7803.0,
+        10467.0,
+        383.0,
+        21.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Body"
+      ],
+      "content_slots": {
+        "value": "Select the appropriate active and backup uplinks for the hosts."
+      },
+      "structural_hints": [
+        "13px body copy"
+      ],
+      "children_summary": "single TEXT node",
+      "hex_colors": [
+        "#15171A"
+      ],
+      "box_style": {
+        "background_color": null,
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": null,
+        "padding": null,
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49817 */}\n<Paragraph>Select the appropriate active and backup uplinks for the hosts.</Paragraph>",
+      "mapping": {
+        "node_name": "Instruction",
+        "suggested_component_name": "Paragraph",
+        "candidates": [
+          {
+            "name": "Paragraph",
+            "type": "component",
+            "score": 0.29,
+            "why_matched": [
+              "text",
+              "paragraph",
+              "body"
+            ],
+            "summary": "Body text primitive (size, weight, color props).",
+            "source": "both"
+          }
+        ],
+        "related": [],
+        "a11y_blocks": [],
+        "token_mappings": [
+          {
+            "hex": "#15171A",
+            "token_name": "color/text/primary",
+            "token_hex": "#15171A",
+            "bucket": "exact"
+          }
+        ],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:50101",
+      "aliased_ids": [],
+      "name": "List label",
+      "role": "text",
+      "bbox": [
+        7803.0,
+        10502.0,
+        200.0,
+        16.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Body"
+      ],
+      "content_slots": {
+        "value": "List of 2 Selected Hosts"
+      },
+      "structural_hints": [
+        "13px bold label",
+        "selection summary"
+      ],
+      "children_summary": "single TEXT node",
+      "hex_colors": [
+        "#15171A"
+      ],
+      "box_style": {
+        "background_color": null,
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": null,
+        "padding": null,
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:50101 */}\n<TextLabel size={TextLabel.TEXT_LABEL_SIZE.MEDIUM} weight=\"bold\">List of 2 Selected Hosts</TextLabel>",
+      "mapping": {
+        "node_name": "List label",
+        "suggested_component_name": "TextLabel",
+        "candidates": [
+          {
+            "name": "TextLabel",
+            "type": "component",
+            "score": 0.31,
+            "why_matched": [
+              "label",
+              "text",
+              "list"
+            ],
+            "summary": "Inline label primitive (size + weight props).",
+            "source": "both"
+          },
+          {
+            "name": "Paragraph",
+            "type": "component",
+            "score": 0.17,
+            "why_matched": [
+              "text"
+            ],
+            "summary": "Body text primitive.",
+            "source": "both"
+          }
+        ],
+        "related": [],
+        "a11y_blocks": [],
+        "token_mappings": [
+          {
+            "hex": "#15171A",
+            "token_name": "color/text/primary",
+            "token_hex": "#15171A",
+            "bucket": "exact"
+          }
+        ],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:49819",
+      "aliased_ids": [
+        "3800:49818",
+        "3800:49820"
+      ],
+      "name": "Selected Hosts Table",
+      "role": "table-column",
+      "bbox": [
+        7803.0,
+        10534.0,
+        1400.0,
+        121.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Body",
+        "Frame 1"
+      ],
+      "content_slots": {
+        "header": "Model/Serial Number | Host Position | Active Uplink | Backup Uplink",
+        "items": [
+          "NX-3060-G5 19FM6F160438",
+          "NX-3060-G5 19FM6F160439"
+        ],
+        "cell_count": 2,
+        "first_cell_sample": "row1: NX-3060-G5 | 19FM6F160438 | B | eth 0 | eth 1, eth 2, eth 3, eth 4, eth 5, eth 6, eth 7"
+      },
+      "structural_hints": [
+        "4-column hosts table with expandable rows",
+        "row 1 expanded, row 2 collapsed",
+        "row 2 active/backup cells render italic placeholder"
+      ],
+      "children_summary": "4 FRAME 'Table/Column' (Model/Serial, Host Position, Active Uplink, Backup Uplink) each with 2 'Table/Table Cell' rows",
+      "hex_colors": [
+        "#FFFFFF",
+        "#EDF0F2",
+        "#15171A",
+        "#1B6DC6"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": "#EDF0F2",
+        "border_width": 1.0,
+        "corner_radius": 4.0,
+        "padding": null,
+        "gap": null,
+        "layout_mode": "VERTICAL",
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49819 */}\n<Table aria-label=\"Selected Hosts\"\n  columns={HOST_COLUMNS} dataSource={HOST_ROWS} rowKey=\"key\"\n  rowExpand={{ rows: ['host-1'], render: row => <UplinkSubTable /> }}\n  sort={{ sortable: ['model', 'position', 'active', 'backup'] }}\n/>",
+      "mapping": {
+        "node_name": "Selected Hosts Table",
+        "suggested_component_name": "Table",
+        "candidates": [
+          {
+            "name": "Table",
+            "type": "component",
+            "score": 0.52,
+            "why_matched": [
+              "table",
+              "column",
+              "row",
+              "cell"
+            ],
+            "summary": "Data table with sortable columns, row expansion, pagination.",
+            "source": "both"
+          },
+          {
+            "name": "TableColumn",
+            "type": "component",
+            "score": 0.34,
+            "why_matched": [
+              "table",
+              "column"
+            ],
+            "summary": "Single column descriptor inside a Table.",
+            "source": "both"
+          },
+          {
+            "name": "DataTable",
+            "type": "component",
+            "score": 0.12,
+            "why_matched": [
+              "data",
+              "table"
+            ],
+            "summary": "Higher-level data-grid wrapper.",
+            "source": "hybrid"
+          }
+        ],
+        "related": [
+          "TableColumn",
+          "TableCell",
+          "TableRow",
+          "Sorter"
+        ],
+        "a11y_blocks": [
+          "Wrap in role=\"table\" (Prism's Table does this by default). Provide an aria-label for the table.",
+          "Mark sortable headers with aria-sort and expose visible sort indicators (already provided by sort prop).",
+          "Expandable rows: trigger has aria-expanded; expanded panel uses role=\"row\" and the right aria-controls."
+        ],
+        "token_mappings": [
+          {
+            "hex": "#FFFFFF",
+            "token_name": "color/background/primary",
+            "token_hex": "#FFFFFF",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#15171A",
+            "token_name": "color/text/primary",
+            "token_hex": "#15171A",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#586678",
+            "token_name": "color/text/secondary",
+            "token_hex": "#586678",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#EDF0F2",
+            "token_name": "color/border/secondary",
+            "token_hex": "#EDF0F2",
+            "bucket": "exact"
+          }
+        ],
+        "examples": [],
+        "candidate_decompositions": [
+          "Table + TableColumn",
+          "Table + Sorter"
+        ],
+        "primary_recommendation": "TableColumn",
+        "primary_recommendation_rationale": "pattern role 'table-column' \u2192 TableColumn (overridden to Table at composition; outer wrapper is Table, inner agenda entries can use TableColumn for per-column metadata)",
+        "primary_recommendation_confidence": 1.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:50131",
+      "aliased_ids": [],
+      "name": "Uplinks search",
+      "role": "instance",
+      "bbox": [
+        7818.0,
+        10661.0,
+        360.0,
+        28.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Body",
+        "Selected Hosts Table",
+        "Uplinks sub-table"
+      ],
+      "content_slots": {
+        "placeholder": "Type to filter uplinks by label or LLDP Neighbor"
+      },
+      "structural_hints": [
+        "input with leading search icon",
+        "360px width"
+      ],
+      "children_summary": "FRAME Search icon + TEXT placeholder",
+      "hex_colors": [
+        "#FFFFFF",
+        "#B8BFCA",
+        "#586678"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": "#B8BFCA",
+        "border_width": 1.0,
+        "corner_radius": 2.0,
+        "padding": null,
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:50131 */}\n<Input search={true} placeholder=\"Type to filter uplinks by label or LLDP Neighbor\" />",
+      "mapping": {
+        "node_name": "Uplinks search",
+        "suggested_component_name": "Input",
+        "candidates": [
+          {
+            "name": "Input",
+            "type": "component",
+            "score": 0.41,
+            "why_matched": [
+              "search",
+              "input",
+              "filter"
+            ],
+            "summary": "Text input. Set `search={true}` for the search-icon variant.",
+            "source": "both"
+          },
+          {
+            "name": "TextInput",
+            "type": "component",
+            "score": 0.18,
+            "why_matched": [
+              "text",
+              "input"
+            ],
+            "summary": "Alias for Input.",
+            "source": "both"
+          }
+        ],
+        "related": [
+          "InputAddon",
+          "Icon"
+        ],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:50132",
+      "aliased_ids": [],
+      "name": "Uplinks Table",
+      "role": "table-column",
+      "bbox": [
+        7803.0,
+        10697.0,
+        1400.0,
+        303.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Body",
+        "Selected Hosts Table",
+        "Uplinks sub-table"
+      ],
+      "content_slots": {
+        "header": "Uplink | Status | Label | LLDP Neighbor | Interface Speed | Virtual Switch | Bonding Type | Uplink Type",
+        "items": [
+          "eth 0 / Up / label123 / / 10G / vs0 / Active-Backup / Active",
+          "eth 1 / Up / label273 / (VLAN tooltip) / 10G / vs0 / Active-Backup / Backup",
+          "eth 2 / Up / label423 / sample-uplink-2 / 1G / vs0 / Active-Backup / Backup",
+          "eth 3 / Down / label573 / sample-uplink-1 / 1G / vs0 / Active-Backup / Backup",
+          "eth 4 / Up / label723 / sample-uplink-3 / 1G / vs0 / Active-Backup / Backup",
+          "eth 7 / Up / label873 / sample-uplink-3 / 1G / vs0 / Active-Backup / Backup"
+        ],
+        "cell_count": 6
+      },
+      "structural_hints": [
+        "8-column uplinks table",
+        "Label column header has bell/info icon",
+        "Virtual Switch + Uplink Type columns use inline Select cells",
+        "LLDP Neighbor cell shows always-open Tooltip on eth-1"
+      ],
+      "children_summary": "8 FRAME 'Table/Column' with 6 Table/Table Cell rows each",
+      "hex_colors": [
+        "#F4F6F8",
+        "#FFFFFF",
+        "#EDF0F2",
+        "#1B8836",
+        "#D02550",
+        "#15171A"
+      ],
+      "box_style": {
+        "background_color": "#F4F6F8",
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": 4.0,
+        "padding": [
+          12.0,
+          16.0,
+          16.0,
+          16.0
+        ],
+        "gap": 8.0,
+        "layout_mode": "VERTICAL",
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:50132 */}\n<Table aria-label=\"Uplinks\"\n  columns={UPLINK_COLUMNS} dataSource={UPLINK_ROWS} rowKey=\"key\"\n  sort={{ sortable: ['uplink','status','label','lldp','speed','vs','bonding','uplinkType'] }}\n/>",
+      "mapping": {
+        "node_name": "Uplinks Table",
+        "suggested_component_name": "Table",
+        "candidates": [
+          {
+            "name": "Table",
+            "type": "component",
+            "score": 0.54,
+            "why_matched": [
+              "table",
+              "column",
+              "uplink"
+            ],
+            "summary": "Data table with sortable columns.",
+            "source": "both"
+          },
+          {
+            "name": "TableColumn",
+            "type": "component",
+            "score": 0.32,
+            "why_matched": [
+              "table",
+              "column"
+            ],
+            "summary": "Single column descriptor.",
+            "source": "both"
+          }
+        ],
+        "related": [
+          "TableColumn",
+          "TableCell",
+          "TableRow",
+          "Select",
+          "Tooltip",
+          "Input"
+        ],
+        "a11y_blocks": [
+          "Wrap in role=\"table\". Provide aria-label and aria-sort per column.",
+          "Status dot must be exposed via accessible text (e.g. 'Up'/'Down') alongside the colour."
+        ],
+        "token_mappings": [
+          {
+            "hex": "#F4F6F8",
+            "token_name": "color/background/neutral",
+            "token_hex": "#F4F6F8",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#1B8836",
+            "token_name": "color/status/success",
+            "token_hex": "#1B8836",
+            "bucket": "exact"
+          },
+          {
+            "hex": "#D02550",
+            "token_name": "color/status/critical",
+            "token_hex": "#D02550",
+            "bucket": "exact"
+          }
+        ],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": "TableColumn",
+        "primary_recommendation_rationale": "pattern role 'table-column' \u2192 TableColumn (composed inside an outer Table)",
+        "primary_recommendation_confidence": 1.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:50145",
+      "aliased_ids": [],
+      "name": "VLAN/MAC tooltip",
+      "role": "instance",
+      "bbox": [
+        8430.0,
+        10761.0,
+        230.0,
+        56.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Body",
+        "Uplinks Table",
+        "row eth-1",
+        "LLDP Neighbor"
+      ],
+      "content_slots": {
+        "title": "VLAN / MAC tooltip",
+        "items": [
+          "VLAN: vlan.27",
+          "MAC Address: 3E:42:68:8F:6E:4F"
+        ]
+      },
+      "structural_hints": [
+        "dark popover anchored to LLDP Neighbor cell of eth-1",
+        "open by default in the design (acts as call-out)"
+      ],
+      "children_summary": "FRAME tooltip with 2 'label : value' rows + tail caret",
+      "hex_colors": [
+        "#2C3038",
+        "#FFFFFF",
+        "#B8BFCA"
+      ],
+      "box_style": {
+        "background_color": "#2C3038",
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": 3.0,
+        "padding": [
+          6.0,
+          10.0,
+          6.0,
+          10.0
+        ],
+        "gap": 4.0,
+        "layout_mode": null,
+        "has_shadow": true,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:50145 */}\n<Tooltip visible={true} placement=\"right\"\n  content={<dl><dt>VLAN</dt><dd>vlan.27</dd><dt>MAC Address</dt><dd>3E:42:68:8F:6E:4F</dd></dl>}\n><span className=\"lldp-anchor\" /></Tooltip>",
+      "mapping": {
+        "node_name": "VLAN/MAC tooltip",
+        "suggested_component_name": "Tooltip",
+        "candidates": [
+          {
+            "name": "Tooltip",
+            "type": "component",
+            "score": 0.49,
+            "why_matched": [
+              "tooltip",
+              "popover",
+              "vlan"
+            ],
+            "summary": "Informative popover triggered by hover/focus, supports controlled `visible` for design-time.",
+            "source": "both"
+          },
+          {
+            "name": "Popover",
+            "type": "component",
+            "score": 0.21,
+            "why_matched": [
+              "popover"
+            ],
+            "summary": "Generic popover container.",
+            "source": "hybrid"
+          }
+        ],
+        "related": [
+          "PortalProvider"
+        ],
+        "a11y_blocks": [
+          "Tooltip content must have role=\"tooltip\" and be linked to the trigger via aria-describedby."
+        ],
+        "token_mappings": [
+          {
+            "hex": "#2C3038",
+            "token_name": "color/background/inverse",
+            "token_hex": "#2C3038",
+            "bucket": "exact"
+          }
+        ],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:50160",
+      "aliased_ids": [],
+      "name": "Virtual Switch Select",
+      "role": "instance",
+      "bbox": [
+        8810.0,
+        10750.0,
+        100.0,
+        28.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Body",
+        "Uplinks Table",
+        "Virtual Switch column"
+      ],
+      "content_slots": {
+        "label": "Virtual Switch",
+        "value": "vs0",
+        "items": [
+          "vs0",
+          "vs1",
+          "vs2",
+          "vs3"
+        ],
+        "cell_count": 6
+      },
+      "structural_hints": [
+        "100px clearable select",
+        "shown \u00d7 clear icon + : caret per row"
+      ],
+      "children_summary": "FRAME pill with TEXT + Icon \u00d7 + Icon :",
+      "hex_colors": [
+        "#FFFFFF",
+        "#B8BFCA"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": "#B8BFCA",
+        "border_width": 1.0,
+        "corner_radius": 2.0,
+        "padding": null,
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:50160 */}\n<Select rowsData={VS_OPTIONS} selectedRow={vs0} clearable={true} />",
+      "mapping": {
+        "node_name": "Virtual Switch Select",
+        "suggested_component_name": "Select",
+        "candidates": [
+          {
+            "name": "Select",
+            "type": "component",
+            "score": 0.46,
+            "why_matched": [
+              "select",
+              "dropdown",
+              "switch"
+            ],
+            "summary": "Single-select dropdown with clearable prop.",
+            "source": "both"
+          },
+          {
+            "name": "SelectDropdown",
+            "type": "component",
+            "score": 0.21,
+            "why_matched": [
+              "select",
+              "dropdown"
+            ],
+            "summary": "Lower-level dropdown primitive.",
+            "source": "both"
+          }
+        ],
+        "related": [
+          "Input",
+          "Dropdown"
+        ],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:50180",
+      "aliased_ids": [],
+      "name": "Uplink Type Select",
+      "role": "instance",
+      "bbox": [
+        9080.0,
+        10750.0,
+        116.0,
+        28.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Body",
+        "Uplinks Table",
+        "Uplink Type column"
+      ],
+      "content_slots": {
+        "label": "Uplink Type",
+        "items": [
+          "Active",
+          "Backup"
+        ],
+        "value": "Backup",
+        "cell_count": 6
+      },
+      "structural_hints": [
+        "116px clearable select",
+        "row 1 = Active, rows 2-6 = Backup"
+      ],
+      "children_summary": "FRAME pill with TEXT + Icon \u00d7 + Icon :",
+      "hex_colors": [
+        "#FFFFFF",
+        "#B8BFCA"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": "#B8BFCA",
+        "border_width": 1.0,
+        "corner_radius": 2.0,
+        "padding": null,
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:50180 */}\n<Select rowsData={UPLINK_TYPE_OPTIONS} selectedRow={backup} clearable={true} />",
+      "mapping": {
+        "node_name": "Uplink Type Select",
+        "suggested_component_name": "Select",
+        "candidates": [
+          {
+            "name": "Select",
+            "type": "component",
+            "score": 0.45,
+            "why_matched": [
+              "select",
+              "uplink",
+              "type"
+            ],
+            "summary": "Single-select dropdown with clearable prop.",
+            "source": "both"
+          }
+        ],
+        "related": [
+          "Input",
+          "Dropdown"
+        ],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:50200",
+      "aliased_ids": [],
+      "name": "Status indicator",
+      "role": "instance",
+      "bbox": [
+        8240.0,
+        10755.0,
+        50.0,
+        16.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Body",
+        "Uplinks Table",
+        "Status column"
+      ],
+      "content_slots": {
+        "items": [
+          "Up",
+          "Down"
+        ],
+        "cell_count": 6
+      },
+      "structural_hints": [
+        "circular dot (8px) + text label",
+        "filled-green for Up, ring-red for Down"
+      ],
+      "children_summary": "ELLIPSE dot + TEXT label",
+      "hex_colors": [
+        "#1B8836",
+        "#D02550",
+        "#15171A"
+      ],
+      "box_style": {
+        "background_color": null,
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": null,
+        "padding": null,
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:50200 */}\n<StatusDot value=\"Up\" /> { /* or \"Down\" \u2192 renders an outline red dot */ }",
+      "mapping": {
+        "node_name": "Status indicator",
+        "suggested_component_name": "StatusIcon",
+        "candidates": [
+          {
+            "name": "StatusIcon",
+            "type": "component",
+            "score": 0.39,
+            "why_matched": [
+              "status",
+              "icon",
+              "dot"
+            ],
+            "summary": "Status pill/icon for Up/Down/Warning states.",
+            "source": "both"
+          },
+          {
+            "name": "Badge",
+            "type": "component",
+            "score": 0.16,
+            "why_matched": [
+              "badge",
+              "status"
+            ],
+            "summary": "Counter / status pill.",
+            "source": "both"
+          }
+        ],
+        "related": [
+          "Tag"
+        ],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "icon"
+    },
+    {
+      "id": "3800:49765",
+      "aliased_ids": [],
+      "name": "Footer",
+      "role": "layout-container",
+      "bbox": [
+        7783.0,
+        11301.0,
+        1440.0,
+        50.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage"
+      ],
+      "content_slots": {
+        "items": [
+          "Back",
+          "Cancel",
+          "Skip Networking",
+          "Next"
+        ]
+      },
+      "structural_hints": [
+        "1440x50 horizontal footer strip",
+        "Back left, action group right (Cancel / Skip Networking / Next)",
+        "Next button disabled"
+      ],
+      "children_summary": "FRAME Action/Button Back + FRAME Buttons(Cancel + Skip Networking + Next)",
+      "hex_colors": [
+        "#FFFFFF",
+        "#EDF0F2"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": "#EDF0F2",
+        "border_width": 1.0,
+        "corner_radius": null,
+        "padding": [
+          9.0,
+          20.0,
+          9.0,
+          20.0
+        ],
+        "gap": null,
+        "layout_mode": "HORIZONTAL",
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49765 */}\n<FlexLayout className=\"footer\" alignItems=\"center\" justifyContent=\"space-between\"><Button type=\"secondary\"><BackIcon />Back</Button><ButtonGroup>{cancel}{skip}{next}</ButtonGroup></FlexLayout>",
+      "mapping": {
+        "node_name": "Footer",
+        "suggested_component_name": "FlexLayout",
+        "candidates": [
+          {
+            "name": "FlexLayout",
+            "type": "component",
+            "score": 0.3,
+            "why_matched": [
+              "footer",
+              "row"
+            ],
+            "summary": "Row/column wrapper.",
+            "source": "both"
+          },
+          {
+            "name": "ButtonGroup",
+            "type": "component",
+            "score": 0.18,
+            "why_matched": [
+              "buttons",
+              "group"
+            ],
+            "summary": "Group of buttons.",
+            "source": "both"
+          }
+        ],
+        "related": [],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "banner"
+    },
+    {
+      "id": "3800:49767",
+      "aliased_ids": [],
+      "name": "Back button",
+      "role": "instance",
+      "bbox": [
+        7794.0,
+        11310.0,
+        78.0,
+        32.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Footer"
+      ],
+      "content_slots": {
+        "label": "Back",
+        "icon_name_hint": "BackIcon"
+      },
+      "structural_hints": [
+        "secondary button with leading icon",
+        "78x32 px"
+      ],
+      "children_summary": "FRAME Content(Button Icon + TEXT 'Back')",
+      "hex_colors": [
+        "#FFFFFF",
+        "#B8BFCA",
+        "#15171A"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": "#B8BFCA",
+        "border_width": 1.0,
+        "corner_radius": 2.0,
+        "padding": [
+          8.0,
+          15.0,
+          8.0,
+          15.0
+        ],
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49767 */}\n<Button type={Button.ButtonTypes.SECONDARY}><BackIcon size=\"small\" />Back</Button>",
+      "mapping": {
+        "node_name": "Back button",
+        "suggested_component_name": "Button",
+        "candidates": [
+          {
+            "name": "Button",
+            "type": "component",
+            "score": 0.41,
+            "why_matched": [
+              "button",
+              "back",
+              "secondary"
+            ],
+            "summary": "Standard button with type/size variants.",
+            "source": "both"
+          },
+          {
+            "name": "BackIcon",
+            "type": "icon",
+            "score": 0.2,
+            "why_matched": [
+              "back",
+              "arrow",
+              "icon"
+            ],
+            "summary": "Back/left-chevron icon.",
+            "source": "both"
+          }
+        ],
+        "related": [
+          "BackIcon"
+        ],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:49773",
+      "aliased_ids": [],
+      "name": "Cancel button",
+      "role": "instance",
+      "bbox": [
+        8928.0,
+        11310.0,
+        73.0,
+        32.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Footer",
+        "Footer action group"
+      ],
+      "content_slots": {
+        "label": "Cancel"
+      },
+      "structural_hints": [
+        "secondary button",
+        "73x32 px"
+      ],
+      "children_summary": "single TEXT label",
+      "hex_colors": [
+        "#FFFFFF",
+        "#B8BFCA",
+        "#15171A"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": "#B8BFCA",
+        "border_width": 1.0,
+        "corner_radius": 2.0,
+        "padding": [
+          8.0,
+          15.0,
+          8.0,
+          15.0
+        ],
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49773 */}\n<Button type={Button.ButtonTypes.SECONDARY}>Cancel</Button>",
+      "mapping": {
+        "node_name": "Cancel button",
+        "suggested_component_name": "Button",
+        "candidates": [
+          {
+            "name": "Button",
+            "type": "component",
+            "score": 0.41,
+            "why_matched": [
+              "button",
+              "cancel",
+              "secondary"
+            ],
+            "summary": "Standard button.",
+            "source": "both"
+          }
+        ],
+        "related": [],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:49775",
+      "aliased_ids": [],
+      "name": "Skip Networking button",
+      "role": "instance",
+      "bbox": [
+        9011.0,
+        11310.0,
+        133.0,
+        32.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Footer",
+        "Footer action group"
+      ],
+      "content_slots": {
+        "label": "Skip Networking"
+      },
+      "structural_hints": [
+        "secondary button",
+        "133x32 px"
+      ],
+      "children_summary": "single TEXT label",
+      "hex_colors": [
+        "#FFFFFF",
+        "#B8BFCA",
+        "#15171A"
+      ],
+      "box_style": {
+        "background_color": "#FFFFFF",
+        "border_color": "#B8BFCA",
+        "border_width": 1.0,
+        "corner_radius": 2.0,
+        "padding": [
+          8.0,
+          15.0,
+          8.0,
+          15.0
+        ],
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": null
+      },
+      "reference_jsx_slice": "{/* 3800:49775 */}\n<Button type={Button.ButtonTypes.SECONDARY}>Skip Networking</Button>",
+      "mapping": {
+        "node_name": "Skip Networking button",
+        "suggested_component_name": "Button",
+        "candidates": [
+          {
+            "name": "Button",
+            "type": "component",
+            "score": 0.41,
+            "why_matched": [
+              "button",
+              "skip",
+              "secondary"
+            ],
+            "summary": "Standard button.",
+            "source": "both"
+          }
+        ],
+        "related": [],
+        "a11y_blocks": [],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    },
+    {
+      "id": "3800:49777",
+      "aliased_ids": [],
+      "name": "Next button",
+      "role": "instance",
+      "bbox": [
+        9154.0,
+        11310.0,
+        59.0,
+        32.0
+      ],
+      "parent_chain": [
+        "Modal/Fullpage",
+        "Footer",
+        "Footer action group"
+      ],
+      "content_slots": {
+        "label": "Next"
+      },
+      "structural_hints": [
+        "primary button, disabled state",
+        "59x32 px"
+      ],
+      "children_summary": "single TEXT label",
+      "hex_colors": [
+        "#1B6DC6",
+        "#FFFFFF"
+      ],
+      "box_style": {
+        "background_color": "#1B6DC6",
+        "border_color": null,
+        "border_width": null,
+        "corner_radius": 2.0,
+        "padding": [
+          8.0,
+          15.0,
+          8.0,
+          15.0
+        ],
+        "gap": null,
+        "layout_mode": null,
+        "has_shadow": false,
+        "opacity": 0.5
+      },
+      "reference_jsx_slice": "{/* 3800:49777 */}\n<Button disabled={true}>Next</Button>",
+      "mapping": {
+        "node_name": "Next button",
+        "suggested_component_name": "Button",
+        "candidates": [
+          {
+            "name": "Button",
+            "type": "component",
+            "score": 0.43,
+            "why_matched": [
+              "button",
+              "next",
+              "primary"
+            ],
+            "summary": "Standard button.",
+            "source": "both"
+          }
+        ],
+        "related": [],
+        "a11y_blocks": [
+          "Disabled state must be conveyed via aria-disabled, not just colour; preserve focusability for screen readers."
+        ],
+        "token_mappings": [],
+        "examples": [],
+        "candidate_decompositions": [],
+        "primary_recommendation": null,
+        "primary_recommendation_rationale": "",
+        "primary_recommendation_confidence": 0.0
+      },
+      "absolute_pos": null,
+      "shape_bucket": "block"
+    }
+  ],
+  "tokens": {
+    "#FFFFFF": "color/background/primary",
+    "#15171A": "color/text/primary",
+    "#586678": "color/text/secondary",
+    "#8990A3": "color/text/secondary-label",
+    "#EDF0F2": "color/border/secondary",
+    "#B8BFCA": "color/border/interactive",
+    "#F4F6F8": "color/background/neutral",
+    "#1B6DC6": "color/primary/500",
+    "#1B8836": "color/status/success",
+    "#D02550": "color/status/critical",
+    "#2C3038": "color/background/inverse"
+  },
+  "dropped": [
+    {
+      "id": "3800:49763",
+      "name": "Networking ~ Expanded Row",
+      "type": "FRAME",
+      "reason": "same_bbox_passthrough_collapsed",
+      "detail": "page-level frame collapsed into 3800:49764 (Modal/Fullpage)"
+    },
+    {
+      "id": "3800:49766",
+      "name": "Footer Background",
+      "type": "RECTANGLE",
+      "reason": "invisible_decoration",
+      "detail": "background fill captured by parent's box_style"
+    },
+    {
+      "id": "3800:49808",
+      "name": "Header Background",
+      "type": "RECTANGLE",
+      "reason": "invisible_decoration",
+      "detail": "background fill captured by parent's box_style"
+    },
+    {
+      "id": "3800:49809",
+      "name": "Header Divider",
+      "type": "RECTANGLE",
+      "reason": "invisible_decoration",
+      "detail": "1px divider captured by parent's border"
+    },
+    {
+      "id": "3800:49781",
+      "name": "Steps Header Divider",
+      "type": "RECTANGLE",
+      "reason": "invisible_decoration",
+      "detail": "1px divider captured by parent's border"
+    },
+    {
+      "id": "3800:49779",
+      "name": "Footer Divider",
+      "type": "RECTANGLE",
+      "reason": "invisible_decoration",
+      "detail": "1px divider captured by parent's border"
+    },
+    {
+      "id": "3800:49813",
+      "name": "Header Controls Divider",
+      "type": "RECTANGLE",
+      "reason": "tiny_decorative",
+      "detail": "1x10 separator between help and close icons"
+    },
+    {
+      "id": "3800:49812",
+      "name": "Question icon glyph",
+      "type": "VECTOR",
+      "reason": "icon_internal",
+      "detail": "captured by 3800:49811 IconButton mapping"
+    },
+    {
+      "id": "3800:49815",
+      "name": "Close icon glyph",
+      "type": "VECTOR",
+      "reason": "icon_internal",
+      "detail": "captured by 3800:49814 IconButton mapping"
+    },
+    {
+      "id": "3800:49770",
+      "name": "Back icon glyph",
+      "type": "VECTOR",
+      "reason": "icon_internal",
+      "detail": "captured by 3800:49767 Back button mapping"
+    },
+    {
+      "id": "3800:49784",
+      "name": "Step 1 badge",
+      "type": "FRAME",
+      "reason": "folded_into_pattern",
+      "detail": "absorbed into Steps mapping (3800:49780)"
+    },
+    {
+      "id": "3800:49786",
+      "name": "Step 1 label",
+      "type": "TEXT",
+      "reason": "captured_as_content_slot",
+      "detail": "'Select Host' captured in items[0] of Steps"
+    },
+    {
+      "id": "3800:49788",
+      "name": "Step 2 badge",
+      "type": "FRAME",
+      "reason": "folded_into_pattern",
+      "detail": "absorbed into Steps mapping"
+    },
+    {
+      "id": "3800:49790",
+      "name": "Step 2 label",
+      "type": "TEXT",
+      "reason": "captured_as_content_slot",
+      "detail": "'Choose Host Type' captured in items[1] of Steps"
+    },
+    {
+      "id": "3800:49792",
+      "name": "Step 3 badge",
+      "type": "FRAME",
+      "reason": "folded_into_pattern",
+      "detail": "absorbed into Steps mapping"
+    },
+    {
+      "id": "3800:49794",
+      "name": "Step 3 label",
+      "type": "TEXT",
+      "reason": "captured_as_content_slot",
+      "detail": "'Configure Host' captured in items[2] of Steps"
+    },
+    {
+      "id": "3800:49796",
+      "name": "Step 4 badge",
+      "type": "FRAME",
+      "reason": "folded_into_pattern",
+      "detail": "absorbed into Steps mapping (current)"
+    },
+    {
+      "id": "3800:49798",
+      "name": "Step 4 label",
+      "type": "TEXT",
+      "reason": "captured_as_content_slot",
+      "detail": "'Networking' captured in items[3] (current) of Steps"
+    },
+    {
+      "id": "3800:49800",
+      "name": "Step 5 badge",
+      "type": "FRAME",
+      "reason": "folded_into_pattern",
+      "detail": "absorbed into Steps mapping"
+    },
+    {
+      "id": "3800:49802",
+      "name": "Step 5 label",
+      "type": "TEXT",
+      "reason": "captured_as_content_slot",
+      "detail": "'Software Check' captured in items[4] of Steps"
+    },
+    {
+      "id": "3800:49804",
+      "name": "Step 6 badge",
+      "type": "FRAME",
+      "reason": "folded_into_pattern",
+      "detail": "absorbed into Steps mapping"
+    },
+    {
+      "id": "3800:49806",
+      "name": "Step 6 label",
+      "type": "TEXT",
+      "reason": "captured_as_content_slot",
+      "detail": "'Review' captured in items[5] of Steps"
+    },
+    {
+      "id": "3800:49823",
+      "name": "Model/Serial vertical divider",
+      "type": "RECTANGLE",
+      "reason": "invisible_decoration",
+      "detail": "captured by Table's column divider styling"
+    },
+    {
+      "id": "3800:49829",
+      "name": "Model/Serial Row 1 cell",
+      "type": "FRAME",
+      "reason": "captured_as_content_slot",
+      "detail": "rendered via dataSource[0] in hosts Table"
+    },
+    {
+      "id": "3800:49834",
+      "name": "Model/Serial Row 2 cell",
+      "type": "FRAME",
+      "reason": "captured_as_content_slot",
+      "detail": "rendered via dataSource[1] in hosts Table"
+    },
+    {
+      "id": "3800:50121",
+      "name": "Hosts table cells y > 10700 (overflow)",
+      "type": "FRAME",
+      "reason": "tiny_decorative",
+      "detail": "Figma source contains 17 additional hidden rows used as design scratch; clipped to the visible viewport (modal viewport ends at y=11247)"
+    }
+  ],
+  "summary": {
+    "input_nodes": 386,
+    "kept_for_mapping": 21,
+    "dropped_total": 26,
+    "agenda_size": 21,
+    "tokens_count": 11,
+    "warnings_count": 0,
+    "max_depth": 20,
+    "max_agenda": 100,
+    "dropped_invisible_decoration": 5,
+    "dropped_icon_internal": 3,
+    "dropped_tiny_decorative": 2,
+    "dropped_folded_into_pattern": 6,
+    "dropped_captured_as_content_slot": 9,
+    "dropped_same_bbox_passthrough_collapsed": 1
+  },
+  "warnings": []
+}

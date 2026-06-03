@@ -28,6 +28,7 @@ Deliberately not re-exported here (private to this package):
 
 from __future__ import annotations
 
+from prism_mcp.figma.mocks import mock_path_for, try_load_mock
 from prism_mcp.figma.models import (
     DroppedNode,
     FigmaTreeMapping,
@@ -43,5 +44,7 @@ __all__ = [
     "LayoutNode",
     "MapFigmaTreeInput",
     "MappedRegion",
+    "mock_path_for",
+    "try_load_mock",
     "walk_tree",
 ]
