@@ -35,27 +35,10 @@ dependencies = [
   # per Traag 2019, but requires the python-igraph C build —
   # not worth the install cost at our scale of ~150 components).
   "networkx>=3.3",
-  # Slice 12: AlphaCodium-flavored iteration loop. Temporal runs in
-  # dev-server mode (``temporal server start-dev``) so we get real
-  # Workflow / Activity / Update / Query / Worker semantics, the
-  # web UI on :8233 for demos, and durable SQLite persistence —
-  # without the complexity of a self-hosted cluster.
-  "temporalio>=1.10",
-  # Slice 12: SSIM perceptual visual diff for compare_to_figma.
-  # scikit-image keeps us off PyTorch (which LPIPS would require);
-  # SSIM is the right tier for ~150 components per the
-  # screenshot-testing-2026 survey.
-  "scikit-image>=0.24",
-  # Slice 12: image IO for the SSIM compare path. Pillow ships
-  # without native compile and is the reference loader scikit-image
-  # documentation defers to for PNG/JPG.
-  "Pillow>=10.4",
 ]
 
 [project.scripts]
 prism-mcp = "prism_mcp.server:main"
-prism-mcp-worker = "prism_mcp.workflow.worker:main"
-prism-mcp-setup = "prism_mcp.setup_cli:main"
 
 [dependency-groups]
 dev = [

@@ -41,7 +41,7 @@ from prism_mcp.figma import walk_tree
 from prism_mcp.graph import build_composition_graph
 from prism_mcp.indexer import Index
 from prism_mcp.tokens_index import build_color_token_index
-from prism_mcp.workflow.figma_mapping import map_figma_node
+from prism_mcp.figma_mapping import map_figma_node
 
 
 # --------------------------------------------------------------------------

@@ -1,9 +1,8 @@
 """In-memory indexer over the extracted Prism tarball.
 
-Slice 3 builds the ``lookup`` dict that powers ``get_entity`` and
-``list_entities``. Slice 4 will add a parallel BM25 index for
-``search_entities``; Slice 5 will broaden the parser pass to hooks,
-managers, and utils; Slice 6 will add tokens.
+Builds the ``lookup`` dict that powers ``get_entity`` and a parallel
+BM25 index for ``search_entities``, across components, hooks,
+managers, utils, and tokens.
 
 Construction is intentionally synchronous and idempotent: feed it a
 package_root and a version and you get back an :class:`Index` you can

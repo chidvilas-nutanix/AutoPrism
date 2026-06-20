@@ -5,52 +5,39 @@ library — `@nutanix-ui/prism-reactjs` — to LLM clients (Cursor, Claude
 Desktop, etc.) so they can generate correct, non-deprecated, type-safe
 component code.
 
-Status: **Slices 1–8 shipped — v1 feature-complete** — see
-[`docs/prd/prism-reactjs-mcp-server.md`](docs/prd/prism-reactjs-mcp-server.md)
-for the full plan. The current build ships:
+The server is a **knowledge + mapping** engine: it downloads and indexes the
+published Prism package, ranks components/hooks/managers/utils/tokens for a
+query, retrieves real usage examples, and maps Figma designs onto concrete
+Prism components. It does **not** build or validate code — your agent
+(Cursor) runs `tsc` / `eslint` / tests in its own loop.
 
-- **Slice 1**: `uv`-managed Python project, ruff + pytest, CI green, stdio `echo` tool.
-- **Slice 2**: Artifactory acquisition with Basic auth, ETag short-
-  circuit on the `<base>/<pkg>/latest` manifest endpoint (we don't
-  pull the full registry document — for Prism that's ~46MB; the
-  per-version manifest is a few KB), SRI + sha1 integrity verification,
-  atomic-swap cache at `~/.cache/prism-mcp/<version>/`, offline fallback
-  to last cached version, `get_library_meta` tool.
-- **Slice 3**: bracket-aware `.d.ts` parser + `examples.md` splitter, per-
-  subcomponent walk over `lib/components/v2/`, in-memory `Index` with
-  `list_entities` and `get_entity` tools.
-- **Slice 4**: BM25 ranking over a synthetic doc per entity
-  (``name + type + category + summary + example-titles``), camelCase-aware
-  tokenizer with light English-suffix stripping (`trapping` → `trap`),
-  `search_entities` tool returning `score` + `why_matched`.
-- **Slice 5**: function + class parsers extending the `.d.ts` parser,
-  walkers for hooks (`lib/hooks/use*.d.ts`), managers (`lib/managers/
-  *Manager.d.ts`), and utils (`lib/utils/**/*.d.ts`); all four entity
-  types appear in `list_entities` / `search_entities`.
-- **Slice 6**: LESS extractor for `src/styles/v2/*.less` producing
-  `token` entities with `name`, `value`, `category`, `source_file`;
-  category is inferred from filename (Colors → color, Z-Index → z-index,
-  etc.).
-- **Slice 7**: `Library.refresh()` returns a structured `RefreshOutcome`
-  (`swapped` / `not_modified` / `offline`) and a `RefreshLoop` asyncio
-  driver runs it once per day. The loop is wired into FastMCP's
-  lifespan so every running server cold-starts with one poll and then
-  ticks daily. Index swaps are atomic: we build the new `Index` into a
-  local variable before publishing both `_meta` and `_index` together,
-  so any in-flight tool call sees a consistent snapshot.
-- **Slice 8**: registry transport failures (DNS, TLS, connection,
-  timeout) are wrapped as `RegistryError` so the existing cache
-  fallback fires for *all* "offline" causes, not just non-2xx HTTP
-  responses. Cached fallback logs a warning naming the cached version;
-  cold-start-no-cache raises `LibraryError` with an explicit
-  "Connect to the Nutanix VPN (or set JFROG_EMAIL/JFROG_API_KEY)"
-  hint. `get_library_meta` surfaces `from_cache=true` so the LLM
-  client can detect degraded mode.
+> New here? Start with **[`SETUP.md`](SETUP.md)** for the clone → credentials
+> → models → run walkthrough.
+
+## What it does
+
+- **Library acquisition** — fetches the `@nutanix-ui/prism-reactjs` tarball
+  from Nutanix Artifactory (Basic auth, ETag short-circuit on the per-version
+  manifest, SRI + sha1 integrity check), atomic-swap cache at
+  `~/.cache/prism-mcp/<version>/`, and offline fallback to the last cached
+  version. A background loop re-polls once per day.
+- **Indexing** — parses `.d.ts` (components, hooks, managers, utils),
+  `examples.md`, and `.less` design tokens into a typed entity index.
+- **Search** — BM25 lexical ranking (`search_entities`) and a hybrid
+  semantic pipeline for example code (`search_examples`: BM25 + Jina v2
+  dense embeddings + Reciprocal Rank Fusion + a cross-encoder reranker).
+- **Figma → Prism mapping** — `map_figma_node` ranks Prism components for a
+  single node (with related components, matching tokens, imitation examples,
+  and a11y guidance); `map_figma_tree` walks a whole Figma page URL into a
+  pruned layout tree + an ordered agenda of mapped regions.
 
 ## Requirements
 
-- Python 3.11+ (the project uses 3.12 by default via `uv`).
+- Python 3.11+.
 - [`uv`](https://docs.astral.sh/uv/) for dependency and venv management.
+- Nutanix Artifactory credentials (for the library fetch) and, for the Figma
+  tools, a `FIGMA_TOKEN`. See [`SETUP.md`](SETUP.md) and
+  [`.env.example`](.env.example).
 
 ## Quickstart
 
@@ -84,6 +71,7 @@ script entry point. Inline the env vars the server needs:
       "env": {
         "JFROG_EMAIL": "you@nutanix.com",
         "JFROG_API_KEY": "<your-jfrog-api-key>",
+        "FIGMA_TOKEN": "<your-figma-personal-access-token>",
         "PRISM_MCP_CA_BUNDLE": "/Users/<you>/.cache/prism-mcp/canaveral-ca-bundle.pem"
       }
     }
@@ -128,7 +116,7 @@ If both are set, the CA bundle wins (explicit trust beats opt-out).
 ### One-shot sanity check
 
 `scripts/verify_server.py` spawns the server, performs the MCP
-initialize handshake, calls `get_library_meta`, `list_entities`,
+initialize handshake, calls `get_library_meta`, `search_examples`,
 and `search_entities` for "modal dialog", then prints a short
 summary. Useful when wiring a new laptop:
 
@@ -140,26 +128,30 @@ uv run python scripts/verify_server.py
 A healthy first run prints something like:
 
 ```
+id=2 tools/list      7 tools: ['echo', 'get_library_meta', ...]
 id=3 get_library_meta
    package_name: @nutanix-ui/prism-reactjs
-   version: 2.53.0
+   version: 2.54.0
    from_cache: False
-id=4 list_entities   version=2.53.0  components=331
+id=4 search_examples version=2.54.0  hits=5
+   - Button               Primary button with onClick handler
 id=5 search_entities query='modal dialog' hits=5
    - Modal           type=component  score=5.502 why=['dialog', 'modal']
    - ConfirmModal    type=component  score=5.455 why=['dialog', 'modal']
    ...
 ```
 
-The server exposes five MCP tools:
+The server exposes **seven** MCP tools:
 
 | Tool | Purpose |
 |---|---|
 | `echo` | Liveness probe; returns a fixed string. |
 | `get_library_meta` | Resolved version, cache path, source URL, indexed-at. |
-| `list_entities` | All indexed entities, optionally filtered by `type`. |
 | `search_entities` | BM25-ranked matches for a prose query (`why_matched` included). |
+| `search_examples` | Hybrid (BM25 + dense + reranker) example-code retrieval. |
 | `get_entity` | Full record (props, signature, examples, import path). |
+| `map_figma_node` | Rank Prism components for one Figma node (+ tokens, examples, a11y, related). |
+| `map_figma_tree` | Page-level walker: Figma node URL → pruned layout tree + agenda of mapped regions. |
 
 The cache survives restarts. On cold start without VPN, the server
 falls back to the last cached version with `from_cache=true`; when
@@ -171,18 +163,14 @@ message tells the operator to connect to the Nutanix VPN.
 In addition to per-node mapping (`map_figma_node`), the server
 exposes `map_figma_tree` for **page-level** Figma → Prism
 conversion. Given a Figma node URL it parses the URL, fetches
-the subtree via the Figma REST API, applies a 7-pass noise
-filter + routing layer + pattern detector, and returns a
-structured `FigmaTreeMapping` containing a pruned `layout_tree`,
-an `agenda` of `MappedRegion`s with ranked Prism candidates,
-and a `dropped` audit trail. The
+the subtree via the Figma REST API, applies a noise filter +
+routing layer + pattern detector, and returns a structured
+`FigmaTreeMapping` containing a pruned `layout_tree`, an `agenda`
+of `MappedRegion`s with ranked Prism candidates, and a `dropped`
+audit trail. The
 [`figma-page-to-prism`](.cursor/skills/figma-page-to-prism/SKILL.md)
-Cursor skill orchestrates the full Phase A–H flow (input →
-gather → map → plan → compose → write → validate → report) on
-top of this tool. See
-[`docs/figma-page-to-prism-plan.md`](docs/figma-page-to-prism-plan.md)
-for the design rationale, the routing table, the pattern
-catalogue, and worked examples.
+Cursor skill orchestrates the full flow (input → gather → map →
+plan → compose → validate → report) on top of this tool.
 
 `map_figma_tree` requires `FIGMA_TOKEN` (a Figma personal
 access token with `file:read` scope, generated at
@@ -198,15 +186,16 @@ three times with exponential backoff.
 |---|---|
 | `src/prism_mcp/` | Server source. The `prism-mcp` script lives here. |
 | `tests/` | Pytest suite. `pytest -q` is the fast inner loop. |
-| `docs/prd/` | Product requirements doc; the destination document. |
-| `prism-ui-prism-reactjs-lib-master/` | Read-only upstream library. Never edit. |
+| `scripts/` | Operator helpers: `verify_server.py`, `build_canaveral_ca_bundle.sh`. |
+| `.cursor/skills/figma-page-to-prism/` | The page-level mapping skill (ships with the repo). |
+| `SETUP.md` / `.env.example` | First-time setup + the env-var contract. |
 | `.github/workflows/ci.yml` | CI: lint + tests on every push. |
 
 ## Project conventions
 
-- Python style follows
-  [`.cursor/rules/language/ntnx-python-standards.mdc`](.cursor/rules/language/ntnx-python-standards.mdc)
-  (80-char lines, 4-space indent, parameterized logging only).
+- Python style: 80-char lines, 4-space indent, parameterized logging only
+  (no f-strings in logger calls). Enforced by `ruff` (config in
+  `pyproject.toml`).
 - Dependency management uses `uv`. `requirements.txt` is kept in sync as a
   read-only export for tooling that doesn't speak `uv`/`pyproject.toml`.
 - Never commit credentials. Artifactory auth is supplied via env vars
@@ -214,8 +203,7 @@ three times with exponential backoff.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every push and pull request. It's the
-default; swap to whichever CI host your team uses — the must-pass loop is
-defined entirely in `pyproject.toml`, so any runner that can execute
-`uv run ruff check`, `uv run ruff format --check`, and `uv run pytest -q`
-is sufficient.
+`.github/workflows/ci.yml` runs on every push and pull request. The
+must-pass loop is defined entirely in `pyproject.toml`, so any runner that
+can execute `uv run ruff check`, `uv run ruff format --check`, and
+`uv run pytest -q` is sufficient.

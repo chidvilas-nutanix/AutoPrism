@@ -53,8 +53,8 @@ REQUESTS: list[dict[str, Any]] = [
         "id": 4,
         "method": "tools/call",
         "params": {
-            "name": "list_entities",
-            "arguments": {"type": "component"},
+            "name": "search_examples",
+            "arguments": {"query": "button with click handler", "top_k": 5},
         },
     },
     {
@@ -63,7 +63,7 @@ REQUESTS: list[dict[str, Any]] = [
         "method": "tools/call",
         "params": {
             "name": "search_entities",
-            "arguments": {"query": "modal dialog", "limit": 5},
+            "arguments": {"query": "modal dialog", "top_k": 5},
         },
     },
 ]
@@ -149,17 +149,14 @@ def _summarize(responses: dict[int, dict[str, Any]]) -> None:
                 print(f"   {key}: {sc.get(key)}")
         elif mid == 4:
             sc = result.get("structuredContent", {})
-            ents = sc.get("entities", [])
+            hits = sc.get("results", [])
             print(
-                f"id=4 list_entities   version={sc.get('version')}  "
-                f"components={len(ents)}"
+                f"id=4 search_examples version={sc.get('version')}  "
+                f"hits={len(hits)}"
             )
-            for row in ents[:10]:
-                summary = (row.get("summary") or "").splitlines()
-                short = summary[0][:50] if summary else ""
-                print(f"   - {row['name']:30s} {short}")
-            if len(ents) > 10:
-                print(f"   ... (+{len(ents) - 10} more)")
+            for hit in hits[:10]:
+                title = (hit.get("title") or "")[:50]
+                print(f"   - {hit.get('component_name', '?'):20s} {title}")
         elif mid == 5:
             sc = result.get("structuredContent", {})
             hits = sc.get("results", [])

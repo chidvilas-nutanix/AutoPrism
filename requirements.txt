@@ -75,6 +75,8 @@ mdurl==0.1.2
     # via markdown-it-py
 mmh3==5.2.1
     # via fastembed
+networkx==3.6.1
+    # via prism-mcp (pyproject.toml)
 numpy==2.4.6
     # via
     #   prism-mcp (pyproject.toml)

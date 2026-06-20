@@ -225,14 +225,15 @@ async def test_get_library_meta_returns_resolved_state(
 
 @pytest.mark.asyncio
 async def test_listed_tools_include_post_consolidation_surface() -> None:
-    """The post-slice-12.x tool surface.
+    """The v1 tool surface (knowledge + Figma mapping).
 
-    The slice-12.x consolidation pruned 8 low-signal tools
-    (``list_entities``, ``map_token``, ``check_contrast``,
-    ``get_a11y_rules``, ``related_components``,
-    ``get_component_cluster``, ``reflect_on_spec``,
-    ``get_snapshot_template``). What remains is the canonical
-    Figma->Prism flow plus ``echo`` (operator-only).
+    Earlier consolidation pruned low-signal tools (``list_entities``,
+    ``map_token``, ``check_contrast``, ``get_a11y_rules``,
+    ``related_components``, ``get_component_cluster``,
+    ``reflect_on_spec``, ``get_snapshot_template``); the Temporal
+    verification loop and its tools were removed when validation moved
+    to Cursor. What remains is the canonical Figma->Prism flow plus
+    ``echo`` (operator-only).
     """
     server = build_server()
 
@@ -256,6 +257,14 @@ async def test_listed_tools_include_post_consolidation_surface() -> None:
         "get_a11y_rules",
         "related_components",
         "get_component_cluster",
+        # Removed with the Temporal verification loop.
+        "start_generate_component",
+        "submit_candidate",
+        "get_component_status",
+        "get_final_artefact",
+        "compare_to_figma",
+        "get_pwspec_example",
+        "update_companion_tests",
     ):
         assert removed not in names, (
             f"{removed!r} was pruned in the slice-12.x consolidation; "

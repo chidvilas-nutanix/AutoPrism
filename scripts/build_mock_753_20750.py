@@ -37,7 +37,7 @@ from prism_mcp.figma.models import (
     LayoutNode,
     MappedRegion,
 )
-from prism_mcp.workflow.figma_mapping import (
+from prism_mcp.figma_mapping import (
     CandidateMatch,
     FigmaNodeMapping,
     TokenMapping,

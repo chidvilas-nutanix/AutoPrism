@@ -823,7 +823,7 @@ def test_low_confidence_warning_surfaces_when_top_score_below_threshold() -> Non
     in lockstep.
     """
     from prism_mcp.figma import walk_tree
-    from prism_mcp.workflow.figma_mapping import (
+    from prism_mcp.figma_mapping import (
         CandidateMatch,
         FigmaNodeMapping,
     )
@@ -1214,7 +1214,7 @@ def _stub_mapping_factory(component_name: str):
     candidate so the walker's downstream consumers see a usable
     shape.
     """
-    from prism_mcp.workflow.figma_mapping import (
+    from prism_mcp.figma_mapping import (
         CandidateMatch,
         FigmaNodeMapping,
     )
@@ -1429,7 +1429,7 @@ def test_resolver_tolerates_mapper_exceptions(monkeypatch) -> None:
     monkeypatch.setenv("PRISM_MCP_PARALLEL_MAPPING_WORKERS", "1")
 
     from prism_mcp.figma import walk_tree
-    from prism_mcp.workflow.figma_mapping import (
+    from prism_mcp.figma_mapping import (
         CandidateMatch,
         FigmaNodeMapping,
     )

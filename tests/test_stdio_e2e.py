@@ -286,33 +286,21 @@ def test_stdio_initialize_and_list_tools(seeded_cache: Path) -> None:
 
     assert "result" in tools_response
     tool_names = {tool["name"] for tool in tools_response["result"]["tools"]}
-    # Post slice-12.x consolidation: 13 registered tools (10 LLM-facing
-    # + 3 marked INTERNAL via docstring prefix). Phase 7 adds
-    # ``map_figma_tree`` for the page-level walker. The exact set
-    # is asserted to lock the surface against accidental
-    # re-introduction of pruned tools.
+    # The v1 knowledge/mapping surface: 7 tools. The exact set is
+    # asserted to lock the surface against accidental re-introduction of
+    # pruned tools (the Temporal verification loop was removed).
     assert tool_names == {
-        # LLM-facing core.
+        "echo",
         "get_library_meta",
         "get_entity",
         "search_entities",
         "search_examples",
         "map_figma_node",
         "map_figma_tree",
-        # Slice-12 AlphaCodium iteration loop.
-        "compare_to_figma",
-        "start_generate_component",
-        "submit_candidate",
-        "update_companion_tests",
-        "get_final_artefact",
-        # Operator-only / demo-UI (kept registered, marked INTERNAL).
-        "echo",
-        "get_component_status",
-        "get_pwspec_example",
     }, (
-        "registered tool surface diverged from the post-consolidation "
-        "snapshot; if this is intentional, update the assertion + "
-        "the SERVER_INSTRUCTIONS doc together."
+        "registered tool surface diverged from the expected set; if "
+        "this is intentional, update the assertion + SERVER_INSTRUCTIONS "
+        "together."
     )
 
 

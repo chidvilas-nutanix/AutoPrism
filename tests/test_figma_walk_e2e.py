@@ -2,7 +2,7 @@
 
 The golden tests in ``test_figma_walker.py`` exercise the walker in
 isolation (``map_figma_node_fn=None``). This test plugs the real
-:func:`prism_mcp.workflow.figma_mapping.map_figma_node` in via
+:func:`prism_mcp.figma_mapping.map_figma_node` in via
 ``functools.partial`` and asserts that the curated *top candidate*
 for each agenda row matches the documented expectation.
 
@@ -34,10 +34,10 @@ from prism_mcp.a11y import A11yRules
 from prism_mcp.embeddings import ExampleHit
 from prism_mcp.entities import Entity, Member
 from prism_mcp.figma import walk_tree
+from prism_mcp.figma_mapping import map_figma_node
 from prism_mcp.graph import build_composition_graph
 from prism_mcp.indexer import Index
 from prism_mcp.tokens_index import build_color_token_index
-from prism_mcp.workflow.figma_mapping import map_figma_node
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "figma"
 

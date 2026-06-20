@@ -1,11 +1,11 @@
-"""Tests for the slice-12 Figma-to-Prism composite mapper.
+"""Tests for the Figma-to-Prism composite mapper.
 
-The mapper is a pure fan-out over the slice-3..11 indices, just
-like :mod:`prism_mcp.workflow.reflection`. We exercise it the same
-way: real :class:`Index` / :class:`CompositionGraph` /
-:class:`ColorTokenIndex` / :class:`A11yRules` fixtures, plus a
-deterministic stub for the slice-9 :class:`HybridSearcher` so the
-fastembed encoder never has to spin up.
+The mapper is a pure fan-out over the entity / example / graph /
+token indices. We exercise it with real :class:`Index` /
+:class:`CompositionGraph` / :class:`ColorTokenIndex` /
+:class:`A11yRules` fixtures, plus a deterministic stub for the
+:class:`HybridSearcher` so the fastembed encoder never has to
+spin up.
 """
 
 from __future__ import annotations
@@ -13,19 +13,19 @@ from __future__ import annotations
 from prism_mcp.a11y import A11yRules, ComponentA11y
 from prism_mcp.embeddings import ExampleHit
 from prism_mcp.entities import Entity, Member
+from prism_mcp.figma_mapping import (
+    FigmaNodeMapping,
+    _build_lexical_query,
+    _build_semantic_query,
+    _normalise_component_name,
+    map_figma_node,
+)
 from prism_mcp.graph import build_composition_graph
 from prism_mcp.indexer import Index
 from prism_mcp.parsers.examples_md_code import ExampleChunk
 from prism_mcp.tokens_index import (
     ColorTokenIndex,
     build_color_token_index,
-)
-from prism_mcp.workflow.figma_mapping import (
-    FigmaNodeMapping,
-    _build_lexical_query,
-    _build_semantic_query,
-    _normalise_component_name,
-    map_figma_node,
 )
 
 # --------------------------------------------------------------------------

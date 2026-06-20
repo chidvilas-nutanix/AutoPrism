@@ -3,7 +3,7 @@
 All four boundary shapes (`MapFigmaTreeInput`, `MappedRegion`,
 `LayoutNode`, `DroppedNode`, `FigmaTreeMapping`) use
 ``ConfigDict(extra="forbid")`` to match the style of
-:mod:`prism_mcp.workflow.figma_mapping` and to make schema drift loud:
+:mod:`prism_mcp.figma_mapping` and to make schema drift loud:
 adding an unrecognised field at the MCP boundary produces a clear
 ``ValidationError`` instead of silently ignored input.
 
@@ -16,7 +16,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from prism_mcp.workflow.figma_mapping import FigmaNodeMapping
+from prism_mcp.figma_mapping import FigmaNodeMapping
 
 # --------------------------------------------------------------------------
 # Input shape — what the MCP tool boundary accepts.
@@ -426,7 +426,7 @@ class MappedRegion(BaseModel):
             supply ``reference_jsx`` or no slice could be
             extracted.
         mapping (FigmaNodeMapping): the in-process call result
-            of :func:`prism_mcp.workflow.figma_mapping.map_figma_node`
+            of :func:`prism_mcp.figma_mapping.map_figma_node`
             on the enriched signals above. Contains
             ``candidates`` (the top-k Prism component picks),
             ``related``, ``a11y_blocks``, ``token_mappings``,
@@ -443,7 +443,7 @@ class MappedRegion(BaseModel):
             ``"modal"`` / ``"page"`` / ``"block"``; ``""`` when
             the bbox is empty). Produced by
             :func:`prism_mcp.figma.utils.shape_bucket`. The ranker
-            in :mod:`prism_mcp.workflow.figma_mapping` uses this
+            in :mod:`prism_mcp.figma_mapping` uses this
             to apply a tiny shape-aware bonus.
     """
 

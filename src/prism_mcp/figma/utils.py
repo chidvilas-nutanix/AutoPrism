@@ -14,10 +14,8 @@ from typing import Any
 
 _HEX_RE = re.compile(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b")
 """Match six-digit (``#1B6BCC``) or three-digit (``#1BC``) hex
-literals. We tighten the same regex used in
-:mod:`prism_mcp.workflow.reflection` because Figma's fill arrays
-may contain either form depending on whether the variable was
-authored as the short form.
+literals. Figma's fill arrays may contain either form depending
+on whether the variable was authored as the short form.
 """
 
 _OPACITY_FLOOR = 0.01

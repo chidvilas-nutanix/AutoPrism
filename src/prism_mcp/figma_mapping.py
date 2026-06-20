@@ -20,9 +20,8 @@ Three orthogonal signals matter when matching:
    slice-10 graph supplies the canonical neighbours and the
    slice-11 a11y rules supply the per-component guidance.
 
-This module fans out all three in **one call**, mirroring the
-existing :mod:`prism_mcp.workflow.reflection` pattern but with
-two differences:
+This module fans out all three in **one call**, with two
+notable properties:
 
 * The target component name is *output*, not input — the LLM
   doesn't know which Prism component to anchor on yet.
@@ -76,9 +75,32 @@ from prism_mcp.embeddings import ExampleHit
 from prism_mcp.graph import CompositionGraph, GraphError
 from prism_mcp.indexer import Index
 from prism_mcp.tokens_index import ColorTokenIndex
-from prism_mcp.workflow.reflection import extract_hex_literals
 
 logger = logging.getLogger(__name__)
+
+
+# ``extract_hex_literals`` was historically shared with the (now removed)
+# reflection scaffold. It is small and self-contained, so it lives here
+# now that this module is its only caller.
+_HEX_RE = re.compile(r"#(?P<digits>[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b")
+
+
+def extract_hex_literals(spec_text: str) -> list[str]:
+    """Return de-duplicated 6-digit ``#XXXXXX`` hex literals from text.
+
+    Three-digit shorthand (``#FFF``) is expanded to six digits so the
+    colour-token index can compare uniformly. Word-boundary anchored so
+    markdown anchors like ``#header-1`` do not produce false positives.
+    """
+    seen: dict[str, None] = {}
+    for match in _HEX_RE.finditer(spec_text):
+        digits = match.group("digits")
+        if len(digits) == 3:
+            digits = "".join(c * 2 for c in digits)
+        normalised = f"#{digits.upper()}"
+        if normalised not in seen:
+            seen[normalised] = None
+    return list(seen.keys())
 
 
 # --------------------------------------------------------------------------
@@ -734,7 +756,7 @@ def map_figma_node(
     Backward-compat: passing ``None`` for all four enrichment
     fields produces *byte-identical* queries to the v1
     implementation — regression-tested in
-    ``tests/test_workflow_figma_mapping.py``.
+    ``tests/test_figma_mapping.py``.
     """
     lexical_query = _build_lexical_query(
         node_name=node_name,
@@ -939,7 +961,7 @@ def _build_candidates(
     :data:`_ROLE_SYNONYM_BONUS` (``+0.15``) score boost before
     the final top-k slice. ``None`` (the default) reproduces v1's
     pure-RRF ranking exactly — verified by
-    ``test_workflow_figma_mapping.py::test_region_role_none_matches_v1``.
+    ``test_figma_mapping.py::test_region_role_none_matches_v1``.
 
     Returns:
         tuple[list[CandidateMatch], list[ExampleHit]]: the fused
@@ -1130,9 +1152,8 @@ def _enumerate_decompositions(
 ) -> list[str]:
     """Produce up-to-2 ``"anchor + collaborator"`` candidates.
 
-    Mirrors :func:`prism_mcp.workflow.reflection._enumerate_candidates`
-    so the agent loop sees the same string shape regardless of
-    whether it called ``reflect_on_spec`` or ``map_figma_node``.
+    Each candidate is a short ``"<anchor> + <collaborator>"`` string
+    the agent can use as a starting decomposition for the region.
     """
     if component_name is None:
         return []

@@ -1,10 +1,10 @@
 # Post-v1 Backlog
 
-Items deliberately deferred past the v1 ship (Slices 1–8 complete; see
-[`docs/prd/prism-reactjs-mcp-server.md`](docs/prd/prism-reactjs-mcp-server.md)).
-The v1 surface (`echo`, `get_library_meta`, `list_entities`, `get_entity`,
-`search_entities`) is observably complete; everything below is either a
-known precision gap or a reach beyond the published tarball.
+Items deliberately deferred past the v1 ship. The v1 tool surface
+(`echo`, `get_library_meta`, `search_entities`, `search_examples`,
+`get_entity`, `map_figma_node`, `map_figma_tree`) is observably
+complete; everything below is either a known precision gap or a reach
+beyond the published tarball.
 
 Each item should grow into a small grill / PRD slice before landing — do not
 ship from this list directly.

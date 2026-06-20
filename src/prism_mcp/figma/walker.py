@@ -65,7 +65,7 @@ from prism_mcp.figma.utils import (
     iter_children,
     shape_bucket,
 )
-from prism_mcp.workflow.figma_mapping import FigmaNodeMapping
+from prism_mcp.figma_mapping import FigmaNodeMapping
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +148,7 @@ cannot exceed it.
 
 
 # The MapFigmaNodeFn signature mirrors the public
-# :func:`prism_mcp.workflow.figma_mapping.map_figma_node` so the
+# :func:`prism_mcp.figma_mapping.map_figma_node` so the
 # walker can be unit-tested with a stub. The walker takes this as
 # a parameter (not an import) to keep the function pure — the MCP
 # server passes the real bound function, tests pass a stub.
@@ -189,7 +189,7 @@ def walk_tree(
             the walker emits a warning; the LLM is expected to
             group sub-regions in the second-pass composition.
         map_figma_node_fn (Callable | None): the bound
-            :func:`prism_mcp.workflow.figma_mapping.map_figma_node`
+            :func:`prism_mcp.figma_mapping.map_figma_node`
             with library deps already curried in. When
             ``None``, the walker emits :class:`MappedRegion`
             rows with empty :class:`FigmaNodeMapping` placeholders
@@ -1679,9 +1679,9 @@ def _invoke_mapping_fn(
 
     ``region_role`` and ``region_shape_bucket`` flow into the
     ranker's role-synonym (+0.15) and shape-bucket (+0.05) bonuses
-    (:data:`prism_mcp.workflow.figma_mapping.ROLE_TO_COMPONENT_SYNONYMS`
+    (:data:`prism_mcp.figma_mapping.ROLE_TO_COMPONENT_SYNONYMS`
     and
-    :data:`prism_mcp.workflow.figma_mapping.SHAPE_BUCKET_TO_COMPONENT_SYNONYMS`).
+    :data:`prism_mcp.figma_mapping.SHAPE_BUCKET_TO_COMPONENT_SYNONYMS`).
     Passing ``None`` for either keeps v1 behaviour byte-for-byte.
     """
     if ctx.map_figma_node_fn is None:
@@ -1890,7 +1890,7 @@ _LOW_CONFIDENCE_THRESHOLD = 0.05
 ``low_confidence`` warning for the region.
 
 Calibrated against the actual RRF ceiling produced by
-:func:`prism_mcp.workflow.figma_mapping._build_candidates`:
+:func:`prism_mcp.figma_mapping._build_candidates`:
 
     BM25 rank 0           1/(60+0+1) = 0.01639
     Hybrid rank 0         1/(60+0+1) = 0.01639

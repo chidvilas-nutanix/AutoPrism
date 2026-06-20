@@ -1,6 +1,16 @@
 prism-ui-prism-reactjs-lib-master/
-.cursor/
+
+# Cursor config is local-only, EXCEPT the figma-page-to-prism skill,
+# which ships so the page-level map_figma_tree flow works on clone.
+.cursor/*
+!.cursor/skills/
+
+# Internal design docs / scratch notes stay local (not shipped).
 docs/
+
+# Local scratch + npm auth (never commit credentials).
+rough.txt
+.npmrc
 
 # --- Python ---------------------------------------------------------------
 __pycache__/

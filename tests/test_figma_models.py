@@ -20,7 +20,7 @@ from prism_mcp.figma.models import (
     MapFigmaTreeInput,
     MappedRegion,
 )
-from prism_mcp.workflow.figma_mapping import FigmaNodeMapping
+from prism_mcp.figma_mapping import FigmaNodeMapping
 
 # --------------------------------------------------------------------------
 # MapFigmaTreeInput: the MCP tool input boundary.
