@@ -32,6 +32,7 @@ from prism_mcp.entities import EntityType
 from prism_mcp.figma import (
     FigmaTreeMapping,
     MapFigmaTreeInput,
+    leanify_tree_mapping,
     walk_tree,
 )
 from prism_mcp.figma.fetch import (
@@ -149,27 +150,43 @@ C. Capture optional plugin signals.
    Both are optional; the walker degrades gracefully.
 
 D. Call `map_figma_tree(input=MapFigmaTreeInput(...))`.
-   Read the response. `summary.input_nodes` is your sanity check; if
-   it is 0, the URL or token was wrong. `agenda` is the ordered list
-   of region decisions; `layout_tree` is the nested shape; `tokens`
-   maps every visible hex to its closest Prism token; `dropped` is
-   the audit trail (look for `unknown_type_fallback` or extreme
-   `tiny_decorative` counts as a signal that the walker missed
-   something).
+   By default this returns a LEAN agenda so it does not flood your
+   context: each `agenda` row carries the descriptive fields plus a
+   chosen component, a one-line `description`, and the top-3
+   candidates as `{name, score}` only. Read the response:
+   `summary.input_nodes` is your sanity check; if it is 0, the URL
+   or token was wrong. `agenda` is the ordered list of region
+   decisions; `layout_tree` is the nested shape; `tokens` maps every
+   visible hex to its closest Prism token; `dropped_summary` is the
+   per-reason audit count map (look for `unknown_type_fallback` or
+   extreme `tiny_decorative` counts as a signal that the walker
+   missed something); `reduction` reports how much was trimmed.
+   map_figma_tree returns a lean agenda by default; call
+   `map_figma_node(node_name, role, hex_colors, reference_code?)`
+   for full candidates / examples / a11y on a specific region, or
+   pass `response_detail="full"` to get everything (including the
+   full `dropped` list and per-row `mapping`) in one shot.
 
 E. Pre-render walkthrough.
-   Echo `summary` to the user (especially `agenda_size`, top three
-   `dropped_<reason>` buckets, and any `warnings`) before generating
+   Echo `summary` to the user (especially `agenda_size`, the top
+   `dropped_summary` buckets, and any `warnings`) before generating
    JSX. This is the user's chance to abort if the walker absorbed
    too much.
 
 F. Compose top-down.
-   For each `MappedRegion` in `agenda`, the `mapping.candidates[0]`
-   is the suggested Prism component. Pick from `candidates` (never
-   invent), import via the canonical `@nutanix-ui/prism-reactjs`
-   path, and respect each region's `content_slots` (title / items /
-   header / value / label) and `reference_jsx_slice` when supplied.
-   Then typecheck / lint / test the composed page in your own loop.
+   For each `MappedRegion` in `agenda`, `mapping.suggested_component_name`
+   (or `mapping.candidates[0].name`) is the suggested Prism component.
+   Pick from `candidates` (never invent), import via the canonical
+   `@nutanix-ui/prism-reactjs` path, and respect each region's
+   `content_slots` (title / items / header / value / label). In the
+   default lean response the candidates carry only `{name, score}`
+   and the heavy per-row detail (full candidates, imitation JSX
+   `examples`, `a11y_blocks`, `token_mappings`, `reference_jsx_slice`)
+   is omitted; when a region is ambiguous or you need an imitation
+   snippet, call `map_figma_node(node_name, role, hex_colors,
+   reference_code?)` for just that region (or re-run map_figma_tree
+   with `response_detail="full"`). Then typecheck / lint / test the
+   composed page in your own loop.
 
 G. Error handling.
    `map_figma_tree` surfaces a structured `FetchError` for every
@@ -550,15 +567,34 @@ def build_server(
                 ``node_url`` (required), ``reference_jsx``,
                 ``variable_defs``, ``figma_token``, ``max_depth``,
                 ``max_nodes``, ``max_agenda``, ``bypass_cache``,
-                and ``figma_depth`` (per-call override for the REST
+                ``figma_depth`` (per-call override for the REST
                 ``depth`` query parameter — defaults to the
                 fetcher's tuned value of 12, enough for real
-                Nutanix designs).
+                Nutanix designs), and ``response_detail``
+                (``"lean"`` by default, ``"full"`` for the complete
+                payload — see Returns).
 
         Returns:
-            dict: ``FigmaTreeMapping`` shape (``layout_tree``,
-            ``agenda``, ``tokens``, ``dropped``, ``summary``,
-            ``warnings``).
+            dict: by default (``response_detail="lean"``) a trimmed
+            payload so the agent's context window is not flooded:
+            ``layout_tree``, ``tokens``, ``summary``, ``warnings``,
+            a ``dropped_summary`` per-reason count map (replacing the
+            potentially-thousands-of-rows ``dropped`` list), a
+            ``reduction`` telemetry block, and an ``agenda`` whose
+            rows keep the descriptive fields (id / name / role /
+            bbox / box_style / content_slots / structural_hints /
+            hex_colors / …) but carry only a slim ``mapping``
+            ``{suggested_component_name, primary_recommendation,
+            primary_recommendation_confidence, description,
+            candidates:[{name, score}]}``. Call ``map_figma_node`` on
+            any single region (pass its ``node_name``, ``role`` and
+            ``hex_colors``, plus ``reference_code`` if you have it)
+            to get that region's full candidates / examples /
+            a11y_blocks / token_mappings on demand. Pass
+            ``response_detail="full"`` to get the complete
+            :class:`FigmaTreeMapping` shape (``layout_tree``,
+            ``agenda`` with full per-row ``mapping``, ``tokens``,
+            ``dropped``, ``summary``, ``warnings``) in one shot.
 
         Raises:
             ValueError: with a structured ``[<code>] <message>``
@@ -614,12 +650,17 @@ def build_server(
             if mocked is not None:
                 logger.info(
                     "map_figma_tree mock short-circuit file_key=%s "
-                    "node_id=%s path=%s",
+                    "node_id=%s path=%s response_detail=%s",
                     parsed.file_key,
                     parsed.node_id,
                     mock_path_for(parsed),
+                    input.response_detail,
                 )
-                return mocked.model_dump()
+                # Curated mocks respect ``response_detail`` too — a
+                # mock returned to the LLM should be trimmed on the
+                # way out exactly like a live walk, so demos see the
+                # same lean payload production does.
+                return leanify_tree_mapping(mocked, input.response_detail)
 
         try:
             fetch_kwargs: dict[str, Any] = {
@@ -654,7 +695,10 @@ def build_server(
             max_agenda=input.max_agenda,
             map_figma_node_fn=_bound_map_figma_node,
         )
-        return result.model_dump()
+        # Output-shaping only: the walker computed everything above;
+        # ``leanify_tree_mapping`` decides how much of it ships to the
+        # client based on ``response_detail`` (lean by default).
+        return leanify_tree_mapping(result, input.response_detail)
 
     return server
 

@@ -35,6 +35,7 @@ from prism_mcp.figma.models import (
     LayoutNode,
     MapFigmaTreeInput,
     MappedRegion,
+    leanify_tree_mapping,
 )
 from prism_mcp.figma.walker import walk_tree
 
@@ -44,6 +45,7 @@ __all__ = [
     "LayoutNode",
     "MapFigmaTreeInput",
     "MappedRegion",
+    "leanify_tree_mapping",
     "mock_path_for",
     "try_load_mock",
     "walk_tree",

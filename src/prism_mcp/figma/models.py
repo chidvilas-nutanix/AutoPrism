@@ -12,7 +12,9 @@ See design doc §4.1 (input), §4.2 (output), and §10.1.
 
 from __future__ import annotations
 
-from typing import Literal
+import json
+from collections import Counter
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -78,6 +80,24 @@ class MapFigmaTreeInput(BaseModel):
             nested files; set lower to reduce payload size when
             you know the subtree is shallow. Values < 1 are
             clamped to 1 by the fetcher.
+        response_detail (Literal["lean", "full"]): how much of the
+            walker's output to ship back over the MCP boundary.
+            Defaults to ``"lean"`` — a trimmed agenda that keeps the
+            cheap *descriptive* fields (id / name / role / bbox /
+            box_style / content_slots / structural_hints /
+            hex_colors / …) but drops the heavy per-row *retrieval*
+            payload (raw JSX ``examples``, ``a11y_blocks``, the full
+            ``candidates`` rows, ``token_mappings``, …) and replaces
+            the full ``dropped`` audit list with a per-reason
+            ``dropped_summary`` count map. The LLM can recover the
+            full detail for any single region on demand via
+            ``map_figma_node``. Pass ``"full"`` to get today's
+            complete :class:`FigmaTreeMapping` payload in one shot
+            (byte-for-byte identical to the pre-lean behaviour) —
+            useful for debugging, golden captures, or offline
+            batch processing where context budget is not a concern.
+            See :meth:`FigmaTreeMapping.to_lean_response` for the
+            exact lean shape.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -91,6 +111,7 @@ class MapFigmaTreeInput(BaseModel):
     max_agenda: int = 100
     bypass_cache: bool = False
     figma_depth: int | None = None
+    response_detail: Literal["lean", "full"] = "lean"
 
 
 # --------------------------------------------------------------------------
@@ -179,7 +200,7 @@ class LayoutAnalysis(BaseModel):
         gap_consistent (bool): True when the sibling gap standard
             deviation is within 20% of the mean — i.e. the children
             are evenly spaced. False signals "use per-child margins".
-        confidence (float): 0–1 from the row/column scoring formula.
+        confidence (float): 0-1 from the row/column scoring formula.
             ``1.0`` for the auto-layout fast path; ``0.0`` for
             children with no detectable structure.
         absolute_children (list[str]): ids of children that overlap
@@ -468,6 +489,27 @@ class MappedRegion(BaseModel):
     shape_bucket: str = ""
 
 
+_LEAN_PARENT_CHAIN_CAP = 3
+"""Lean agenda rows keep only the most recent ancestors.
+
+The full ``parent_chain`` is root-first; the closest few ancestors
+carry the strongest context while the deeper ones add tokens for
+little signal. Three mirrors the per-region context window the
+ranker already favours (see
+:func:`prism_mcp.figma_mapping._build_lexical_query`, which appends
+only ``parent_chain[-2:]`` to the BM25 query)."""
+
+
+_LEAN_CANDIDATES_CAP = 3
+"""Lean agenda rows surface only the top-3 candidate picks.
+
+Each is reduced to ``{name, score}`` so the LLM can see the chosen
+component plus its two nearest alternatives without paying for the
+``why_matched`` / ``summary`` / ``source`` fields. The LLM drills
+into ``map_figma_node`` when it needs the full candidate rationale
+for a specific region."""
+
+
 class FigmaTreeMapping(BaseModel):
     """The walker's full output.
 
@@ -488,6 +530,12 @@ class FigmaTreeMapping(BaseModel):
     * ``warnings`` — non-fatal observations (e.g. safety-rail
       trips, suspicious drop distributions).
 
+    This is the *complete* output the walker computes. The MCP
+    boundary ships it through :func:`leanify_tree_mapping`, which by
+    default trims it to the smaller :meth:`to_lean_response` shape so
+    the client's context window is not flooded; callers that need
+    everything pass ``response_detail="full"``.
+
     Args:
         layout_tree (list[LayoutNode]): pruned spatial structure.
         agenda (list[MappedRegion]): ordered Prism decisions.
@@ -505,3 +553,160 @@ class FigmaTreeMapping(BaseModel):
     dropped: list[DroppedNode] = Field(default_factory=list)
     summary: dict[str, int] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+
+    def to_lean_response(self) -> dict[str, Any]:
+        """Project this mapping into the trimmed "lean" wire shape.
+
+        ``map_figma_tree`` defaults to this shape so the Cursor LLM
+        is not flooded with the heavy per-row *retrieval* payload
+        (raw JSX ``examples``, ``a11y_blocks``, the full
+        ``candidates`` rows, ``token_mappings``) and the full
+        ``dropped`` audit list — which on X-Ray-scale pages reaches
+        hundreds-to-thousands of rows and dominates the response. The
+        LLM can pull the full detail for any single region on demand
+        via ``map_figma_node``; it does NOT need to ship up front.
+
+        This is a *pure transform* over the already-computed
+        :class:`FigmaTreeMapping` — the walker and ``map_figma_node``
+        are untouched and still compute everything. Only the bytes
+        shipped to the client change, so every walker / golden test
+        stays valid.
+
+        The lean shape is::
+
+            {
+              "layout_tree": [...],            # unchanged
+              "agenda": [                      # slimmed rows
+                {
+                  "id", "name", "role", "bbox",
+                  "parent_chain",              # capped to last 3
+                  "shape_bucket", "children_summary",
+                  "content_slots", "structural_hints",
+                  "box_style", "hex_colors", "absolute_pos",
+                  "mapping": {                 # slim recommendation
+                    "suggested_component_name",
+                    "primary_recommendation",
+                    "primary_recommendation_confidence",
+                    "description",             # top candidate summary
+                    "candidates": [            # top-3 {name, score}
+                      {"name", "score"}, ...
+                    ]
+                  }
+                }, ...
+              ],
+              "tokens": {...},                 # unchanged
+              "dropped_summary": {reason: count, ...},  # replaces list
+              "summary": {...},                # unchanged
+              "warnings": [...],               # unchanged
+              "reduction": {                   # Prismify-style telemetry
+                "input_nodes", "agenda_size", "dropped_count",
+                "response_chars_full", "response_chars_lean"
+              }
+            }
+
+        Compared with the full :meth:`model_dump`, the lean agenda
+        row drops ``aliased_ids`` and ``reference_jsx_slice`` and
+        replaces the full :class:`FigmaNodeMapping` with the slim
+        recommendation object above.
+
+        Returns:
+            dict[str, Any]: the lean wire payload. ``model_dump`` is
+            NOT round-trippable back into :class:`FigmaTreeMapping`
+            (the shape intentionally differs); it is a terminal
+            serialisation for the MCP boundary only.
+        """
+        full = self.model_dump()
+        chars_full = len(json.dumps(full, ensure_ascii=False, default=str))
+
+        lean_agenda: list[dict[str, Any]] = []
+        for region in full["agenda"]:
+            node_mapping = region.get("mapping") or {}
+            candidates = node_mapping.get("candidates") or []
+            top = candidates[0] if candidates else None
+            slim_mapping = {
+                "suggested_component_name": node_mapping.get(
+                    "suggested_component_name"
+                ),
+                "primary_recommendation": node_mapping.get(
+                    "primary_recommendation"
+                ),
+                "primary_recommendation_confidence": node_mapping.get(
+                    "primary_recommendation_confidence", 0.0
+                ),
+                "description": top.get("summary", "") if top else "",
+                "candidates": [
+                    {"name": c.get("name"), "score": c.get("score")}
+                    for c in candidates[:_LEAN_CANDIDATES_CAP]
+                ],
+            }
+            lean_agenda.append(
+                {
+                    "id": region["id"],
+                    "name": region["name"],
+                    "role": region["role"],
+                    "bbox": region["bbox"],
+                    "parent_chain": region.get("parent_chain", [])[
+                        -_LEAN_PARENT_CHAIN_CAP:
+                    ],
+                    "shape_bucket": region.get("shape_bucket", ""),
+                    "children_summary": region.get("children_summary", ""),
+                    "content_slots": region.get("content_slots", {}),
+                    "structural_hints": region.get("structural_hints", []),
+                    "box_style": region.get("box_style", {}),
+                    "hex_colors": region.get("hex_colors", []),
+                    "absolute_pos": region.get("absolute_pos"),
+                    "mapping": slim_mapping,
+                }
+            )
+
+        dropped_summary = dict(Counter(d["reason"] for d in full["dropped"]))
+
+        lean: dict[str, Any] = {
+            "layout_tree": full["layout_tree"],
+            "agenda": lean_agenda,
+            "tokens": full["tokens"],
+            "dropped_summary": dropped_summary,
+            "summary": full["summary"],
+            "warnings": full["warnings"],
+        }
+        # ``response_chars_lean`` is measured on the payload *before*
+        # the small ``reduction`` object is attached, so it is an
+        # approximation (off by the telemetry block's own size). That
+        # is fine — the value exists to show the order-of-magnitude
+        # win versus ``response_chars_full``, not to be byte-exact.
+        chars_lean = len(json.dumps(lean, ensure_ascii=False, default=str))
+        lean["reduction"] = {
+            "input_nodes": full["summary"].get("input_nodes", 0),
+            "agenda_size": len(lean_agenda),
+            "dropped_count": len(full["dropped"]),
+            "response_chars_full": chars_full,
+            "response_chars_lean": chars_lean,
+        }
+        return lean
+
+
+def leanify_tree_mapping(
+    mapping: FigmaTreeMapping,
+    detail: Literal["lean", "full"],
+) -> dict[str, Any]:
+    """Serialise ``mapping`` for the MCP boundary honouring ``detail``.
+
+    The single choke point both the live-walker path and the curated
+    mock path in :mod:`prism_mcp.server` route through, so the
+    ``response_detail`` contract is enforced in exactly one place.
+
+    Args:
+        mapping (FigmaTreeMapping): the walker's (or a mock's) full
+            output.
+        detail (Literal["lean", "full"]): ``"full"`` returns
+            ``mapping.model_dump()`` verbatim — byte-for-byte
+            identical to the pre-lean behaviour, for regression
+            safety. ``"lean"`` returns
+            :meth:`FigmaTreeMapping.to_lean_response`.
+
+    Returns:
+        dict[str, Any]: the JSON-serialisable wire payload.
+    """
+    if detail == "full":
+        return mapping.model_dump()
+    return mapping.to_lean_response()
