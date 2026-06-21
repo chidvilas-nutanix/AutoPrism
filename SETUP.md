@@ -22,12 +22,17 @@ models → run & verify → wire into Cursor.**
   for `map_figma_node` / `map_figma_tree`), from
   <https://www.figma.com/settings>.
 
-## 2. Clone
+## 2. Clone to `~/autoprism`
+
+Clone to a stable, known location so the Cursor config path (step 8) is
+predictable. The canonical location is `~/autoprism`:
 
 ```bash
-git clone <this-repo-url> prism-mcp
-cd prism-mcp
+git clone <this-repo-url> ~/autoprism
+cd ~/autoprism
 ```
+
+Any absolute path works — just reuse the same one in step 8.
 
 ## 3. Install dependencies
 
@@ -120,7 +125,7 @@ Add an entry to `~/.cursor/mcp.json` (use the **absolute** path to `uv` from
   "mcpServers": {
     "prism-mcp": {
       "command": "/Users/<you>/.local/bin/uv",
-      "args": ["run", "--project", "/absolute/path/to/prism-mcp", "prism-mcp"],
+      "args": ["run", "--project", "/Users/<you>/autoprism", "prism-mcp"],
       "env": {
         "JFROG_EMAIL": "you@nutanix.com",
         "JFROG_API_KEY": "<your-jfrog-api-key>",
