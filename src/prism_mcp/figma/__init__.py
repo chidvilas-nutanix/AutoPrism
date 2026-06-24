@@ -28,25 +28,111 @@ Deliberately not re-exported here (private to this package):
 
 from __future__ import annotations
 
+from prism_mcp.figma.catalog import (
+    CatalogEntry,
+    FigmaCatalog,
+    RegionResolution,
+    get_catalog,
+    resolve_prism_component,
+)
+from prism_mcp.figma.codespec import (
+    PrismCodeNode,
+    PrismCodeSpec,
+    PrismImport,
+    PrismProp,
+    build_code_spec,
+)
+from prism_mcp.figma.content import (
+    IconIndex,
+    bind_text_content,
+    build_icon_index,
+    resolve_icon,
+)
+from prism_mcp.figma.layout import (
+    detect_fill_children,
+    detect_page_shell,
+    layout_for_container,
+    resolve_prism_layout,
+    snap_item_gap,
+    snap_padding,
+)
 from prism_mcp.figma.mocks import mock_path_for, try_load_mock
 from prism_mcp.figma.models import (
+    ContentBinding,
     DroppedNode,
+    FigmaComponentIdentity,
     FigmaTreeMapping,
     LayoutNode,
     MapFigmaTreeInput,
     MappedRegion,
+    PrismIcon,
+    PrismLayout,
+    PrismPageShell,
+    Typography,
     leanify_tree_mapping,
+)
+from prism_mcp.figma.prop_schema import (
+    ComponentPropSchema,
+    PropSchema,
+    PropSchemaIndex,
+    get_prop_schema,
+)
+from prism_mcp.figma.props import (
+    PropResolution,
+    ResolvedProp,
+    resolve_props,
+)
+from prism_mcp.figma.tokens import (
+    ColorTokenResult,
+    resolve_color_token,
+    resolve_typography,
 )
 from prism_mcp.figma.walker import walk_tree
 
 __all__ = [
+    "CatalogEntry",
+    "ColorTokenResult",
+    "ComponentPropSchema",
+    "ContentBinding",
     "DroppedNode",
+    "FigmaCatalog",
+    "FigmaComponentIdentity",
     "FigmaTreeMapping",
+    "IconIndex",
     "LayoutNode",
     "MapFigmaTreeInput",
     "MappedRegion",
+    "PrismCodeNode",
+    "PrismCodeSpec",
+    "PrismIcon",
+    "PrismImport",
+    "PrismLayout",
+    "PrismPageShell",
+    "PrismProp",
+    "PropResolution",
+    "PropSchema",
+    "PropSchemaIndex",
+    "RegionResolution",
+    "ResolvedProp",
+    "Typography",
+    "bind_text_content",
+    "build_code_spec",
+    "build_icon_index",
+    "detect_fill_children",
+    "detect_page_shell",
+    "get_catalog",
+    "get_prop_schema",
+    "layout_for_container",
     "leanify_tree_mapping",
     "mock_path_for",
+    "resolve_color_token",
+    "resolve_icon",
+    "resolve_prism_component",
+    "resolve_prism_layout",
+    "resolve_props",
+    "resolve_typography",
+    "snap_item_gap",
+    "snap_padding",
     "try_load_mock",
     "walk_tree",
 ]

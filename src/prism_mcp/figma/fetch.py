@@ -102,6 +102,45 @@ class ParsedFigmaUrl:
     original_url: str = ""
 
 
+@dataclass(frozen=True)
+class FetchedTree:
+    """A fetched Figma node subtree plus its sibling resolution maps.
+
+    The Figma REST ``/v1/files/:key/nodes`` response nests, under
+    ``nodes[<node_id>]``, the ``document`` SceneNode subtree alongside
+    three resolution maps that are **siblings** of ``document`` — not
+    children of it:
+
+    * ``components`` — ``componentId -> {key, name, description, remote,
+      componentSetId?, documentationLinks}``. The join that turns an
+      ``INSTANCE``'s node-local ``componentId`` into the stable, global
+      ``componentKey``. This is the single strongest identity signal and
+      was historically discarded by :func:`_unwrap_response` (see
+      ``improvements/01-current-state-analysis.md`` §1.1).
+    * ``componentSets`` — ``componentSetId -> {key, name, description}``.
+      The logical variant-family name + description live here when an
+      instance belongs to a component-set.
+    * ``styles`` — ``styleId -> {key, name, styleType}``. Text / fill /
+      effect style references (P5 token resolution).
+
+    Args:
+        document (dict[str, Any]): the unwrapped
+            ``nodes[node_id].document`` subtree — the exact value the
+            legacy :func:`_fetch_figma_tree` returns.
+        components (dict[str, Any]): the ``components`` map, or ``{}``
+            when the response omitted it.
+        component_sets (dict[str, Any]): the ``componentSets`` map, or
+            ``{}`` when absent.
+        styles (dict[str, Any]): the ``styles`` map, or ``{}`` when
+            absent.
+    """
+
+    document: dict[str, Any]
+    components: dict[str, Any]
+    component_sets: dict[str, Any]
+    styles: dict[str, Any]
+
+
 # --------------------------------------------------------------------------
 # Error taxonomy — design doc §6.4.
 # --------------------------------------------------------------------------
@@ -358,7 +397,7 @@ _BASE_URL = "https://api.figma.com"
 the optional ``base_url`` arg to :func:`_fetch_figma_tree`."""
 
 
-async def _fetch_figma_tree(
+async def _fetch_figma_tree_full(
     *,
     parsed: ParsedFigmaUrl,
     figma_token: str | None,
@@ -368,8 +407,14 @@ async def _fetch_figma_tree(
     cache_ttl_seconds: float = _DEFAULT_CACHE_TTL_SECONDS,
     client_factory: Any = None,
     base_url: str = _BASE_URL,
-) -> dict[str, Any]:
+) -> FetchedTree:
     """Fetch the Figma node tree for ``parsed.node_id``.
+
+    This is the full-fidelity fetch: it returns a :class:`FetchedTree`
+    carrying the ``document`` subtree **plus** the sibling ``components``
+    / ``componentSets`` / ``styles`` resolution maps. The thin
+    :func:`_fetch_figma_tree` wrapper preserves the legacy
+    document-only return for existing callers.
 
     Args:
         parsed (ParsedFigmaUrl): output of :func:`parse_figma_url`.
@@ -394,8 +439,9 @@ async def _fetch_figma_tree(
             ``https://api.figma.com``.
 
     Returns:
-        dict[str, Any]: the unwrapped document subtree, i.e.
-        ``response["nodes"][node_id]["document"]``.
+        FetchedTree: the unwrapped ``document`` subtree plus the
+        ``components`` / ``componentSets`` / ``styles`` maps that are
+        siblings of ``document`` in ``response["nodes"][node_id]``.
 
     Raises:
         FetchError: see :class:`FetchErrorCode` for the taxonomy.
@@ -425,7 +471,7 @@ async def _fetch_figma_tree(
                 parsed.node_id,
                 depth,
             )
-            return _unwrap_response(cached, parsed.node_id)
+            return _unwrap_response_full(cached, parsed.node_id)
 
     payload = await _fetch_with_retries(
         file_key=parsed.file_key,
@@ -448,15 +494,73 @@ async def _fetch_figma_tree(
 
     _write_cache(cache_path, payload)
 
-    return _unwrap_response(payload, parsed.node_id)
+    return _unwrap_response_full(payload, parsed.node_id)
 
 
-def _unwrap_response(payload: dict[str, Any], node_id: str) -> dict[str, Any]:
-    """Pull ``payload["nodes"][node_id]["document"]`` defensively.
+async def _fetch_figma_tree(
+    *,
+    parsed: ParsedFigmaUrl,
+    figma_token: str | None,
+    depth: int = _DEFAULT_DEPTH,
+    bypass_cache: bool = False,
+    cache_dir: Path | None = None,
+    cache_ttl_seconds: float = _DEFAULT_CACHE_TTL_SECONDS,
+    client_factory: Any = None,
+    base_url: str = _BASE_URL,
+) -> dict[str, Any]:
+    """Backward-compatible fetch returning ONLY the document subtree.
 
-    The Figma REST API returns ``{"nodes": {<id>: {"document":
-    {...}}, ...}}``. We do the unwrap here so callers always get
-    the document subtree, which is what the walker expects.
+    Preserved verbatim for the callers and tests that assert a plain
+    ``document`` dict (``server.py`` historically, the fetch unit +
+    integration tests, ``scripts/fetch_x_ray_fixtures.py``). New code
+    that needs the ``components`` / ``componentSets`` / ``styles``
+    resolution maps should call :func:`_fetch_figma_tree_full`, which
+    returns a :class:`FetchedTree`.
+
+    Args:
+        parsed (ParsedFigmaUrl): output of :func:`parse_figma_url`.
+        figma_token (str | None): the PAT (defaults to ``$FIGMA_TOKEN``).
+        depth (int): the ``depth`` query parameter.
+        bypass_cache (bool): force a network fetch when ``True``.
+        cache_dir (Path | None): override the cache root.
+        cache_ttl_seconds (float): cache freshness window.
+        client_factory (Callable | None): test injection point.
+        base_url (str): REST base override for tests.
+
+    Returns:
+        dict[str, Any]: the unwrapped document subtree, i.e.
+        ``response["nodes"][node_id]["document"]``.
+
+    Raises:
+        FetchError: see :class:`FetchErrorCode` for the taxonomy.
+    """
+    fetched = await _fetch_figma_tree_full(
+        parsed=parsed,
+        figma_token=figma_token,
+        depth=depth,
+        bypass_cache=bypass_cache,
+        cache_dir=cache_dir,
+        cache_ttl_seconds=cache_ttl_seconds,
+        client_factory=client_factory,
+        base_url=base_url,
+    )
+    return fetched.document
+
+
+def _unwrap_response_full(
+    payload: dict[str, Any], node_id: str
+) -> FetchedTree:
+    """Pull the ``document`` subtree AND its sibling resolution maps.
+
+    The Figma REST API returns ``{"nodes": {<id>: {"document": {...},
+    "components": {...}, "componentSets": {...}, "styles": {...}}}}``.
+    We unwrap here so callers get a :class:`FetchedTree` with the
+    document (what the walker traverses) plus the ``components`` /
+    ``componentSets`` / ``styles`` maps that turn an instance's
+    node-local ``componentId`` into a global ``componentKey``.
+
+    Missing maps default to ``{}`` so downstream code never has to
+    None-check them.
 
     Raises:
         FetchError: ``node_not_found`` if the id is absent.
@@ -482,7 +586,30 @@ def _unwrap_response(payload: dict[str, Any], node_id: str) -> dict[str, Any]:
             code=FetchErrorCode.node_not_found,
             message=(f"Figma node_id={node_id!r} has no 'document' subtree."),
         )
-    return document
+
+    def _as_map(value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+    return FetchedTree(
+        document=document,
+        components=_as_map(node.get("components")),
+        component_sets=_as_map(node.get("componentSets")),
+        styles=_as_map(node.get("styles")),
+    )
+
+
+def _unwrap_response(payload: dict[str, Any], node_id: str) -> dict[str, Any]:
+    """Pull ``payload["nodes"][node_id]["document"]`` defensively.
+
+    Thin wrapper over :func:`_unwrap_response_full` preserved for
+    callers (and tests) that only need the document subtree. New code
+    that wants the ``components`` / ``componentSets`` / ``styles`` maps
+    should call :func:`_unwrap_response_full` directly.
+
+    Raises:
+        FetchError: ``node_not_found`` if the id is absent.
+    """
+    return _unwrap_response_full(payload, node_id).document
 
 
 async def _fetch_with_retries(

@@ -25,10 +25,13 @@ import httpx
 import pytest
 
 from prism_mcp.figma.fetch import (
+    FetchedTree,
     FetchError,
     FetchErrorCode,
     ParsedFigmaUrl,
     _fetch_figma_tree,
+    _fetch_figma_tree_full,
+    _unwrap_response_full,
     parse_figma_url,
 )
 
@@ -507,6 +510,113 @@ def test_fetch_bypass_cache_forces_refetch(tmp_path: Path) -> None:
         )
     )
     assert document["name"] == "FRESH"
+
+
+# --------------------------------------------------------------------------
+# P1 fetch fix — preserve the components / componentSets / styles maps.
+# --------------------------------------------------------------------------
+
+
+def _ok_response_with_maps(node_id: str = "1:1") -> _StubResponse:
+    """A 200 carrying the document AND its sibling resolution maps."""
+    return _StubResponse(
+        status_code=200,
+        body={
+            "name": "Test",
+            "nodes": {
+                node_id: {
+                    "document": {
+                        "id": node_id,
+                        "name": "root",
+                        "type": "FRAME",
+                    },
+                    "components": {
+                        "10:1": {
+                            "key": "globalkeyA",
+                            "name": "Action/ Button",
+                            "description": "http://prism-styleguide/#/x?id=button",
+                            "remote": True,
+                        }
+                    },
+                    "componentSets": {
+                        "10:0": {"key": "setkeyA", "name": "Action"}
+                    },
+                    "styles": {
+                        "S:1": {"key": "stylekeyA", "name": "Title/H1"}
+                    },
+                }
+            },
+        },
+    )
+
+
+def test_unwrap_response_full_preserves_maps() -> None:
+    """``_unwrap_response_full`` returns the document plus all 3 maps."""
+    payload = {
+        "nodes": {
+            "1:1": {
+                "document": {"id": "1:1", "type": "FRAME"},
+                "components": {"c": {"key": "k"}},
+                "componentSets": {"s": {"key": "sk"}},
+                "styles": {"st": {"key": "stk"}},
+            }
+        }
+    }
+    fetched = _unwrap_response_full(payload, "1:1")
+    assert isinstance(fetched, FetchedTree)
+    assert fetched.document["id"] == "1:1"
+    assert fetched.components == {"c": {"key": "k"}}
+    assert fetched.component_sets == {"s": {"key": "sk"}}
+    assert fetched.styles == {"st": {"key": "stk"}}
+
+
+def test_unwrap_response_full_defaults_missing_maps_to_empty() -> None:
+    """A document-only node (no maps) yields empty dicts, never None."""
+    payload = {"nodes": {"1:1": {"document": {"id": "1:1", "type": "FRAME"}}}}
+    fetched = _unwrap_response_full(payload, "1:1")
+    assert fetched.components == {}
+    assert fetched.component_sets == {}
+    assert fetched.styles == {}
+
+
+def test_fetch_full_returns_maps(tmp_path: Path) -> None:
+    """``_fetch_figma_tree_full`` threads the maps through end-to-end."""
+    stub = _StubClient([_ok_response_with_maps("1:1")])
+    parsed = ParsedFigmaUrl(file_key="k", node_id="1:1", original_url="x")
+    fetched = asyncio.run(
+        _fetch_figma_tree_full(
+            parsed=parsed,
+            figma_token="t",
+            cache_dir=tmp_path,
+            client_factory=_make_factory(stub),
+        )
+    )
+    assert isinstance(fetched, FetchedTree)
+    assert fetched.document["id"] == "1:1"
+    assert fetched.components["10:1"]["key"] == "globalkeyA"
+    assert fetched.component_sets["10:0"]["key"] == "setkeyA"
+    assert fetched.styles["S:1"]["key"] == "stylekeyA"
+
+
+def test_fetch_legacy_wrapper_still_returns_document_only(
+    tmp_path: Path,
+) -> None:
+    """The backward-compatible ``_fetch_figma_tree`` keeps returning the
+    bare document dict so existing callers/tests are unaffected."""
+    stub = _StubClient([_ok_response_with_maps("1:1")])
+    parsed = ParsedFigmaUrl(file_key="k", node_id="1:1", original_url="x")
+    document = asyncio.run(
+        _fetch_figma_tree(
+            parsed=parsed,
+            figma_token="t",
+            cache_dir=tmp_path,
+            client_factory=_make_factory(stub),
+        )
+    )
+    assert isinstance(document, dict)
+    assert document["id"] == "1:1"
+    # The wrapper returns ONLY the document — no maps leak through.
+    assert "components" not in document
 
 
 def test_fetch_expired_cache_falls_back_to_network(tmp_path: Path) -> None:

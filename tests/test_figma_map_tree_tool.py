@@ -9,7 +9,7 @@
   ``[<code>] <message>`` messages and re-raised as ``ValueError``
   for FastMCP.
 
-Real REST calls never happen here — :func:`_fetch_figma_tree` is
+Real REST calls never happen here — :func:`_fetch_figma_tree_full` is
 monkey-patched globally.
 """
 
@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from prism_mcp.figma.fetch import FetchError, FetchErrorCode
+from prism_mcp.figma.fetch import FetchedTree, FetchError, FetchErrorCode
 from prism_mcp.server import (
     SERVER_INSTRUCTIONS,
     _fetch_error_to_mcp,
@@ -148,6 +148,7 @@ _MINI_TREE = {
             "id": "1:2",
             "name": "Modal",
             "type": "INSTANCE",
+            "componentId": "1:2:comp",
             "absoluteBoundingBox": {
                 "x": 0,
                 "y": 0,
@@ -165,6 +166,21 @@ _MINI_TREE = {
     ],
 }
 
+# The sibling ``components`` map the P1 fetch fix threads alongside the
+# document. The Modal instance's ``componentId`` resolves here to its
+# global ``componentKey`` + logical name + styleguide URL.
+_MINI_COMPONENTS = {
+    "1:2:comp": {
+        "key": "modalkey123",
+        "name": "Modal/ \u2705 Standard Modal",
+        "description": (
+            "http://prism-styleguide/v2/index.html#/Components/Modal?id=modal"
+        ),
+        "remote": True,
+        "documentationLinks": [],
+    }
+}
+
 
 @pytest.mark.asyncio
 async def test_map_figma_tree_returns_walker_output_when_fetch_succeeds(
@@ -173,10 +189,17 @@ async def test_map_figma_tree_returns_walker_output_when_fetch_succeeds(
     """Happy path: the tool wrapper threads the mocked fetch into
     the walker and returns a dict-shaped FigmaTreeMapping."""
 
-    async def _fake_fetch(**kwargs: Any) -> dict[str, Any]:
-        return _MINI_TREE
+    async def _fake_fetch(**kwargs: Any) -> FetchedTree:
+        return FetchedTree(
+            document=_MINI_TREE,
+            components=_MINI_COMPONENTS,
+            component_sets={},
+            styles={},
+        )
 
-    monkeypatch.setattr("prism_mcp.server._fetch_figma_tree", _fake_fetch)
+    monkeypatch.setattr(
+        "prism_mcp.server._fetch_figma_tree_full", _fake_fetch
+    )
     # ``build_server`` defers the library construction; we never
     # touch the library because the walker only emits agenda rows
     # when the noise filter passes — and the mini fixture has 2
@@ -199,6 +222,69 @@ async def test_map_figma_tree_returns_walker_output_when_fetch_succeeds(
     assert payload["summary"]["input_nodes"] >= 1
     assert isinstance(payload["agenda"], list)
 
+    # P1 fetch fix: the Modal INSTANCE's exact identity must be
+    # resolved from the threaded components map and surfaced on the
+    # lean agenda row.
+    identities = [
+        row.get("figma_component")
+        for row in payload["agenda"]
+        if row.get("figma_component")
+    ]
+    assert identities, "expected the Modal instance to carry figma_component"
+    modal = identities[0]
+    assert modal["component_key"] == "modalkey123"
+    assert modal["component_name"] == "Modal/ \u2705 Standard Modal"
+    assert modal["remote"] is True
+    assert modal["doc_url"] and modal["doc_url"].startswith("http")
+
+
+@pytest.mark.asyncio
+async def test_map_figma_tree_codespec_detail_returns_render_ready_tree(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``response_detail="codespec"`` returns the P8 render-ready spec.
+
+    The wire shape is the :class:`PrismCodeSpec` dict — ``roots`` /
+    ``imports`` / ``tokens`` / ``stats`` / ``warnings`` — not the lean
+    agenda. Every spec node carries a resolved ``tag``.
+    """
+
+    async def _fake_fetch(**kwargs: Any) -> FetchedTree:
+        return FetchedTree(
+            document=_MINI_TREE,
+            components=_MINI_COMPONENTS,
+            component_sets={},
+            styles={},
+        )
+
+    monkeypatch.setattr(
+        "prism_mcp.server._fetch_figma_tree_full", _fake_fetch
+    )
+    server = _build_server_with_stub_library()
+    tool = await _get_tool(server, "map_figma_tree")
+    result = await tool.run(
+        {
+            "input": {
+                "node_url": "https://www.figma.com/design/k/x?node-id=1-1",
+                "response_detail": "codespec",
+            }
+        }
+    )
+
+    payload = _extract_payload(result)
+    assert set(payload) == {"roots", "imports", "tokens", "stats", "warnings"}
+    assert payload["roots"], "expected at least one render-ready root"
+    assert payload["stats"]["nodes"] >= 1
+
+    def _tags(node: dict[str, Any]) -> list[str]:
+        out = [node["tag"]]
+        for child in node["children"]:
+            out.extend(_tags(child))
+        return out
+
+    all_tags = [t for r in payload["roots"] for t in _tags(r)]
+    assert all(isinstance(t, str) and t for t in all_tags)
+
 
 @pytest.mark.asyncio
 async def test_map_figma_tree_surfaces_fetch_error(
@@ -207,13 +293,15 @@ async def test_map_figma_tree_surfaces_fetch_error(
     """A FetchError from the fetcher becomes a Cursor-facing
     ``ValueError`` carrying the structured code prefix."""
 
-    async def _fake_fetch(**kwargs: Any) -> dict[str, Any]:
+    async def _fake_fetch(**kwargs: Any) -> FetchedTree:
         raise FetchError(
             code=FetchErrorCode.invalid_token,
             message="403 from Figma",
         )
 
-    monkeypatch.setattr("prism_mcp.server._fetch_figma_tree", _fake_fetch)
+    monkeypatch.setattr(
+        "prism_mcp.server._fetch_figma_tree_full", _fake_fetch
+    )
     server = _build_server_with_stub_library()
     tool = await _get_tool(server, "map_figma_tree")
 

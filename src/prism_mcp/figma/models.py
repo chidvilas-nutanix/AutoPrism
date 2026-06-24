@@ -18,6 +18,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from prism_mcp.figma.catalog import RegionResolution
+from prism_mcp.figma.props import ResolvedProp
 from prism_mcp.figma_mapping import FigmaNodeMapping
 
 # --------------------------------------------------------------------------
@@ -97,7 +99,13 @@ class MapFigmaTreeInput(BaseModel):
             useful for debugging, golden captures, or offline
             batch processing where context budget is not a concern.
             See :meth:`FigmaTreeMapping.to_lean_response` for the
-            exact lean shape.
+            exact lean shape. Pass ``"codespec"`` for the roadmap-P8
+            **render-ready tree** — a single
+            :class:`prism_mcp.figma.codespec.PrismCodeSpec` (nested JSX
+            nodes with their resolved Prism tag / import / typed props /
+            children / tokens / confidence + deduped imports), so the
+            skill renders the page verbatim instead of re-deriving each
+            component. See ``improvements/08-phase8-codespec.md``.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -111,7 +119,7 @@ class MapFigmaTreeInput(BaseModel):
     max_agenda: int = 100
     bypass_cache: bool = False
     figma_depth: int | None = None
-    response_detail: Literal["lean", "full"] = "lean"
+    response_detail: Literal["lean", "full", "codespec"] = "lean"
 
 
 # --------------------------------------------------------------------------
@@ -276,6 +284,102 @@ class AbsolutePos(BaseModel):
     z_order: int
 
 
+class PrismLayout(BaseModel):
+    """A Prism Layout primitive recommendation for one container (P4).
+
+    Attached to :attr:`LayoutNode.prism_layout` by the walker for
+    structural containers — the FRAMEs that would otherwise become
+    hand-written ``<div style={{display:'flex',…}}>``. The generator
+    renders ``<{component} {props}>`` verbatim around the node's child
+    regions, so the output uses the design system's layout components
+    instead of bare divs + inline CSS (roadmap P4, the "no divs" layer).
+
+    Built by :func:`prism_mcp.figma.layout.resolve_prism_layout` from the
+    CSS-aligned :class:`LayoutAnalysis`; the model lives here so it can sit
+    on :class:`LayoutNode` without a circular import.
+
+    Args:
+        component (str): the Prism primitive — ``"FlexLayout"`` (the
+            general flex container), ``"StackingLayout"`` (a plain
+            vertical stack), or ``"ContainerLayout"`` (a styled box —
+            ``backgroundColor`` / ``border`` / ``padding`` — wrapping a
+            non-flow region; roadmap P4 follow-up #3).
+        props (dict[str, str]): JSX-ready prop -> value, all string-valued
+            (``{"flexDirection": "column", "itemGap": "M",
+            "justifyContent": "space-between"}``). Default-valued props are
+            intentionally omitted so the spec matches the library's own
+            examples (e.g. ``flexDirection`` is dropped for a row,
+            ``alignItems`` for ``stretch``). For ``ContainerLayout`` the
+            keys are ``backgroundColor`` (``dark`` / ``transparent`` /
+            ``white``), ``border`` (``"true"`` when a stroke is present),
+            and ``padding``.
+        source (str): ``"figma_auto_layout"`` when the decision came
+            verbatim from Figma's own auto-layout fields (confidence 1.0),
+            or ``"geometry"`` when inferred from child bounding boxes.
+        confidence (float): 0-1, passed through from the underlying
+            :class:`LayoutAnalysis`.
+        fill_child_ids (list[str]): ids of this container's flow children
+            that fill the main axis (Figma ``layoutGrow == 1`` or
+            ``layoutSizing{Horizontal,Vertical} == "FILL"``). The generator
+            wraps each in ``<FlexItem flexGrow="1">`` — the canonical
+            "filling child" (a ``Table`` between a left menu and right
+            filters; roadmap P4 follow-up #2). Empty for the common case
+            where every child is hug/fixed-sized.
+        notes (list[str]): short flags for non-obvious mappings
+            (``"figma GRID -> FlexLayout+flexWrap (no Prism grid
+            primitive)"``, ``"non-token padding (5,10,5,30) dropped"``).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    component: Literal["FlexLayout", "StackingLayout", "ContainerLayout"]
+    props: dict[str, str] = Field(default_factory=dict)
+    source: Literal["figma_auto_layout", "geometry"]
+    confidence: float = 0.0
+    fill_child_ids: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class PrismPageShell(BaseModel):
+    """A page-level Prism shell layout for the route-anchoring container (P4).
+
+    Where :class:`PrismLayout` annotates the many mid-tree flow wrappers,
+    this annotates the **single** page-scale frame whose top-level children
+    are a header / left-nav / body / footer arrangement — so the generator
+    renders ``<MainPageLayout header={...} leftPanel={...} body={...}>``
+    instead of a hand-rolled flex skeleton (roadmap P4 follow-up #1).
+
+    Attached to the root container's :attr:`LayoutNode.prism_shell` by the
+    walker, and only when the geometric evidence is strong (conservative —
+    one wrong call per page is worse than a missed shell, which the
+    ``FlexLayout`` column fallback still covers).
+
+    Args:
+        component (str): the Prism shell — ``"MainPageLayout"`` (header? +
+            left panel + body), ``"HeaderFooterLayout"`` (header + body +
+            footer?), or ``"LeftNavLayout"`` (left panel + body, no header).
+        slots (dict[str, str]): shell prop (node slot) -> child region id.
+            Keys are the library's own slot names — ``MainPageLayout``:
+            ``header`` / ``leftPanel`` / ``body``; ``HeaderFooterLayout``:
+            ``header`` / ``bodyContent`` / ``footer``; ``LeftNavLayout``:
+            ``leftPanel`` / ``rightBodyContent``. Each value is a
+            :class:`LayoutNode` / :class:`MappedRegion` id the generator
+            renders into that slot.
+        source (str): always ``"geometry"`` — shells are inferred from
+            top-level child bounding boxes, never from a Figma field.
+        confidence (float): 0-1 geometric confidence.
+        notes (list[str]): short flags (``"header full-width 64px top"``).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    component: Literal["MainPageLayout", "HeaderFooterLayout", "LeftNavLayout"]
+    slots: dict[str, str] = Field(default_factory=dict)
+    source: Literal["geometry"] = "geometry"
+    confidence: float = 0.0
+    notes: list[str] = Field(default_factory=list)
+
+
 class LayoutNode(BaseModel):
     """One node in the pruned layout tree.
 
@@ -302,6 +406,24 @@ class LayoutNode(BaseModel):
             ``None`` when the node has fewer than two children OR
             when the inference produced no useful signal. See
             :class:`LayoutAnalysis` for the full field reference.
+        prism_layout (PrismLayout | None): the Prism Layout primitive
+            (``FlexLayout`` / ``StackingLayout``) + token-snapped props
+            this container should render as (roadmap P4). Populated by the
+            walker only for **structural container** roles
+            (``layout-container`` / ``composed-region``) that carry a
+            flow direction — never for keyed component leaves (a
+            ``Button``'s internal auto-layout is the component's concern,
+            not a ``<div>`` to replace). ``None`` for single-child /
+            overlap-stack containers and component instances. See
+            ``improvements/05-phase4-layout.md``.
+        prism_shell (PrismPageShell | None): the page-level shell
+            (``MainPageLayout`` / ``HeaderFooterLayout`` / ``LeftNavLayout``)
+            this container should render as, with its child regions assigned
+            to header / leftPanel / body / footer slots. Populated by the
+            walker only for the **route-anchoring page-scale container** when
+            the top-level geometry clearly matches a shell; ``None`` for
+            every other node (roadmap P4 follow-up #1). See
+            ``improvements/05-phase4-layout.md`` §8.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -312,6 +434,8 @@ class LayoutNode(BaseModel):
     bbox: tuple[float, float, float, float]
     children_ids: list[str] = Field(default_factory=list)
     layout: LayoutAnalysis | None = None
+    prism_layout: PrismLayout | None = None
+    prism_shell: PrismPageShell | None = None
 
 
 class BoxStyle(BaseModel):
@@ -374,6 +498,16 @@ class BoxStyle(BaseModel):
             ``(0, 1.0)`` when meaningfully transparent. ``None``
             when fully opaque (the common case) so the agenda
             stays compact.
+        background_token (str | None): the Prism color **token name**
+            the ``background_color`` hex resolves to (roadmap P5) —
+            either the designer's own Figma variable name or the
+            nearest Prism color token within the ``exact`` / ``near``
+            perceptual bucket. ``None`` when no close token exists (the
+            raw ``background_color`` hex is then the source of truth).
+            Resolved by :func:`prism_mcp.figma.tokens.resolve_color_token`.
+        border_token (str | None): the Prism color token name the
+            ``border_color`` hex resolves to (same cascade as
+            ``background_token``).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -387,6 +521,176 @@ class BoxStyle(BaseModel):
     layout_mode: str | None = None
     has_shadow: bool = False
     opacity: float | None = None
+    background_token: str | None = None
+    border_token: str | None = None
+
+
+class Typography(BaseModel):
+    """Resolved Prism typography for a region's representative text (P5).
+
+    The walker picks the most prominent (largest) TEXT descendant of a region
+    and maps its Figma ``style`` (font size + weight) onto the Prism type
+    ramp so codegen emits a typography **token** (``<Paragraph>`` /
+    ``<Title size="h2">`` + ``@title-h2-font-size``) instead of a raw
+    ``fontSize: 18px`` literal — the roadmap P5 "typography as tokens" goal.
+
+    Built by :func:`prism_mcp.figma.tokens.resolve_typography` from the
+    curated Prism type ramp (``Variables.less``: ``@title-h1…h4``,
+    ``@paragraph``, ``@label``, ``@label-small``, ``@link``, ``@tag``).
+
+    Args:
+        font_size (float | None): the Figma ``style.fontSize`` in px (echoed
+            for traceability / fallback).
+        font_weight (int | None): the Figma ``style.fontWeight`` (echoed).
+        style_token (str | None): the resolved Prism named text style —
+            ``"title-h1"`` … ``"title-h4"`` / ``"paragraph"`` / ``"label"`` /
+            ``"label-small"`` / ``"link"`` / ``"tag"``. ``None`` when the
+            font size is too far from any ramp entry (the px literal stands).
+        size_token (str | None): the matching LESS size variable name without
+            the ``@`` (``"title-h2-font-size"``).
+        weight_token (str | None): the Prism weight name —
+            ``fine`` / ``thin`` / ``regular`` / ``medium`` / ``semi-bold`` /
+            ``bold``.
+        confidence (float): ``1.0`` for an exact ``(size, weight)`` ramp hit,
+            lower for a nearest-size match.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    font_size: float | None = None
+    font_weight: int | None = None
+    style_token: str | None = None
+    size_token: str | None = None
+    weight_token: str | None = None
+    confidence: float = 0.0
+
+
+class PrismIcon(BaseModel):
+    """Resolved Prism icon component for an icon region (roadmap P6).
+
+    The walker collapses an icon glyph (a ``BOOLEAN_OPERATION`` / ``VECTOR``
+    subtree, or an ``icon/``-named layer, or an icon-shaped INSTANCE) into a
+    single region carrying the Figma icon name. This model maps that name
+    onto the **exact Prism icon component** so codegen emits
+    ``<ChevronDownIcon />`` instead of an inline ``<svg>`` or a guessed name.
+
+    Built by :func:`prism_mcp.figma.content.resolve_icon` against the Prism
+    icon vocabulary (the 213 ``*Icon`` components), via a normalized-name
+    match plus a small curated synonym map.
+
+    Args:
+        figma_name (str): the source Figma icon name / hint (e.g.
+            ``"icon/chevron-down"``, ``"Menu"``).
+        prism_component (str): the resolved Prism component name
+            (``"ChevronDownIcon"``). The import is ``@nutanix-ui/prism-reactjs``.
+        method (str): how it resolved — ``"exact"`` (normalized name equals a
+            Prism icon's normalized name), ``"synonym"`` (curated alias), or
+            ``"fuzzy"`` (token-subset / contains match).
+        confidence (float): ``1.0`` exact, ``0.9`` synonym, ``0.6`` fuzzy.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    figma_name: str
+    prism_component: str
+    method: str
+    confidence: float = 0.0
+
+
+class ContentBinding(BaseModel):
+    """Which Prism prop a region's text content binds to (roadmap P6).
+
+    The walker captures a region's text (``content_slots["title"]`` /
+    concatenated TEXT). This model records the **target prop** that text
+    should be rendered into for the region's resolved component — so codegen
+    emits ``<Button>Save</Button>`` (``children``) vs
+    ``<Title>Overview</Title>`` vs ``<Input label="Name" />`` deterministically
+    rather than guessing.
+
+    Built by :func:`prism_mcp.figma.content.bind_text_content` from the
+    component's P3 prop schema (the text-bearing prop, by name priority among
+    ``node`` / ``string`` kinds) with a role-based fallback to ``children``.
+
+    Args:
+        prop (str): the target prop name (``"children"`` / ``"title"`` /
+            ``"label"`` / ``"text"`` / ``"placeholder"`` …).
+        value (str): the text content to render into it.
+        value_kind (str): ``"children"`` when the text is the element body,
+            else ``"string"`` for an attribute prop.
+        source (str): provenance — ``"prop-schema"`` (a named text prop in the
+            component schema), ``"role-default"`` (role/heuristic), or
+            ``"children-default"`` (universal React body fallback).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    prop: str
+    value: str
+    value_kind: str
+    source: str
+
+
+class FigmaComponentIdentity(BaseModel):
+    """Exact design-system identity resolved from the Figma maps.
+
+    Populated by the walker for ``INSTANCE`` (and ``COMPONENT``) nodes
+    when the fetch threaded the sibling ``components`` / ``componentSets``
+    maps into :func:`prism_mcp.figma.walk_tree` (the P1 "fetch fix" — see
+    ``improvements/02-phase1-fetch-fix.md``). It is the **deterministic**
+    identity signal that the fuzzy BM25/dense ranker cannot provide:
+
+    * ``component_key`` is a stable, global id — every instance of the
+      same published library component across every file carries it. It
+      is the exact join key into the (forthcoming P2) catalog
+      ``componentKey -> Prism component``.
+    * ``component_name`` is the logical/variant-family name (taken from
+      the component-set when the instance belongs to one, else the
+      component name) — e.g. ``"Action/ ✅ Button"``.
+    * ``description`` carries the canonical ``prism-styleguide`` /
+      ``ds.nutanix.design`` URL on the ~41% of library nodes that have
+      one; ``doc_url`` is the first such URL extracted for convenience.
+      Both are consumed at catalog-build time, not page-mapping time.
+
+    ``None`` on a :class:`MappedRegion` means the node was not an
+    instance/component, or the maps were unavailable (e.g. the legacy
+    document-only fetch path, or a curated mock).
+
+    Args:
+        component_id (str): the instance's node-local ``componentId``
+            (for a ``COMPONENT`` node, its own ``id``). The key into the
+            response's ``components`` map.
+        component_key (str): the stable global ``componentKey`` from the
+            ``components`` map. Empty string only if the entry lacked a
+            key (should not happen for published components).
+        component_name (str): logical name — the ``componentSets`` entry
+            name when present, else the ``components`` entry name.
+        component_set_id (str | None): the ``componentSetId`` when the
+            instance belongs to a variant family, else ``None``.
+        component_set_key (str | None): the global ``componentKey`` of
+            the owning component-set, when the instance belongs to one.
+            Variant families are frequently catalogued at the *set*
+            level, so the P2 catalog can join on either this or
+            ``component_key``. ``None`` for standalone components.
+        remote (bool): ``True`` when the component is published by a
+            *remote* library (i.e. defined in another file). On real
+            product pages the design-system instances are ~all remote.
+        description (str): the raw component / component-set description.
+            Often contains the canonical Prism styleguide URL.
+        doc_url (str | None): the first ``http(s)`` URL found in
+            ``description`` (the styleguide / ds.nutanix.design link),
+            or ``None``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    component_id: str
+    component_key: str = ""
+    component_name: str = ""
+    component_set_id: str | None = None
+    component_set_key: str | None = None
+    remote: bool = False
+    description: str = ""
+    doc_url: str | None = None
 
 
 class MappedRegion(BaseModel):
@@ -466,6 +770,56 @@ class MappedRegion(BaseModel):
             :func:`prism_mcp.figma.utils.shape_bucket`. The ranker
             in :mod:`prism_mcp.figma_mapping` uses this
             to apply a tiny shape-aware bonus.
+        figma_component (FigmaComponentIdentity | None): the exact
+            design-system identity (global ``component_key`` + logical
+            name + remote flag + styleguide ``doc_url``) resolved from
+            the fetched ``components`` / ``componentSets`` maps for
+            ``INSTANCE`` / ``COMPONENT`` regions. ``None`` for layout
+            FRAMEs, text, patterns, or when the maps were unavailable
+            (legacy document-only fetch / mocks). This is the
+            deterministic join key the P2 catalog will resolve to a
+            Prism component; see ``improvements/02-phase1-fetch-fix.md``.
+        prism_resolution (RegionResolution | None): the authoritative
+            Tier-1 routing outcome — the Prism component family the P2
+            catalog resolved this region's :attr:`figma_component`
+            identity to, with the cascade ``method``, ``confidence``,
+            and ``source`` (``"catalog"`` for a precomputed
+            ``componentKey`` hit, ``"page-fallback"`` for a cascade on
+            the page-provided name/description). Populated by the
+            walker's post-DFS routing pass only when the identity
+            resolves to a real component; ``None`` for layout FRAMEs,
+            patterns, unresolved keys, or when no ``components`` map was
+            supplied. When set, the walker has already promoted this
+            family into :attr:`mapping` (``primary_recommendation`` /
+            ``suggested_component_name``) unless an audited pattern role
+            already claimed a finer sub-component. See
+            ``improvements/04-phase3-routing-and-props.md``.
+        prism_props (list[ResolvedProp]): the typed Prism props derived
+            from this instance's Figma ``componentProperties`` (P3 Part
+            B). Each carries the prop name, a JSX-ready ``value`` +
+            ``value_kind`` (expression / string / bool), and provenance
+            (``method`` + ``confidence``). Populated by the walker's
+            prop-resolution pass only for regions that routed to a Prism
+            family *and* whose Figma node exposed ``componentProperties``;
+            empty otherwise. The deterministic bridge is value-driven
+            (a Figma value ``Primary`` -> ``ButtonTypes.PRIMARY``), with
+            name- and curated-fallbacks. See
+            ``improvements/04-phase3-routing-and-props.md`` Part B.
+        typography (Typography | None): the resolved Prism typography token
+            (size / weight) for this region's most prominent text, mapped
+            from the dominant TEXT descendant's Figma ``style`` (roadmap P5).
+            ``None`` for regions without text or whose font size is too far
+            from the Prism type ramp. See
+            ``improvements/06-phase5-tokens.md``.
+        prism_icon (PrismIcon | None): the resolved Prism icon component for
+            an icon region, mapped from the Figma icon name to one of the 213
+            ``*Icon`` components (roadmap P6). ``None`` for non-icon regions or
+            an unresolvable glyph. See ``improvements/07-phase6-content.md``.
+        content_binding (ContentBinding | None): which Prism prop this
+            region's text content binds to — ``children`` / ``title`` /
+            ``label`` / … — chosen from the resolved component's prop schema
+            (roadmap P6). ``None`` when the region carries no text or routed to
+            no component. See ``improvements/07-phase6-content.md``.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -487,6 +841,12 @@ class MappedRegion(BaseModel):
     mapping: FigmaNodeMapping
     absolute_pos: AbsolutePos | None = None
     shape_bucket: str = ""
+    figma_component: FigmaComponentIdentity | None = None
+    prism_resolution: RegionResolution | None = None
+    prism_props: list[ResolvedProp] = Field(default_factory=list)
+    typography: Typography | None = None
+    prism_icon: PrismIcon | None = None
+    content_binding: ContentBinding | None = None
 
 
 _LEAN_PARENT_CHAIN_CAP = 3
@@ -583,6 +943,12 @@ class FigmaTreeMapping(BaseModel):
                   "shape_bucket", "children_summary",
                   "content_slots", "structural_hints",
                   "box_style", "hex_colors", "absolute_pos",
+                  "figma_component",           # exact DS identity (P1)
+                  "prism_resolution"?,         # Tier-1 routing (P3);
+                                               # present only when the
+                                               # identity resolved:
+                                               # {prism_component, source,
+                                               #  method, confidence}
                   "mapping": {                 # slim recommendation
                     "suggested_component_name",
                     "primary_recommendation",
@@ -639,25 +1005,73 @@ class FigmaTreeMapping(BaseModel):
                     for c in candidates[:_LEAN_CANDIDATES_CAP]
                 ],
             }
-            lean_agenda.append(
-                {
-                    "id": region["id"],
-                    "name": region["name"],
-                    "role": region["role"],
-                    "bbox": region["bbox"],
-                    "parent_chain": region.get("parent_chain", [])[
-                        -_LEAN_PARENT_CHAIN_CAP:
-                    ],
-                    "shape_bucket": region.get("shape_bucket", ""),
-                    "children_summary": region.get("children_summary", ""),
-                    "content_slots": region.get("content_slots", {}),
-                    "structural_hints": region.get("structural_hints", []),
-                    "box_style": region.get("box_style", {}),
-                    "hex_colors": region.get("hex_colors", []),
-                    "absolute_pos": region.get("absolute_pos"),
-                    "mapping": slim_mapping,
+            lean_row: dict[str, Any] = {
+                "id": region["id"],
+                "name": region["name"],
+                "role": region["role"],
+                "bbox": region["bbox"],
+                "parent_chain": region.get("parent_chain", [])[
+                    -_LEAN_PARENT_CHAIN_CAP:
+                ],
+                "shape_bucket": region.get("shape_bucket", ""),
+                "children_summary": region.get("children_summary", ""),
+                "content_slots": region.get("content_slots", {}),
+                "structural_hints": region.get("structural_hints", []),
+                "box_style": region.get("box_style", {}),
+                "hex_colors": region.get("hex_colors", []),
+                "absolute_pos": region.get("absolute_pos"),
+                "figma_component": region.get("figma_component"),
+                "mapping": slim_mapping,
+            }
+            # Tier-1 routing outcome (P3). Surfaced only when the
+            # identity actually resolved to a Prism family so the
+            # common no-identity row (every existing fixture / mock)
+            # is byte-for-byte unchanged.
+            resolution = region.get("prism_resolution")
+            if resolution and resolution.get("prism_component"):
+                lean_row["prism_resolution"] = {
+                    "prism_component": resolution["prism_component"],
+                    "source": resolution["source"],
+                    "method": resolution["method"],
+                    "confidence": resolution["confidence"],
                 }
-            )
+            # Typed props (P3 Part B). Surfaced only when at least one
+            # prop resolved, reduced to the JSX-ready triple the
+            # generator needs; full provenance stays in the heavy shape.
+            prism_props = region.get("prism_props") or []
+            if prism_props:
+                lean_row["prism_props"] = [
+                    {
+                        "prop": p["prop"],
+                        "value": p["value"],
+                        "value_kind": p["value_kind"],
+                    }
+                    for p in prism_props
+                ]
+            # Typography token (P5). Surfaced only when a region's text
+            # resolved to the Prism type ramp, reduced to the codegen-ready
+            # triple (style / size / weight tokens); full detail in the
+            # heavy shape.
+            typography = region.get("typography")
+            if typography and typography.get("style_token"):
+                lean_row["typography"] = {
+                    "style_token": typography["style_token"],
+                    "size_token": typography["size_token"],
+                    "weight_token": typography["weight_token"],
+                }
+            # Icon (P6). Surfaced as the bare codegen-ready component name.
+            prism_icon = region.get("prism_icon")
+            if prism_icon and prism_icon.get("prism_component"):
+                lean_row["prism_icon"] = prism_icon["prism_component"]
+            # Text→prop binding (P6). The prop + value the text renders into.
+            content_binding = region.get("content_binding")
+            if content_binding and content_binding.get("prop"):
+                lean_row["content_binding"] = {
+                    "prop": content_binding["prop"],
+                    "value": content_binding["value"],
+                    "value_kind": content_binding["value_kind"],
+                }
+            lean_agenda.append(lean_row)
 
         dropped_summary = dict(Counter(d["reason"] for d in full["dropped"]))
 
@@ -687,7 +1101,7 @@ class FigmaTreeMapping(BaseModel):
 
 def leanify_tree_mapping(
     mapping: FigmaTreeMapping,
-    detail: Literal["lean", "full"],
+    detail: Literal["lean", "full", "codespec"],
 ) -> dict[str, Any]:
     """Serialise ``mapping`` for the MCP boundary honouring ``detail``.
 
@@ -698,15 +1112,23 @@ def leanify_tree_mapping(
     Args:
         mapping (FigmaTreeMapping): the walker's (or a mock's) full
             output.
-        detail (Literal["lean", "full"]): ``"full"`` returns
+        detail (Literal["lean", "full", "codespec"]): ``"full"`` returns
             ``mapping.model_dump()`` verbatim — byte-for-byte
             identical to the pre-lean behaviour, for regression
             safety. ``"lean"`` returns
-            :meth:`FigmaTreeMapping.to_lean_response`.
+            :meth:`FigmaTreeMapping.to_lean_response`. ``"codespec"``
+            returns the roadmap-P8 render-ready
+            :class:`prism_mcp.figma.codespec.PrismCodeSpec` as a dict.
 
     Returns:
         dict[str, Any]: the JSON-serialisable wire payload.
     """
     if detail == "full":
         return mapping.model_dump()
+    if detail == "codespec":
+        # Lazy import: ``codespec`` imports this module's models, so a
+        # top-level import here would be circular.
+        from prism_mcp.figma.codespec import build_code_spec
+
+        return build_code_spec(mapping).model_dump()
     return mapping.to_lean_response()

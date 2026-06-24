@@ -248,6 +248,37 @@ def get_characters(node: dict[str, Any]) -> str:
     return raw if isinstance(raw, str) else ""
 
 
+def dominant_text_style(node: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the Figma ``style`` of ``node``'s most prominent TEXT.
+
+    Scans ``node`` itself and its whole subtree for TEXT / TEXT_PATH nodes
+    that carry a ``style`` block with a ``fontSize`` and returns the one with
+    the **largest** font size — the region's headline, the single most
+    useful typography signal for codegen (roadmap P5). Ties resolve to the
+    first seen (DFS / layer order). ``None`` when the region has no styled
+    text.
+
+    Iterative (Figma trees can be deep). The node dicts are read-only — this
+    never mutates the tree.
+    """
+    best_style: dict[str, Any] | None = None
+    best_size = -1.0
+    stack: list[dict[str, Any]] = [node]
+    while stack:
+        cur = stack.pop()
+        if not isinstance(cur, dict):
+            continue
+        if cur.get("type") in {"TEXT", "TEXT_PATH"}:
+            style = cur.get("style")
+            if isinstance(style, dict):
+                raw = style.get("fontSize")
+                if isinstance(raw, (int, float)) and float(raw) > best_size:
+                    best_size = float(raw)
+                    best_style = style
+        stack.extend(iter_children(cur))
+    return best_style
+
+
 def bbox_area(node: dict[str, Any]) -> float:
     """Return ``width * height`` from the node's
     ``absoluteBoundingBox``, or ``0.0`` when missing."""
