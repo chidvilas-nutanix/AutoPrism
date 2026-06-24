@@ -77,6 +77,29 @@ class ParsedFunction:
 
 
 @dataclass(frozen=True)
+class ParsedEnum:
+    """One ``enum`` declaration extracted from a d.ts.
+
+    Slice P3 (prop resolution) needs the *value map* of every enum a
+    component prop references — ``type?: ButtonTypes`` is useless for
+    codegen without knowing that ``ButtonTypes.PRIMARY === "primary"``,
+    which is exactly the string a Figma variant axis carries.
+
+    Args:
+        name (str): enum identifier (e.g. ``"ButtonTypes"``).
+        members (dict[str, str]): ``MEMBER -> value`` in source order
+            (Python 3.7+ dicts preserve insertion order). The value is
+            the string literal for ``MEMBER = "x"`` members; for bare or
+            numeric members the member name is used as a stable
+            fallback (Figma variant values are always strings, so a
+            numeric enum simply will not value-match — which is correct).
+    """
+
+    name: str
+    members: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class ParsedClass:
     """One exported class declaration with its method signatures.
 
@@ -301,6 +324,44 @@ def _preceding_jsdoc(source: str, header_start: int) -> str:
     if open_pos == -1:
         return ""
     return snippet[open_pos : len(snippet)]
+
+
+def _strip_comments(source: str) -> str:
+    """Remove both ``//`` and ``/* ... */`` comments, preserving strings.
+
+    Unlike :func:`_strip_line_comments` (which keeps block comments so
+    interface JSDoc survives for per-member extraction), this strips
+    *everything* — used by :func:`parse_enums`, where JSDoc examples
+    routinely embed literal ``enum X { ... }`` snippets that would
+    otherwise be mis-parsed as real declarations.
+
+    Args:
+        source (str): text to clean.
+
+    Returns:
+        str: text with all comments removed.
+    """
+    out: list[str] = []
+    i = 0
+    n = len(source)
+    while i < n:
+        ch = source[i]
+        if ch == "/" and i + 1 < n and source[i + 1] == "/":
+            line_end = source.find("\n", i + 2)
+            i = n if line_end == -1 else line_end
+            continue
+        if ch == "/" and i + 1 < n and source[i + 1] == "*":
+            close = source.find("*/", i + 2)
+            i = n if close == -1 else close + 2
+            continue
+        if ch in ('"', "'", "`"):
+            end = _skip_string(source, i)
+            out.append(source[i:end])
+            i = end
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
 
 
 def _strip_line_comments(source: str) -> str:
@@ -810,3 +871,82 @@ def _parse_method_declaration(declaration: str, jsdoc: str) -> Member | None:
         required=True,
         description=description,
     )
+
+
+_ENUM_HEADER_RE = re.compile(
+    r"(?:export\s+)?(?:declare\s+)?(?:const\s+)?enum\s+"
+    r"(?P<name>[A-Za-z_$][\w$]*)\s*\{",
+)
+
+_ENUM_MEMBER_RE = re.compile(
+    r"""^(?P<name>[A-Za-z_$][\w$]*)"""
+    r"""\s*(?:=\s*(?P<value>'[^']*'|"[^"]*"|.+))?$""",
+    re.DOTALL,
+)
+
+
+def parse_enums(source: str) -> list[ParsedEnum]:
+    """Parse every ``enum`` declaration in ``source``.
+
+    Handles the shapes ``tsc --emitDeclarationOnly`` emits:
+
+    * ``export declare enum X { A = "a", B = "b" }`` (the common case)
+    * ``declare enum`` / ``export enum`` / ``const enum`` / bare ``enum``
+
+    Args:
+        source (str): full contents of a ``.d.ts`` file.
+
+    Returns:
+        list[ParsedEnum]: one entry per enum, in source order, with a
+        ``MEMBER -> value`` map. Numeric / bare members fall back to the
+        member name as their value (they will never value-match a Figma
+        variant string, which is the correct behaviour).
+    """
+    stripped = _strip_comments(source)
+    results: list[ParsedEnum] = []
+    cursor = 0
+    while True:
+        match = _ENUM_HEADER_RE.search(stripped, cursor)
+        if match is None:
+            break
+        body_start = match.end()
+        body_end = _find_matching_brace(stripped, body_start)
+        if body_end == -1:
+            break
+        body = stripped[body_start:body_end]
+        results.append(
+            ParsedEnum(
+                name=match.group("name"),
+                members=_parse_enum_members(body),
+            )
+        )
+        cursor = body_end + 1
+    return results
+
+
+def _parse_enum_members(body: str) -> dict[str, str]:
+    """Parse an enum body into a ``MEMBER -> value`` dict.
+
+    Args:
+        body (str): enum body text without the outer braces.
+
+    Returns:
+        dict[str, str]: members in source order. The value is the
+        unquoted string literal when present, else the member name.
+    """
+    members: dict[str, str] = {}
+    for chunk in _split_top_level(body, separators=","):
+        _jsdoc, declaration = _peel_jsdoc(chunk)
+        declaration = declaration.strip()
+        if not declaration:
+            continue
+        match = _ENUM_MEMBER_RE.match(declaration)
+        if match is None:
+            continue
+        name = match.group("name")
+        raw_value = match.group("value")
+        if raw_value is None:
+            members[name] = name
+        else:
+            members[name] = raw_value.strip().strip("'\"")
+    return members

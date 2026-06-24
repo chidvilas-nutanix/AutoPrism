@@ -249,7 +249,13 @@ class ColorTokenIndex:
                     NEAR_DELTA_E_THRESHOLD,
                 )
                 candidate_mask = None
-        if candidate_mask is None:
+        # Fall back to the global set when the role hint is absent, unknown,
+        # OR known-but-matches-zero-tokens (an all-False mask). The last case
+        # is the common one for a design system whose color tokens aren't
+        # named by role (e.g. ``dark-blue-2`` rather than ``surface-*``):
+        # without this, a role hint would make every query return empty —
+        # violating the "never empty handed" contract.
+        if candidate_mask is None or not candidate_mask.any():
             candidate_mask = np.ones(len(self._tokens), dtype=bool)
 
         candidate_indices = np.flatnonzero(candidate_mask)

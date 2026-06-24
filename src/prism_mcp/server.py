@@ -32,13 +32,14 @@ from prism_mcp.entities import EntityType
 from prism_mcp.figma import (
     FigmaTreeMapping,
     MapFigmaTreeInput,
+    build_icon_index,
     leanify_tree_mapping,
     walk_tree,
 )
 from prism_mcp.figma.fetch import (
     FetchError,
     FetchErrorCode,
-    _fetch_figma_tree,
+    _fetch_figma_tree_full,
     parse_figma_url,
 )
 from prism_mcp.figma.mocks import mock_path_for, try_load_mock
@@ -165,7 +166,14 @@ D. Call `map_figma_tree(input=MapFigmaTreeInput(...))`.
    `map_figma_node(node_name, role, hex_colors, reference_code?)`
    for full candidates / examples / a11y on a specific region, or
    pass `response_detail="full"` to get everything (including the
-   full `dropped` list and per-row `mapping`) in one shot.
+   full `dropped` list and per-row `mapping`) in one shot. For
+   deterministic generation prefer `response_detail="codespec"`:
+   it returns a single render-ready `PrismCodeSpec` tree (each node
+   already carries its resolved Prism `tag` / `import_from` / typed
+   `props` / `children`-or-`text` / `tokens`), plus deduped
+   `imports`. Render it VERBATIM — do not re-pick components. Nodes
+   that could not resolve appear as `<div>` with a `notes` reason;
+   only those need a `map_figma_node` drill-down.
 
 E. Pre-render walkthrough.
    Echo `summary` to the user (especially `agenda_size`, the top
@@ -572,7 +580,8 @@ def build_server(
                 fetcher's tuned value of 12, enough for real
                 Nutanix designs), and ``response_detail``
                 (``"lean"`` by default, ``"full"`` for the complete
-                payload — see Returns).
+                payload, ``"codespec"`` for the P8 render-ready tree
+                — see Returns).
 
         Returns:
             dict: by default (``response_detail="lean"``) a trimmed
@@ -594,7 +603,18 @@ def build_server(
             ``response_detail="full"`` to get the complete
             :class:`FigmaTreeMapping` shape (``layout_tree``,
             ``agenda`` with full per-row ``mapping``, ``tokens``,
-            ``dropped``, ``summary``, ``warnings``) in one shot.
+            ``dropped``, ``summary``, ``warnings``) in one shot. Pass
+            ``response_detail="codespec"`` for the roadmap-P8
+            render-ready :class:`PrismCodeSpec` — a single nested tree
+            of JSX nodes (each with its resolved Prism ``tag`` /
+            ``import_from`` / typed ``props`` / ``children`` or
+            ``text`` / ``tokens`` / ``confidence``), plus deduped
+            ``imports``, the ``tokens`` map, ``stats``, and
+            ``warnings`` — so the skill renders the page *verbatim*
+            instead of re-deriving each component. The fuzzy mapper
+            still feeds it, so unresolved regions surface as ``<div>``
+            nodes flagged in ``notes`` (drill in with
+            ``map_figma_node``).
 
         Raises:
             ValueError: with a structured ``[<code>] <message>``
@@ -670,9 +690,20 @@ def build_server(
             }
             if input.figma_depth is not None:
                 fetch_kwargs["depth"] = max(1, int(input.figma_depth))
-            tree_json = await _fetch_figma_tree(**fetch_kwargs)
+            # P1 fetch fix: pull the document AND the sibling
+            # components / componentSets / styles maps so the walker can
+            # resolve each instance's exact componentId -> componentKey.
+            fetched = await _fetch_figma_tree_full(**fetch_kwargs)
         except FetchError as exc:
             raise ValueError(_fetch_error_to_mcp(exc)) from exc
+
+        logger.info(
+            "map_figma_tree fetched maps components=%d component_sets=%d "
+            "styles=%d",
+            len(fetched.components),
+            len(fetched.component_sets),
+            len(fetched.styles),
+        )
 
         library = state.library()
 
@@ -686,14 +717,32 @@ def build_server(
                 **kwargs,
             )
 
+        # Build the P6 icon vocabulary from the library's ``*Icon`` exports
+        # (the ~206 Prism icon components). ``index()`` is cached, so this is
+        # an O(components) dict build per call, not a re-acquisition.
+        entity_index = library.index()
+        icon_index = build_icon_index(
+            [
+                e.name
+                for e in entity_index.all()
+                if e.type == "component" and e.name.endswith("Icon")
+            ],
+            version=entity_index.version,
+        )
+
         result: FigmaTreeMapping = walk_tree(
-            tree_json=tree_json,
+            tree_json=fetched.document,
             reference_jsx=input.reference_jsx,
             variable_defs=input.variable_defs,
+            components=fetched.components,
+            component_sets=fetched.component_sets,
+            styles=fetched.styles,
             max_depth=input.max_depth,
             max_nodes=input.max_nodes,
             max_agenda=input.max_agenda,
             map_figma_node_fn=_bound_map_figma_node,
+            color_token_index=library.color_token_index(),
+            icon_index=icon_index,
         )
         # Output-shaping only: the walker computed everything above;
         # ``leanify_tree_mapping`` decides how much of it ships to the

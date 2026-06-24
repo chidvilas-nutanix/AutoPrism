@@ -22,11 +22,17 @@ This skill turns a Figma node URL into a validated Prism React
 `.tsx` file. It is the single source of truth for the page-level
 flow that complements the per-node `map_figma_node` tool.
 
-`map_figma_tree` returns a **lean** agenda by default (see "What
-`map_figma_tree` returns" below) so it does not flood your context.
-Drill into any single region on demand with `map_figma_node`, or
-ask for everything at once with `response_detail="full"`. prism-mcp
-does **not** build or validate code — Cursor (you) runs
+For deterministic generation, call `map_figma_tree` with
+`response_detail="codespec"` (roadmap P8): it returns a single
+**render-ready `PrismCodeSpec`** — a nested tree of JSX nodes that
+already carry their resolved Prism `tag`, `import_from`, typed
+`props`, `children`/`text`, and `tokens`, plus a deduped `imports`
+list. Your job is to **render it verbatim — do not re-pick
+components, re-derive props, or add wrapper divs**. The default
+`response_detail="lean"` agenda and per-region `map_figma_node` are
+the *drill-down* tools you reach for only when the spec flags a node
+(a `<div>` fallback, a low `confidence`, or a composite `note`).
+prism-mcp does **not** build or validate code — Cursor (you) runs
 tsc / eslint / tests in your own loop.
 
 ## When to use
@@ -71,8 +77,54 @@ fix it — do not silently degrade.
 
 ## What `map_figma_tree` returns
 
+### `response_detail="codespec"` — the render-ready tree (preferred)
+
+This is the P8 deliverable and the **default path for code
+generation**. The response is a single `PrismCodeSpec`:
+
+- `roots` — the top-level JSX nodes, in render order. Each
+  `PrismCodeNode` is fully resolved:
+  - `tag` — the JSX element to emit (`Button`, `FlexLayout`,
+    `MenuIcon`, `HeaderFooterLayout`, or `div` for an unresolved
+    region).
+  - `import_from` — the module to import `tag` from
+    (`@nutanix-ui/prism-reactjs`), or `null` for a host `div`.
+  - `props` — the typed props to emit: `{name, value, value_kind}`.
+    Emit by `value_kind`: `expr` → `name={value}`; `string` →
+    `name="value"`; `bool` → `name` (or `name={false}`); `slot` →
+    `name={<ChildNode/>}` (the child with that `slot` renders into
+    this prop, not as a flow child).
+  - `text` — literal element text (`<Button>Save</Button>`), or
+    `null`.
+  - `children` — nested `PrismCodeNode`s, in order. A child whose
+    `slot` is set fills the parent's named prop (a shell's `header` /
+    `bodyContent` / …); a child whose `flex_grow` is `true` is wrapped
+    in `<FlexItem flexGrow="1">`.
+  - `tokens` — Prism design-token names this node references.
+  - `source` (`catalog` / `pattern` / `shell` / `layout` / `icon` /
+    `mapper` / `fallback`) + `confidence` — provenance. `fallback`
+    means "no Prism component resolved" — see `notes`.
+  - `notes` — flags: a `<div>` fallback reason, or a composite
+    (`Table` / `Form` / `Modal` / `Tabs` / …) you should render from
+    a `map_figma_node` example rather than nesting raw children.
+- `imports` — the deduped `{component, module}` list. Emit exactly
+  these imports; do not add or invent others.
+- `tokens` — `hex → token-name`; substitute the token for the hex.
+- `stats` — `nodes` / `resolved` / `fallbacks` / `roots` /
+  `imports` / `max_depth`.
+- `warnings` — assembly observations (fallback count, multi-root).
+
+Render contract: walk `roots` depth-first and emit each node as
+`<{tag} {props}>{text or children}</{tag}>`. The tree is the truth —
+the only nodes that need a decision from you are `source:"fallback"`
+`<div>`s (drill in with `map_figma_node`, or keep the div if it only
+carries layout) and `notes`-flagged composites.
+
+### `response_detail="lean"` — the inspection agenda
+
 By default (`response_detail="lean"`) the response is shaped to be
-small. Top-level keys:
+small. Use it to *inspect / sanity-check* a page, or as the
+drill-down surface behind the code spec. Top-level keys:
 
 - `layout_tree` — the nested spatial structure. Each node carries
   `id`, `name`, `role`, `bbox`, `children_ids`, and an optional
@@ -122,12 +174,19 @@ in the lean response. Get it one of two ways:
    page-generation flow. Do not invent extra steps or skip
    phases.
 2. **One mapping round-trip.** Call `map_figma_tree` exactly
-   once per page (lean by default). Do not call it again to
-   "re-fetch" — re-use the returned mapping for the entire
-   composition phase. Use `map_figma_node` for targeted per-region
-   detail; only pass `response_detail="full"` when you truly need
-   every region's heavy payload up front.
-3. **Tokens beat hexes.** The `tokens` map is `hex → token-name`
+   once per page (with `response_detail="codespec"` for generation).
+   Do not call it again to "re-fetch" — re-use the returned spec for
+   the entire composition phase. Use `map_figma_node` for targeted
+   per-region detail on the few nodes the spec flagged.
+3. **Render the code spec verbatim.** When you have the
+   `codespec`, emit each `PrismCodeNode` exactly as resolved —
+   its `tag`, `import_from`, `props` (honour `value_kind`),
+   `text`/`children`, `slot`, and `flex_grow`. Do **not** swap
+   components, re-derive props, reorder children, or insert wrapper
+   `<div>`s / inline CSS. The spec already ran the deterministic
+   identity → props → layout → tokens → content cascade; second-
+   guessing it re-introduces the drift P8 removed.
+4. **Tokens beat hexes.** The `tokens` map is `hex → token-name`
    (the designer's `variable_defs`). When a hex has a non-empty
    token name, use the token name in JSX instead of the raw hex.
    When the value is empty (designer didn't name it), either keep
@@ -136,17 +195,15 @@ in the lean response. Get it one of two ways:
    perceptual bucket (`exact` / `near` / `loose` / `no-match`);
    prefer the matched token for `exact`/`near`, fall back to the
    hex for `loose`/`no-match`.
-4. **Do not invent components.** Only use Prism component names
-   that appear in a region's `candidates` list, in
-   `suggested_component_name`, or in `primary_recommendation`.
-   When a region has a `primary_recommendation` with confidence
-   ≥ 0.8, prefer it — it is a deterministic pattern-derived pick
-   that overrode the ranker. Otherwise pick the top candidate by
-   `score`, and pause to ask the user when that score is below
-   `0.3` (low-confidence picks are flagged in the top-level
-   `warnings`). For the rationale behind a pick, or for richer
-   options, drill in with `map_figma_node`.
-5. **Reference JSX is a hint, not the truth.** The whole-page
+5. **Do not invent components (drill-down path).** The codespec
+   already chose every component for you. When you *do* drill into
+   the lean agenda or `map_figma_node` (for a `<div>` fallback or a
+   composite), only use Prism component names that appear in that
+   region's `candidates` list, `suggested_component_name`, or
+   `primary_recommendation`. Prefer a `primary_recommendation` with
+   confidence ≥ 0.8; otherwise take the top candidate by `score`, and
+   pause to ask the user when it is below `0.3`.
+6. **Reference JSX is a hint, not the truth.** The whole-page
    `reference_jsx` you pass *into* `map_figma_tree` (from
    `get_design_context`) is used by the walker to sharpen ranking.
    The per-row `reference_jsx_slice` (which Figma child maps to
@@ -154,15 +211,13 @@ in the lean response. Get it one of two ways:
    `response_detail="full"` if you need those slices. Either way,
    compose against the candidate component's real prop API, not
    the raw Figma classnames.
-6. **Respect the layout tree.** Nest JSX in the order implied by
-   `layout_tree[*].children_ids` — that is the authoritative
-   parent→child structure. Derive flow direction from each
-   region's `bbox` and `structural_hints`. The optional `layout`
-   block and per-region `absolute_pos` are forward-compatible
-   spatial hints but are **currently usually absent** (spatial
-   inference is intentionally conservative right now); consume
-   them only "when present" and never block on them.
-7. **Write into the user's project**, at the path they ask for
+7. **Respect the structure.** With the codespec, the tree's nesting
+   is authoritative — render `children` in order, honour `slot` and
+   `flex_grow`. (In the lean path, the equivalent is
+   `layout_tree[*].children_ids`.) Spatial `layout` / `absolute_pos`
+   hints remain conservative and usually absent; consume them only
+   when present.
+8. **Write into the user's project**, at the path they ask for
    (e.g. `src/components/<PageName>/`). Do not create files
    outside the project the user is working in.
 
@@ -195,11 +250,13 @@ PHASE C — MAP (one tool call to prism-mcp)
          reference_jsx=<from B1, or null>,
          variable_defs=<from B2, or null>,
          figma_token=<PAT read from .env at repo root>,
-         response_detail="lean")   # default; omit unless overriding
-     Leave response_detail at the default "lean". Only pass "full"
-     when the user explicitly needs every region's heavy detail
-     (examples / a11y / full candidates) in a single payload —
-     otherwise drill per-region with map_figma_node in Phase E.
+         response_detail="codespec")   # render-ready tree (P8)
+     Use "codespec" for generation — it returns the PrismCodeSpec you
+     render verbatim. Pass "lean" instead only when the user just
+     wants to inspect the page, or "full" when they need every
+     region's heavy detail (examples / a11y / full candidates) in a
+     single payload. You can still drill per-region with
+     map_figma_node in Phase E for any flagged node.
 
      ALWAYS pass `figma_token` explicitly — read the FIGMA_TOKEN
      value out of `.env` at the repo root (or the workspace `.env`)
@@ -219,64 +276,56 @@ PHASE C — MAP (one tool call to prism-mcp)
        - returns the lean mapping (or full, if requested)
 
 PHASE D — PLAN (no tool calls; LLM-side reasoning)
-[D1] Read summary + layout_tree + agenda.
+[D1] Read stats + warnings + the spec roots.
 [D2] Sanity-check the response:
-     - If summary.agenda_size == 0 (or agenda is empty), ask the
-       user "did you pick the right node? Here's what we dropped:
-       <dropped_summary>".
-     - If any single reason in `dropped_summary` is ≥ 80% of
-       `summary.dropped_total`, warn the user (something is
-       suspicious — likely the wrong node or a mostly-decorative
-       frame).
-     - Glance at `reduction` to confirm the lean trim landed (a
-       large gap between response_chars_full and response_chars_lean
-       is normal and healthy).
-[D3] Decide on the page-level skeleton: top-level <FlexLayout>?
-     <Page>? <AppShell>? based on the role of the root region.
-[D4] Plan the order of work using the layout_tree (root → leaves
-     in DFS order). Pre-allocate import names to avoid clashes.
+     - If stats.nodes == 0 (or roots is empty), ask the user "did
+       you pick the right node?" and re-run lean to show the
+       dropped_summary.
+     - If stats.fallbacks is a large fraction of stats.nodes, warn
+       the user — many regions did not resolve (likely an
+       annotation master, a mostly-decorative frame, or the wrong
+       node). The fallback `<div>`s are listed in the tree with a
+       `notes` reason.
+     - If stats.roots > 1, the page has spatially disjoint top
+       frames; you will wrap the roots (see D3).
+[D3] Decide the top-level wrapper: if a root is a shell
+     (`HeaderFooterLayout` / `MainPageLayout` / `LeftNavLayout`),
+     that IS the page skeleton — render it directly. If stats.roots
+     > 1, wrap the roots in a Fragment (or the shell) in render
+     order.
+[D4] Collect the `imports` list — emit exactly those import lines.
 
-PHASE E — COMPOSE (LLM writes JSX; optional per-region drill-down)
-For each region in agenda order:
-  [E1] Read the lean agenda row (already in-context from C1).
-  [E2] Pick the component:
-       - If primary_recommendation is set AND
-         primary_recommendation_confidence >= 0.8, use it.
-       - Else pick the top candidate by score. If that score < 0.3
-         OR the name is not a real Prism component, pause and ask
-         the user which Prism component to use.
-  [E2b] (Optional drill-down) When a region is ambiguous, low
-        confidence, needs accessibility guidance, or you want an
-        idiomatic example to imitate, call:
-          map_figma_node(
-              node_name=<region.name>,
-              node_type=<region.role or the Figma type>,
-              reference_code=<region's reference_jsx_slice if you
-                              fetched full, else null>,
-              hex_colors=<region.hex_colors>)
-        That returns the full candidates (with why_matched),
-        examples (raw JSX to imitate), a11y_blocks, related
-        components, and token_mappings (with perceptual buckets)
-        for just that one region.
-  [E3] Compose JSX for the region using:
-       - the chosen component name + its import path
-       - content_slots (title, items, etc.) for the props/children
-       - structural_hints to inform layout (e.g. flexDirection)
-       - hex_colors mapped via tokens (use the token name from the
-         `tokens` map when non-empty; otherwise use the hex or the
-         map_figma_node token_mappings bucket per working rule 3)
-       - **box_style for the visual identity of containers**:
-         `background_color`, `border_color`, `border_width`,
-         `corner_radius`, `padding` (T, R, B, L), `gap`,
-         `layout_mode`, `has_shadow`, `opacity`. These are
-         CSS-aligned exact values — pass them straight through as
-         component props or inline styles. Padding is already in
-         CSS shorthand order; map `layout_mode: "HORIZONTAL"` to
-         `flexDirection: "row"`, `"VERTICAL"` to
-         `flexDirection: "column"`. Skip any field that is
-         `null`/missing — empty box_style means the FRAME paints
-         nothing and the LLM should not introduce a wrapper.
-  [E4] Respect the layout_tree's children_ids when nesting.
+PHASE E — COMPOSE (render the spec verbatim; drill down only on flags)
+Walk the spec `roots` depth-first. For each PrismCodeNode:
+  [E1] Emit `<{tag}` + its `props`:
+       - `value_kind=="expr"`  → `name={value}`
+       - `value_kind=="string"`→ `name="value"`
+       - `value_kind=="bool"`  → `name` (or `name={false}`)
+       - `value_kind=="slot"`  → `name={<Child/>}`, rendering the
+         child whose `slot` equals `name` here instead of inline.
+  [E2] Emit the body:
+       - if `text` is set → `>{text}</{tag}>`
+       - else recurse `children` (skipping any child already
+         consumed as a `slot`), wrapping a child with
+         `flex_grow==true` in `<FlexItem flexGrow="1">`.
+       - a leaf with neither → self-close `<{tag} ... />`.
+  [E3] Handle the flags — these are the ONLY nodes that need a
+       decision:
+       - `source=="fallback"` (`tag=="div"`): the region did not
+         resolve. Either keep the `<div>` (if it is just a layout
+         wrapper) or drill in with
+         `map_figma_node(node_name=<node name>, node_type=<role>,
+         hex_colors=…)` to find a real component, then render that.
+       - a `notes` entry flagging a composite (`Table` / `Form` /
+         `Modal` / `Tabs` / …): call `map_figma_node` for that node
+         and imitate the returned `examples` JSX (these components
+         take config props — `columns` / `items` — not raw
+         children, so the spec leaves their sub-parts as siblings).
+       - low `confidence` (< 0.3) on a non-fallback node: render it,
+         but flag it to the user as a guess.
+  [E4] Substitute tokens: replace any hex with its `tokens[hex]`
+       name when non-empty; a node's own `tokens` list names the
+       color / typography tokens it references.
   [E5] Append to the in-memory page JSX.
 
 PHASE F — WRITE
@@ -339,63 +388,49 @@ page is small and predictable.
 ## Composition prompt template
 
 Use this prompt template verbatim at composition time
-(Phase E). Substitute `{layout_tree_json}`, `{agenda_json}`,
-`{tokens_json}`, and `{page_name}` with the corresponding
-slices of the lean mapping. Keep the template stable so that
-runs are reproducible.
+(Phase E). Substitute `{code_spec_json}` and `{page_name}` with
+the `PrismCodeSpec` returned by
+`map_figma_tree(response_detail="codespec")`. Keep the template
+stable so that runs are reproducible.
 
 ```text
-You are composing a Prism React JSX file from a structured page mapping.
+You are emitting a Prism React .tsx file from a render-ready code spec.
+RENDER IT VERBATIM. Do not pick components, derive props, reorder
+children, or add wrapper <div>s / inline CSS — the spec is the truth.
 
-Layout tree (spatial structure, root first; nest by children_ids):
-{layout_tree_json}
+Code spec (PrismCodeSpec: roots + imports + tokens + stats + warnings):
+{code_spec_json}
 
-Agenda (lean per-region rows: chosen component + top-3 {name, score}):
-{agenda_json}
+Imports: emit exactly the `imports` list — `import { A, B } from "<module>"`.
+Add nothing else; do NOT invent components.
 
-Tokens (hex → token-name; use the name when non-empty, NOT the raw hex):
-{tokens_json}
-
-For each region in agenda order:
-0. If `box_style` is non-empty, render the visual identity first:
-   `background_color`, `border_color`/`border_width`,
-   `corner_radius`, `padding` (T, R, B, L), `gap`, `layout_mode`,
-   `has_shadow`. Map them straight to CSS / Prism props.
-1. Read the lean mapping row for the region.
-2. If `mapping.primary_recommendation` is set AND
-   `primary_recommendation_confidence >= 0.8`, prefer that component
-   over the candidates list — the deterministic pattern detector
-   matched a known role with high confidence. Otherwise pick the
-   top candidate by score, and pause to ask the user if its score
-   is < 0.3. The `description` is the one-line summary of the pick.
-   If you need the rationale, an example to imitate, or a11y
-   guidance, call map_figma_node for this one region.
-3. Compose JSX using the chosen component + content_slots +
-   structural_hints.
-4. Use tokens by name (e.g. `color="color/primary/500"`) where Prism's
-   props accept them and the `tokens` value is non-empty; otherwise
-   inline the hex.
-5. Respect the layout_tree's children_ids when nesting; derive flow
-   direction from each region's bbox + structural_hints. If a node
-   carries an optional `layout` block (currently usually absent),
-   consume it when present:
-   - `direction` → `flexDirection: row | column` (or CSS Grid for
-     `grid`). `single` means render the lone child unwrapped;
-     `stack` means render the parent as `position: relative` and
-     emit each child with `position: absolute`.
-   - `justify_content` / `align_items` → map straight to the
-     CSS-named values (`start`, `end`, `center`, `space-between`,
-     `space-around`, `space-evenly`, `stretch`, `baseline`).
-   - `gap` → the CSS gap in px.
-6. If a region carries a non-null `absolute_pos` (currently usually
-   absent), render it with `position: absolute` using
-   `absolute_pos.{top,left,width,height,z_order}`, and wrap the
-   parent FRAME with `position: relative`. `z_order` is the literal
-   CSS `zIndex`.
+For each PrismCodeNode, depth-first over `roots`:
+1. Open `<{tag}` and emit every prop in `props` by value_kind:
+   - expr   → name={value}
+   - string → name="value"
+   - bool   → name   (or name={false} when value is "false")
+   - slot   → name={<Child/>}, where Child is the node in `children`
+              whose `slot` == name (render it here, not inline).
+2. Emit the body:
+   - `text` set        → >{text}</{tag}>
+   - else `children`   → recurse, skipping slot-consumed children;
+                         wrap any child with flex_grow==true in
+                         <FlexItem flexGrow="1">…</FlexItem>.
+   - neither           → self-close <{tag} ... />.
+3. Substitute tokens: anywhere a hex appears, use tokens[hex] when
+   non-empty; a node's `tokens` list names the color/typography
+   tokens it relies on.
+4. Flags are the only nodes needing judgement:
+   - source=="fallback" (tag=="div"): the region did not resolve.
+     Keep the div if it is only a layout wrapper, else drill in with
+     map_figma_node and render the real component it returns.
+   - a `notes` composite flag (Table/Form/Modal/Tabs/…): imitate the
+     map_figma_node `examples` JSX (these take config props, not raw
+     children).
+   - confidence < 0.3 on a non-fallback node: render it, but tell the
+     user it is a guess.
 
 Output a single .tsx file into the user's project (e.g. src/components/{page_name}/{page_name}.tsx).
-Include import statements for every Prism component you reference.
-Do NOT invent components — only use names from the candidates / suggested_component_name / primary_recommendation.
 Do NOT use any non-Prism dependency.
 ```
 
@@ -410,12 +445,12 @@ For the Active Cluster page (`?node-id=624-6826`):
         node_url=...,
         reference_jsx=...,
         variable_defs=...,
-        figma_token=<value of FIGMA_TOKEN read from .env>)
-        # response_detail defaults to "lean"
+        figma_token=<value of FIGMA_TOKEN read from .env>,
+        response_detail="codespec")   # render-ready PrismCodeSpec
 [4..M] (optional) prism-mcp.map_figma_node(node_name=..., node_type=...,
-        reference_code=..., hex_colors=...) for each ambiguous /
-        low-confidence region that needs full candidates / examples /
-        a11y / token buckets
+        reference_code=..., hex_colors=...) ONLY for the spec nodes
+        flagged source:"fallback" or with a composite `note` —
+        returns full candidates / examples / a11y / token buckets
 [M+1..N-1] (no tool calls — LLM composes JSX in-memory)
 [N] (skill writes the .tsx file via Cursor's file-write capability)
 [N+1..] (no MCP calls — Cursor typechecks/lints/tests the page and

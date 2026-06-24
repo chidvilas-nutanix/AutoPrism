@@ -242,6 +242,29 @@ def test_query_unknown_role_uses_global_ranking() -> None:
     assert matches[0].name == "color-primary"
 
 
+def test_query_known_role_with_zero_matching_tokens_falls_back_global() -> None:
+    """A *known* role whose keywords match no token still resolves.
+
+    This is the real-world Prism case: the color tokens are named by hue
+    (``dark-blue-2``, ``white``) not by role, so ``role="surface"`` narrows
+    to an *empty* set. The "never empty handed" contract requires the query
+    to fall back to the global ranker rather than return ``[]`` — otherwise
+    every role-hinted lookup (e.g. region background resolution) silently
+    fails.
+    """
+    entities = [
+        _token_entity("dark-blue-2", "#1B6BCC"),
+        _token_entity("white", "#FFFFFF"),
+    ]
+    index = build_color_token_index(entities=entities, version="x")
+
+    matches = index.query(target_hex="#FFFFFF", top_k=1, role="surface")
+
+    assert matches, "known role with no keyword match must not return empty"
+    assert matches[0].name == "white"
+    assert matches[0].bucket == "exact"
+
+
 def test_query_empty_corpus_returns_no_matches() -> None:
     """An empty index is valid; queries return ``[]``."""
     index = ColorTokenIndex(tokens=[], version="x")

@@ -25,6 +25,13 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, TypeAlias
 
+from prism_mcp.figma.catalog import (
+    FigmaCatalog,
+    RegionResolution,
+    get_catalog,
+)
+from prism_mcp.figma.prop_schema import PropSchemaIndex, get_prop_schema
+from prism_mcp.figma.props import resolve_props
 from prism_mcp.figma.filter import (
     DropReason,
     pass_1_visible,
@@ -33,6 +40,7 @@ from prism_mcp.figma.filter import (
     pass_4_collapse_passthrough,
     pass_6_tiny_decorative,
 )
+from prism_mcp.figma.layout import detect_page_shell, resolve_prism_layout
 from prism_mcp.figma.layout_inference import (
     analyze_layout,
     compute_absolute_pos,
@@ -40,9 +48,11 @@ from prism_mcp.figma.layout_inference import (
 from prism_mcp.figma.models import (
     BoxStyle,
     DroppedNode,
+    FigmaComponentIdentity,
     FigmaTreeMapping,
     LayoutNode,
     MappedRegion,
+    Typography,
 )
 from prism_mcp.figma.patterns import (
     PAGE_SCALE_MIN_EDGE,
@@ -56,9 +66,12 @@ from prism_mcp.figma.routing import (
     classify_frame_role,
     route_node,
 )
+from prism_mcp.figma.content import IconIndex, bind_text_content, resolve_icon
+from prism_mcp.figma.tokens import resolve_color_token, resolve_typography
 from prism_mcp.figma.types import MAPPABLE_TYPES
 from prism_mcp.figma.utils import (
     bbox_tuple_from_dict,
+    dominant_text_style,
     extract_box_style,
     extract_visible_hexes,
     get_characters,
@@ -66,6 +79,7 @@ from prism_mcp.figma.utils import (
     shape_bucket,
 )
 from prism_mcp.figma_mapping import FigmaNodeMapping
+from prism_mcp.tokens_index import ColorTokenIndex
 
 logger = logging.getLogger(__name__)
 
@@ -165,10 +179,19 @@ def walk_tree(
     tree_json: dict[str, Any],
     reference_jsx: str | None = None,
     variable_defs: dict[str, str] | None = None,
+    components: dict[str, Any] | None = None,
+    component_sets: dict[str, Any] | None = None,
+    styles: dict[str, Any] | None = None,
     max_depth: int = 20,
     max_nodes: int = 5000,
     max_agenda: int = 50,
     map_figma_node_fn: MapFigmaNodeFn | None = None,
+    catalog: FigmaCatalog | None = None,
+    catalog_routing: bool = True,
+    prop_schema: PropSchemaIndex | None = None,
+    prop_resolution: bool = True,
+    color_token_index: ColorTokenIndex | None = None,
+    icon_index: IconIndex | None = None,
 ) -> FigmaTreeMapping:
     """Build a :class:`FigmaTreeMapping` for ``tree_json``.
 
@@ -183,6 +206,25 @@ def walk_tree(
         variable_defs (dict[str, str] | None): designer-named
             ``hex → token-name`` map from Figma's
             ``get_variable_defs``. Seeds the ``tokens`` output.
+        components (dict[str, Any] | None): the ``components`` map
+            (``componentId -> {key, name, description, remote,
+            componentSetId?}``) that is a sibling of ``document`` in
+            the Figma ``/nodes`` response (threaded by the P1 fetch
+            fix). When supplied, the walker resolves each
+            ``INSTANCE`` / ``COMPONENT`` region's exact
+            :class:`FigmaComponentIdentity` (global ``component_key``
+            + logical name + styleguide ``doc_url``). ``None`` / empty
+            keeps the legacy behaviour (no identity resolution),
+            so existing callers and the document-only fetch path are
+            unaffected.
+        component_sets (dict[str, Any] | None): the ``componentSets``
+            map (``componentSetId -> {key, name, description}``); the
+            source of the *logical* variant-family name + description
+            when an instance belongs to a set. Defaults to empty.
+        styles (dict[str, Any] | None): the ``styles`` map
+            (``styleId -> {key, name, styleType}``). Threaded for
+            forthcoming P5 token-by-name resolution; not yet consumed
+            by the walker. Defaults to empty.
         max_depth (int): hard cap on traversal depth.
         max_nodes (int): hard cap on total nodes visited.
         max_agenda (int): soft cap on agenda rows. When exceeded
@@ -195,6 +237,50 @@ def walk_tree(
             rows with empty :class:`FigmaNodeMapping` placeholders
             — useful for filter / pattern unit tests that don't
             want to stand up a real library index.
+        catalog (FigmaCatalog | None): the P2 identity catalog used by
+            the Tier-1 routing pass (:func:`_apply_catalog_routing`).
+            When ``None`` the pass lazily loads the process-wide
+            :func:`prism_mcp.figma.catalog.get_catalog` singleton, but
+            only when at least one region carries a ``figma_component``
+            identity — so the document-only / no-identity path (and the
+            many ``components=None`` unit tests) never read the
+            artifact. Inject a hand-built catalog in tests for
+            hermeticity.
+        catalog_routing (bool): master switch for the Tier-1 routing
+            pass. ``True`` (default) consults the catalog to promote a
+            ``componentKey`` hit into the deterministic
+            ``primary_recommendation``; ``False`` skips it entirely
+            (identity is still captured on ``figma_component``).
+        prop_schema (PropSchemaIndex | None): the P3 Part B prop-schema
+            index used to turn a routed region's Figma
+            ``componentProperties`` into typed Prism props. ``None``
+            lazily loads the process-wide
+            :func:`prism_mcp.figma.prop_schema.get_prop_schema`
+            singleton, but only when at least one region both routed to
+            a Prism family *and* exposed ``componentProperties`` — so
+            the no-identity / stub path never reads the artifact.
+        prop_resolution (bool): master switch for the prop-resolution
+            pass. ``True`` (default) emits ``prism_props`` on routed
+            regions; ``False`` skips it (routing + identity are
+            unaffected). No-op unless ``catalog_routing`` also resolved
+            at least one region.
+        color_token_index (ColorTokenIndex | None): the P5 perceptual
+            color-token index. When supplied, the walker resolves each
+            fill / stroke / page hex that the designer did **not** name in
+            ``variable_defs`` to the nearest Prism color token (Oklab +
+            CIEDE2000, ``exact`` / ``near`` bucket) — populating
+            ``box_style.background_token`` / ``border_token`` and enriching
+            the page ``tokens`` map values. ``None`` keeps the legacy
+            behaviour (only designer-named hexes resolve). The server passes
+            ``library.color_token_index()``; tests can omit it.
+        icon_index (IconIndex | None): the P6 Prism icon vocabulary. When
+            supplied, a post-DFS content pass resolves each icon region to the
+            exact Prism ``*Icon`` component (normalized-name + synonym + fuzzy)
+            and binds each region's representative text to the right prop of
+            its resolved component (``children`` / ``title`` / ``label`` …),
+            populating ``prism_icon`` / ``content_binding``. ``None`` disables
+            the P6 pass entirely. The server passes
+            ``build_icon_index(library …)``; tests can omit it.
 
     Returns:
         FigmaTreeMapping: full structured output.
@@ -217,6 +303,15 @@ def walk_tree(
         variable_defs=variable_defs or {},
         reference_jsx=reference_jsx,
         map_figma_node_fn=map_figma_node_fn,
+        components=components or {},
+        component_sets=component_sets or {},
+        styles=styles or {},
+        catalog=catalog,
+        catalog_routing=catalog_routing,
+        prop_schema=prop_schema,
+        prop_resolution=prop_resolution,
+        color_token_index=color_token_index,
+        icon_index=icon_index,
     )
     ctx.input_nodes = 1 + _count_nodes(tree_json)
 
@@ -228,6 +323,38 @@ def walk_tree(
     # runs here, optionally in parallel, with dedup across regions
     # that share byte-identical inputs.
     _resolve_pending_mappings(ctx)
+
+    # ---- Phase 3 (Tier-1 routing): promote a deterministic
+    # ``componentKey`` identity into the headline recommendation.
+    # Runs before the agenda trim so identity-bearing rows are scored
+    # with their resolved Prism family in place; a no-op when no region
+    # carries a resolvable identity (every document-only / stub walk).
+    catalog_resolved = _apply_catalog_routing(ctx)
+
+    # ---- Phase 3 (Part B, prop resolution): turn each routed region's
+    # Figma ``componentProperties`` into typed Prism props. Depends on
+    # the routing pass above (only regions with a ``prism_resolution``
+    # are considered) and is likewise lazy — the prop-schema artifact is
+    # never read unless a routed region actually exposed properties.
+    props_resolved = _resolve_region_props(ctx)
+
+    # ---- Phase 6 (content): resolve icon regions to a Prism ``*Icon``
+    # component and bind each region's text to the right prop of its
+    # resolved component. Gated on ``icon_index`` so the no-P6 path (every
+    # committed golden walk) is byte-identical.
+    content_resolved = _resolve_region_content(ctx)
+
+    # ---- Confidence audit (ordering fix): flag any agenda region whose
+    # FINAL headline is still a sub-threshold fuzzy guess. Deliberately
+    # ordered AFTER ``_apply_catalog_routing`` so a deterministic Tier-1
+    # ``componentKey`` hit (which sets ``primary_recommendation`` via
+    # ``_promote_resolution_to_headline``) suppresses the flag — a region
+    # the catalog resolved exactly is not "low confidence" just because the
+    # fuzzy ranker that also scored it was unsure. Emitting this inside
+    # ``_resolve_pending_mappings`` (before routing) historically flooded
+    # the consumer with stale alarms for regions that ultimately resolved
+    # deterministically. See ``improvements/09-warning-ordering-fix.md``.
+    _emit_low_confidence_warnings(ctx)
 
     # Trim agenda when it exceeds the hard cap. Fix C: the cap used
     # to be soft (warning only, no truncation), which let the X-Ray
@@ -256,6 +383,22 @@ def walk_tree(
     summary.update(
         {f"dropped_{reason}": count for reason, count in drop_histogram.items()}
     )
+    # Emit the Tier-1 routing count only when it fired, mirroring the
+    # conditional ``dropped_<reason>`` keys — keeps the summary (and the
+    # committed walker goldens, which have no ``components`` map and so
+    # always resolve zero) byte-for-byte unchanged on the no-identity
+    # path.
+    if catalog_resolved:
+        summary["catalog_resolved"] = catalog_resolved
+    # Same conditional treatment for the prop-resolution count: absent
+    # on every no-identity walk, so committed goldens are unchanged.
+    if props_resolved:
+        summary["prop_resolved"] = props_resolved
+    # P6 content count: absent unless an ``icon_index`` was supplied AND a
+    # region resolved an icon or text binding, so committed goldens (which
+    # never pass an icon index) keep a byte-identical summary.
+    if content_resolved:
+        summary["content_resolved"] = content_resolved
 
     logger.info(
         "walk_tree done input=%d kept=%d dropped=%d tokens=%d warnings=%d",
@@ -303,7 +446,14 @@ class _WalkContext:
     __slots__ = (
         "_jsx_slice_cache",
         "agenda",
+        "catalog",
+        "catalog_routing",
+        "color_token_index",
+        "component_properties",
+        "component_sets",
+        "components",
         "dropped",
+        "icon_index",
         "input_nodes",
         "layout_tree",
         "map_figma_node_fn",
@@ -311,7 +461,10 @@ class _WalkContext:
         "max_agenda",
         "max_depth",
         "max_nodes",
+        "prop_resolution",
+        "prop_schema",
         "reference_jsx",
+        "styles",
         "tokens",
         "variable_defs",
         "visited",
@@ -327,6 +480,15 @@ class _WalkContext:
         variable_defs: dict[str, str],
         reference_jsx: str | None,
         map_figma_node_fn: MapFigmaNodeFn | None,
+        components: dict[str, Any] | None = None,
+        component_sets: dict[str, Any] | None = None,
+        styles: dict[str, Any] | None = None,
+        catalog: FigmaCatalog | None = None,
+        catalog_routing: bool = True,
+        prop_schema: PropSchemaIndex | None = None,
+        prop_resolution: bool = True,
+        color_token_index: ColorTokenIndex | None = None,
+        icon_index: IconIndex | None = None,
     ) -> None:
         self.max_depth = max_depth
         self.max_nodes = max_nodes
@@ -334,6 +496,38 @@ class _WalkContext:
         self.variable_defs = variable_defs
         self.reference_jsx = reference_jsx
         self.map_figma_node_fn = map_figma_node_fn
+        # P1 fetch-fix: the resolution maps that turn an instance's
+        # node-local ``componentId`` into a global ``componentKey``.
+        # Empty by default so the stub / legacy paths are unaffected.
+        self.components = components or {}
+        self.component_sets = component_sets or {}
+        self.styles = styles or {}
+        # P3 Tier-1 routing: the precomputed identity catalog. When
+        # ``None`` the routing pass lazily loads the process-wide
+        # singleton, but only if at least one region carries a
+        # resolvable ``figma_component`` identity (so the common
+        # no-identity / unit-test path never touches the artifact).
+        self.catalog = catalog
+        self.catalog_routing = catalog_routing
+        # P3 Part B prop resolution: the prop-schema index (lazy, like
+        # the catalog) and a master switch. ``component_properties`` is
+        # the DFS-populated side-map (region id -> the instance node's
+        # raw ``componentProperties``) the post-DFS resolver reads; kept
+        # off the region model so it never inflates the wire payload.
+        self.prop_schema = prop_schema
+        self.prop_resolution = prop_resolution
+        # P5 token resolution: the perceptual color-token index used to map a
+        # fill / stroke / page hex onto the nearest Prism color token when the
+        # designer did not name it via ``variable_defs``. ``None`` keeps the
+        # legacy behaviour (only designer-named hexes resolve).
+        self.color_token_index = color_token_index
+        # P6 content resolution: the Prism icon vocabulary. When supplied, the
+        # post-DFS content pass resolves icon regions to a ``*Icon`` component
+        # and binds region text to the right prop. ``None`` disables the whole
+        # P6 pass (so the committed goldens, which never pass it, are
+        # byte-identical).
+        self.icon_index = icon_index
+        self.component_properties: dict[str, dict[str, Any]] = {}
         self.input_nodes = 0
         self.visited = 0
         self.layout_tree: list[LayoutNode] = []
@@ -1123,12 +1317,12 @@ def _visit(
             bbox=bbox_tuple_from_dict(node.get("absoluteBoundingBox")),
             children_ids=child_region_ids,
         )
-        # Spatial layout inference is temporarily disabled to keep
-        # the LLM-facing output compact while the X-Ray walker
-        # fixes land. See docs/x-ray-walker-investigation.md §13.
-        # The helper and its unit tests remain on disk so the
-        # revival path is a one-line change.
-        # _attach_layout_analysis(ctx, node, layout_node, child_pairs)
+        # P4: annotate the container with its Prism Layout primitive
+        # (FlexLayout / StackingLayout + token-snapped props) so codegen
+        # emits a layout component instead of a <div>. Compact by design
+        # — no per-child absolute_pos (see §13 of the X-Ray investigation
+        # for why the heavier spatial analysis stayed off).
+        _attach_prism_layout(node, layout_node, child_pairs)
         ctx.layout_tree.append(layout_node)
 
     return _VisitResult(
@@ -1207,6 +1401,116 @@ def _emit_instance_equivalent_without_recursion(
     )
 
 
+_DOC_URL_RE = re.compile(r"https?://\S+")
+"""Match the first ``http(s)`` URL in a component description.
+
+Library component descriptions carry the canonical Prism styleguide /
+``ds.nutanix.design`` URL; the P2 catalog parses the precise
+``#/Components/...?id=`` slug. The walker only surfaces the raw URL for
+convenience (so :class:`FigmaComponentIdentity` is self-describing)."""
+
+
+def _parse_doc_url(description: str) -> str | None:
+    """Return the first ``http(s)`` URL in a component description.
+
+    Returns ``None`` when the description is empty or carries no URL.
+    Trailing punctuation that commonly hugs a URL inside prose
+    (``)`` ``.`` ``,`` ``;``) is stripped so the surfaced link is clean.
+    """
+    if not description:
+        return None
+    match = _DOC_URL_RE.search(description)
+    if not match:
+        return None
+    return match.group(0).strip().rstrip(").,;")
+
+
+def _resolve_figma_identity(
+    node: dict[str, Any],
+    ctx: _WalkContext,
+) -> FigmaComponentIdentity | None:
+    """Resolve a node's exact design-system identity from the maps.
+
+    The P1 deterministic identity step. For an ``INSTANCE`` the join key
+    is ``node["componentId"]``; for a ``COMPONENT`` (a definition we are
+    walking directly) it is the node's own ``id``. We look the key up in
+    ``ctx.components``, then prefer the owning ``componentSets`` entry's
+    name + description (the logical variant-family identity) over the
+    component's own.
+
+    Returns ``None`` when:
+
+    * the maps were not threaded — ``ctx.components`` is empty (legacy
+      document-only fetch, curated mocks, or the ``map_figma_node_fn``
+      stub path used by filter/pattern unit tests);
+    * the node is not an ``INSTANCE`` / ``COMPONENT``;
+    * the node's ``componentId`` / ``id`` is absent from the map (a
+      detached or local instance — genuine Tier-3 fallback territory).
+
+    The returned ``component_key`` is the deterministic join the P2
+    catalog resolves to a concrete Prism component; nothing here maps to
+    Prism yet (that is P2/P3).
+    """
+    if not ctx.components:
+        return None
+    node_type = node.get("type")
+    if node_type == "INSTANCE":
+        component_id = node.get("componentId")
+    elif node_type == "COMPONENT":
+        component_id = node.get("id")
+    else:
+        return None
+    if not component_id:
+        return None
+    entry = ctx.components.get(component_id)
+    if not isinstance(entry, dict):
+        return None
+    set_id = entry.get("componentSetId")
+    set_entry = ctx.component_sets.get(set_id) if set_id else None
+    if not isinstance(set_entry, dict):
+        set_entry = None
+    logical_name = (set_entry or {}).get("name") or entry.get("name") or ""
+    description = (
+        (set_entry or {}).get("description")
+        or entry.get("description")
+        or ""
+    )
+    set_key = (set_entry or {}).get("key") if set_entry else None
+    return FigmaComponentIdentity(
+        component_id=str(component_id),
+        component_key=str(entry.get("key") or ""),
+        component_name=str(logical_name),
+        component_set_id=str(set_id) if set_id else None,
+        component_set_key=str(set_key) if set_key else None,
+        remote=bool(entry.get("remote", False)),
+        description=str(description),
+        doc_url=_parse_doc_url(str(description)),
+    )
+
+
+def _stash_component_properties(
+    ctx: _WalkContext, node: dict[str, Any], region_id: str
+) -> None:
+    """Stash an instance's raw ``componentProperties`` for P3 Part B.
+
+    Called at region-construction time (the same point identity is
+    resolved) so the post-DFS resolver
+    (:func:`_resolve_region_props`) can map them to typed Prism props
+    without re-walking the tree. Keyed by the region id so it joins
+    back to :attr:`MappedRegion.id`. No-op for nodes without variant
+    properties (every FRAME / TEXT / pattern-root that is not an
+    instance), keeping the side-map small.
+
+    Args:
+        ctx (_WalkContext): the live walk context.
+        node (dict[str, Any]): the Figma node backing the region.
+        region_id (str): the region's id (``node_id or name``).
+    """
+    props = node.get("componentProperties")
+    if isinstance(props, dict) and props:
+        ctx.component_properties[region_id] = props
+
+
 def _emit_simple_region(
     node: dict[str, Any],
     ctx: _WalkContext,
@@ -1229,6 +1533,7 @@ def _emit_simple_region(
 
     box_style_dict = extract_box_style(node, children=significant_children)
     box_style = BoxStyle(**box_style_dict)
+    typography = _resolve_region_tokens(ctx, node, box_style)
     children_summary = _summarise_children(node)
     structural_hints = _structural_hints_for(node, box_style=box_style)
 
@@ -1255,6 +1560,7 @@ def _emit_simple_region(
         if "\n" in text_content_for_region:
             content_slots["items"] = text_content_for_region.split("\n")
 
+    _stash_component_properties(ctx, node, node_id or name)
     region = MappedRegion(
         id=node_id or name,
         name=name,
@@ -1269,6 +1575,8 @@ def _emit_simple_region(
         reference_jsx_slice=ctx.slice_reference_jsx(node_id),
         mapping=mapping,
         shape_bucket=bucket,
+        figma_component=_resolve_figma_identity(node, ctx),
+        typography=typography,
     )
     if queued_kwargs is not None and cache_key is not None:
         # Production path: defer the real mapper call. The
@@ -1289,13 +1597,10 @@ def _emit_simple_region(
         bbox=region.bbox,
         children_ids=list(child_region_ids),
     )
-    # Spatial layout inference is temporarily disabled to keep the
-    # LLM-facing output compact while the X-Ray walker fixes land.
-    # See docs/x-ray-walker-investigation.md §13. The helper and
-    # its unit tests remain on disk so the revival path is a
-    # one-line change.
-    # if child_pairs:
-    #     _attach_layout_analysis(ctx, node, layout_node, child_pairs)
+    # P4: Prism Layout primitive for structural containers only — the
+    # role gate inside _attach_prism_layout excludes keyed component
+    # leaves (a Button's internal flexbox is the component's concern).
+    _attach_prism_layout(node, layout_node, child_pairs)
     ctx.layout_tree.append(layout_node)
     return _VisitResult(
         region_id=region.id,
@@ -1335,6 +1640,7 @@ def _emit_pattern_region(
 
     box_style_dict = extract_box_style(node)
     box_style = BoxStyle(**box_style_dict)
+    typography = _resolve_region_tokens(ctx, node, box_style)
 
     # Patterns provide their own text_content via content_slots —
     # the walker forwards the slot strings into map_figma_node.
@@ -1358,6 +1664,7 @@ def _emit_pattern_region(
         region_shape_bucket=bucket,
     )
 
+    _stash_component_properties(ctx, node, node_id or name)
     region = MappedRegion(
         id=node_id or name,
         name=name,
@@ -1372,6 +1679,8 @@ def _emit_pattern_region(
         reference_jsx_slice=ctx.slice_reference_jsx(node_id),
         mapping=mapping,
         shape_bucket=bucket,
+        figma_component=_resolve_figma_identity(node, ctx),
+        typography=typography,
     )
     if queued_kwargs is not None and cache_key is not None:
         ctx.mapping_jobs.append((region, queued_kwargs, cache_key))
@@ -1591,9 +1900,58 @@ def _content_slots_to_text(
 
 
 def _seed_tokens(ctx: _WalkContext, hex_colors: list[str]) -> None:
-    """Seed the tokens map with the designer's variable_defs lookup."""
+    """Map each visible hex to its Prism color token (P5).
+
+    The value cascade per hex: the designer's own ``variable_defs`` name
+    (exact) -> the perceptual :class:`ColorTokenIndex` nearest token within
+    the ``exact`` / ``near`` band -> ``""`` (no close token; the hex stands).
+
+    Only ever sets the value for a hex **key** that is new (``setdefault``),
+    and never adds keys beyond the hexes seen — so ``len(ctx.tokens)`` (the
+    ``tokens_count`` summary the goldens pin) is unchanged; only the *values*
+    gain perceptual matches over the legacy variable-only behaviour.
+    """
     for hex_value in hex_colors:
-        ctx.tokens.setdefault(hex_value, ctx.variable_defs.get(hex_value, ""))
+        if hex_value in ctx.tokens:
+            continue
+        result = resolve_color_token(
+            hex_value, ctx.variable_defs, ctx.color_token_index
+        )
+        ctx.tokens[hex_value] = result.token or ""
+
+
+def _resolve_region_tokens(
+    ctx: _WalkContext,
+    node: dict[str, Any],
+    box_style: BoxStyle,
+) -> Typography | None:
+    """Attach P5 color tokens to ``box_style`` and return the region's
+    resolved :class:`Typography` (or ``None``).
+
+    Mutates ``box_style`` in place — setting ``background_token`` /
+    ``border_token`` when the fill / stroke hex resolves within the
+    ``exact`` / ``near`` band (a ``surface`` role hint biases the background
+    toward Prism surface tokens). Typography is read from the region's most
+    prominent TEXT descendant. Pure value-resolution: no agenda mutation.
+    """
+    if box_style.background_color:
+        bg = resolve_color_token(
+            box_style.background_color,
+            ctx.variable_defs,
+            ctx.color_token_index,
+            role="surface",
+        )
+        if bg.token:
+            box_style.background_token = bg.token
+    if box_style.border_color:
+        border = resolve_color_token(
+            box_style.border_color,
+            ctx.variable_defs,
+            ctx.color_token_index,
+        )
+        if border.token:
+            box_style.border_token = border.token
+    return resolve_typography(dominant_text_style(node))
 
 
 def _build_mapping_call(
@@ -1775,7 +2133,7 @@ def _resolve_pending_mappings(ctx: _WalkContext) -> None:
     """Run every queued :func:`map_figma_node` call and stitch results
     back onto their :class:`MappedRegion`.
 
-    Three optimisations layered into this one pass:
+    Two optimisations layered into this one pass:
 
     1. **Dedup** (Optimisation 2) — group jobs by ``cache_key`` so
        byte-identical inputs run the mapper exactly once. Common
@@ -1787,12 +2145,16 @@ def _resolve_pending_mappings(ctx: _WalkContext) -> None:
        the GIL during ONNX inference, so wall-time scales close
        to the worker count up to the
        :data:`_MAX_PARALLEL_WORKERS` ceiling.
-    3. **Deferred low-confidence audit** — the per-region
-       ``low_confidence`` warning depends on the resolved
-       ``mapping.candidates`` and so cannot run during the DFS.
-       We run it once per region here, after the in-place
-       mapping update, preserving the audit semantics from the
-       legacy single-threaded path.
+
+    The per-region ``low_confidence`` audit used to run at the tail
+    of this pass, but it depends on the *final* headline pick: a
+    deterministic Tier-1 ``componentKey`` hit (applied later in
+    :func:`_apply_catalog_routing`) must suppress the flag. It
+    therefore moved to :func:`_emit_low_confidence_warnings`, which
+    :func:`walk_tree` calls **after** routing. Running it here flagged
+    each region against the very fuzzy candidate the catalog was about
+    to override — stale alarms that made the consumer distrust an
+    otherwise-correct spec.
 
     Fault tolerance: a single mapper raising does NOT abort the
     walk. The exception is logged, the placeholder mapping is
@@ -1870,9 +2232,6 @@ def _resolve_pending_mappings(ctx: _WalkContext) -> None:
                 update={"node_name": region.name}
             )
 
-    for region, _kwargs, _cache_key in ctx.mapping_jobs:
-        _maybe_emit_low_confidence_warning(ctx, region)
-
     logger.info(
         "resolved %d mapping job(s): %d unique calls, %d cache hit(s), "
         "%d failure(s), %d worker(s)",
@@ -1883,6 +2242,355 @@ def _resolve_pending_mappings(ctx: _WalkContext) -> None:
         workers,
     )
     ctx.mapping_jobs.clear()
+
+
+_PATTERN_HEADLINE_CONFIDENCE = 1.0
+"""Confidence at / above which an existing ``primary_recommendation``
+is treated as an *audited pattern* pick that the catalog must not
+override.
+
+Mirrors
+:data:`prism_mcp.figma_mapping._PRIMARY_RECOMMENDATION_CONFIDENCE`
+(the value the six :data:`~prism_mcp.figma_mapping.PATTERN_TO_PRIMARY`
+roles stamp). Kept as a local constant rather than importing the
+private symbol so the routing invariant is legible at the call site;
+the two values must stay in lock-step (a unit test in
+``tests/test_figma_tier1_routing.py`` pins the coupling)."""
+
+
+def _apply_catalog_routing(ctx: _WalkContext) -> int:
+    """Promote a deterministic ``componentKey`` identity into the
+    headline recommendation (roadmap P3, Tier-1 routing).
+
+    The keystone that makes the P2 catalog *live* in the pipeline. The
+    DFS already stamped each ``INSTANCE`` / ``COMPONENT`` region with
+    its exact :class:`~prism_mcp.figma.models.FigmaComponentIdentity`
+    (P1); this pass resolves that identity to a canonical Prism family
+    via :meth:`~prism_mcp.figma.catalog.FigmaCatalog.resolve_region`
+    and records the outcome on :attr:`MappedRegion.prism_resolution`.
+
+    Precedence against the existing signals:
+
+    * **Audited pattern roles keep the headline.** When the walker's
+      deterministic pattern detector already set
+      ``primary_recommendation`` at confidence
+      ``>= _PATTERN_HEADLINE_CONFIDENCE`` (the six
+      :data:`~prism_mcp.figma_mapping.PATTERN_TO_PRIMARY` roles), it
+      emitted a *finer-grained* sub-component (``TableColumn``,
+      ``ButtonGroup``, ...) that is strictly more specific than the
+      catalog *family* and was audited at 100% agreement. We keep it
+      and attach ``prism_resolution`` only as corroborating provenance.
+    * **Otherwise the catalog identity wins.** An exact ``componentKey``
+      (Tier-1) dominates the BM25 / dense fuzzy ranker (Tier-3), so we
+      overwrite the headline pick (``primary_recommendation``, its
+      confidence + rationale, and ``suggested_component_name``) with
+      the resolved family.
+
+    Lazy and fault-tolerant by construction:
+
+    * Returns ``0`` immediately when routing is disabled or no region
+      carries an identity — the 1.78 MB artifact is never read on the
+      document-only / stub-mapper path (every walker / golden unit
+      test).
+    * A missing or corrupt artifact downgrades to a logged warning and
+      a ``0`` return; the walk still ships the P1 identity and the
+      fuzzy candidate list.
+
+    Args:
+        ctx (_WalkContext): the live walk context. ``ctx.agenda`` is
+            mutated in place.
+
+    Returns:
+        int: number of regions whose identity resolved to a real Prism
+        component (i.e. how many ``prism_resolution`` fields were set).
+    """
+    if not ctx.catalog_routing:
+        return 0
+    identity_regions = [
+        r for r in ctx.agenda if r.figma_component is not None
+    ]
+    if not identity_regions:
+        return 0
+
+    catalog = ctx.catalog
+    if catalog is None:
+        try:
+            catalog = get_catalog()
+        except Exception as exc:
+            # Missing / corrupt artifact must never abort a walk — the
+            # P1 identity and fuzzy candidates are still valid output.
+            logger.warning(
+                "Tier-1 routing skipped: catalog unavailable (%s); "
+                "regions keep P1 identity + fuzzy candidates",
+                exc,
+            )
+            return 0
+        ctx.catalog = catalog
+
+    resolved = 0
+    for region in identity_regions:
+        fc = region.figma_component
+        if fc is None:  # pragma: no cover - filtered above, defensive
+            continue
+        res = catalog.resolve_region(
+            component_key=fc.component_key,
+            figma_name=fc.component_name,
+            description=fc.description,
+            component_set_key=fc.component_set_key,
+        )
+        if not res.is_mapped:
+            continue
+        region.prism_resolution = res
+        resolved += 1
+        _promote_resolution_to_headline(region, res)
+
+    logger.info(
+        "Tier-1 routing: %d/%d identity region(s) resolved (sources: %s)",
+        resolved,
+        len(identity_regions),
+        dict(
+            Counter(
+                r.prism_resolution.source
+                for r in identity_regions
+                if r.prism_resolution is not None
+            )
+        ),
+    )
+    return resolved
+
+
+def _resolve_region_props(ctx: _WalkContext) -> int:
+    """Emit typed Prism props on routed regions (roadmap P3 Part B).
+
+    The companion to :func:`_apply_catalog_routing`: that pass decides
+    *which component* a region is; this one decides *with which props*.
+    For every region that resolved to a Prism family (``prism_resolution``
+    is set) and whose Figma node exposed ``componentProperties`` (stashed
+    by :func:`_stash_component_properties`), it looks up the family's
+    prop schema and runs the value-driven
+    :func:`~prism_mcp.figma.props.resolve_props` cascade, storing the
+    resolved typed props on :attr:`MappedRegion.prism_props`.
+
+    Lazy + fault-tolerant, mirroring the routing pass:
+
+    * Returns ``0`` when prop resolution is disabled, nothing routed, or
+      no routed region carried ``componentProperties`` — the prop-schema
+      artifact is never read on the no-identity / stub-mapper path.
+    * A missing / corrupt artifact downgrades to a logged warning and a
+      ``0`` return; routing + identity output is untouched.
+
+    Args:
+        ctx (_WalkContext): the live walk context; routed regions are
+            mutated in place.
+
+    Returns:
+        int: number of regions that gained at least one typed prop.
+    """
+    if not ctx.prop_resolution:
+        return 0
+    targets = [
+        r
+        for r in ctx.agenda
+        if r.prism_resolution is not None
+        and ctx.component_properties.get(r.id)
+    ]
+    if not targets:
+        return 0
+
+    index = ctx.prop_schema
+    if index is None:
+        try:
+            index = get_prop_schema()
+        except Exception as exc:
+            logger.warning(
+                "prop resolution skipped: schema unavailable (%s); "
+                "routed regions keep identity + family only",
+                exc,
+            )
+            return 0
+        ctx.prop_schema = index
+
+    resolved = 0
+    for region in targets:
+        res = region.prism_resolution
+        if res is None:  # pragma: no cover - filtered above, defensive
+            continue
+        figma_name = (
+            region.figma_component.component_name
+            if region.figma_component
+            else None
+        )
+        schema = index.for_region(res.prism_component, figma_name)
+        if schema is None:
+            continue
+        outcome = resolve_props(ctx.component_properties[region.id], schema)
+        if outcome.props:
+            region.prism_props = outcome.props
+            resolved += 1
+
+    logger.info(
+        "prop resolution: %d/%d routed region(s) gained typed props",
+        resolved,
+        len(targets),
+    )
+    return resolved
+
+
+_ICON_FAMILIES: frozenset[str] = frozenset({"Icon", "Icons"})
+_TEXT_SLOT_KEYS: tuple[str, ...] = ("title", "label", "text", "value", "header")
+
+
+def _icon_name_for_region(region: MappedRegion) -> str | None:
+    """Return the Figma icon-name string for an icon-ish region, else ``None``.
+
+    Icon-ish means: an icon-pattern region (``role == "icon"``, carrying
+    ``content_slots["icon_name_hint"]``), a region the catalog routed to the
+    ``Icons`` family, or an ``"icon"`` shape-bucket region. The name source is
+    the most specific available (hint → component identity → layer name).
+    """
+    if region.role == "icon":
+        hint = region.content_slots.get("icon_name_hint")
+        if isinstance(hint, str) and hint.strip():
+            return hint
+        return region.name or None
+    res = region.prism_resolution
+    if res is not None and res.prism_component in _ICON_FAMILIES:
+        if region.figma_component and region.figma_component.component_name:
+            return region.figma_component.component_name
+        return region.name or None
+    if region.shape_bucket == "icon":
+        return region.name or None
+    return None
+
+
+def _component_for_text_binding(region: MappedRegion) -> str | None:
+    """Return the resolved component name to bind text to, else ``None``.
+
+    Prefers the deterministic Tier-1 ``prism_resolution``; falls back to the
+    mapper's top suggestion so text binding still works on the fuzzy path.
+    """
+    res = region.prism_resolution
+    if res is not None and res.prism_component:
+        return res.prism_component
+    mapping = region.mapping
+    if mapping is not None:
+        return mapping.suggested_component_name or mapping.primary_recommendation
+    return None
+
+
+def _primary_text_for_region(region: MappedRegion) -> str | None:
+    """Return the region's representative text from its content slots."""
+    for key in _TEXT_SLOT_KEYS:
+        value = region.content_slots.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _resolve_region_content(ctx: _WalkContext) -> int:
+    """Resolve icon regions + bind region text to props (roadmap P6).
+
+    Gated on ``ctx.icon_index``: ``None`` makes this a no-op, so the P6
+    capability is opt-in via the icon vocabulary and every no-P6 walk
+    (including the committed goldens) is byte-identical.
+
+    Two independent, fault-tolerant resolutions per agenda row:
+
+    * **Icon** — for icon-ish regions, map the Figma icon name to a Prism
+      ``*Icon`` via :func:`resolve_icon`.
+    * **Text binding** — for a region carrying text whose resolved component
+      accepts it, pick the target prop via :func:`bind_text_content` (the
+      prop schema is loaded lazily, shared with the P3 pass).
+
+    Args:
+        ctx (_WalkContext): the live walk context; regions are mutated.
+
+    Returns:
+        int: number of regions that gained an icon or a content binding.
+    """
+    if ctx.icon_index is None:
+        return 0
+
+    schema_index = ctx.prop_schema
+    resolved = 0
+    for region in ctx.agenda:
+        changed = False
+
+        icon_name = _icon_name_for_region(region)
+        if icon_name:
+            icon = resolve_icon(icon_name, ctx.icon_index)
+            if icon is not None:
+                region.prism_icon = icon
+                changed = True
+
+        text = _primary_text_for_region(region)
+        component = _component_for_text_binding(region) if text else None
+        if text and component:
+            schema = None
+            if ctx.prop_resolution:
+                if schema_index is None:
+                    try:
+                        schema_index = get_prop_schema()
+                        ctx.prop_schema = schema_index
+                    except Exception as exc:  # pragma: no cover - defensive
+                        logger.warning(
+                            "content: prop schema unavailable (%s); "
+                            "text binding falls back to children-only",
+                            exc,
+                        )
+                        schema_index = None
+                if schema_index is not None:
+                    figma_name = (
+                        region.figma_component.component_name
+                        if region.figma_component
+                        else None
+                    )
+                    schema = schema_index.for_region(component, figma_name)
+            binding = bind_text_content(component, text, schema)
+            if binding is not None:
+                region.content_binding = binding
+                changed = True
+
+        if changed:
+            resolved += 1
+
+    logger.info(
+        "content resolution: %d/%d region(s) gained icon / text binding",
+        resolved,
+        len(ctx.agenda),
+    )
+    return resolved
+
+
+def _promote_resolution_to_headline(
+    region: MappedRegion, res: RegionResolution
+) -> None:
+    """Overwrite a region's headline pick with the catalog family.
+
+    No-op when an audited pattern role already claimed the headline at
+    full confidence (see :func:`_apply_catalog_routing`); the catalog
+    still corroborates via the already-set ``prism_resolution``.
+
+    Args:
+        region (MappedRegion): the region to update in place.
+        res (RegionResolution): the mapped Tier-1 resolution.
+    """
+    mapping = region.mapping
+    pattern_claimed = (
+        mapping.primary_recommendation is not None
+        and mapping.primary_recommendation_confidence
+        >= _PATTERN_HEADLINE_CONFIDENCE
+    )
+    if pattern_claimed:
+        return
+    key_hint = res.component_key[:8] if res.component_key else "?"
+    mapping.primary_recommendation = res.prism_component
+    mapping.primary_recommendation_confidence = res.confidence
+    mapping.primary_recommendation_rationale = (
+        f"Tier-1 {res.source}: {res.method} "
+        f"(componentKey {key_hint}... -> {res.prism_component})"
+    )
+    mapping.suggested_component_name = res.prism_component
 
 
 _LOW_CONFIDENCE_THRESHOLD = 0.05
@@ -1948,6 +2656,31 @@ def _maybe_emit_low_confidence_warning(
     )
 
 
+def _emit_low_confidence_warnings(ctx: _WalkContext) -> None:
+    """Audit each agenda region's *final* headline confidence.
+
+    Called by :func:`walk_tree` **after** :func:`_apply_catalog_routing`
+    (and the prop / content passes) so the audit sees the post-routing
+    headline. A region the catalog resolved to an exact Prism component
+    now carries a ``primary_recommendation``, which
+    :func:`_maybe_emit_low_confidence_warning` treats as an override and
+    skips — so a deterministic Tier-1 hit no longer trips a spurious
+    ``low_confidence`` warning just because the fuzzy ranker that also
+    scored the region was unsure.
+
+    Iterates :attr:`_WalkContext.agenda` rather than ``mapping_jobs``
+    because the latter is cleared at the tail of
+    :func:`_resolve_pending_mappings`; the agenda holds the same regions
+    with their resolved mappings. The guard's ``not candidates``
+    short-circuit makes this a no-op for the stub path
+    (``map_figma_node_fn is None``), which already audited synchronously
+    at emit time against an empty placeholder — so no region is
+    double-flagged.
+    """
+    for region in ctx.agenda:
+        _maybe_emit_low_confidence_warning(ctx, region)
+
+
 def _iter_descendant_dicts(node: dict[str, Any]) -> list[dict[str, Any]]:
     """Iterative enumeration of all descendant dicts under ``node``."""
     out: list[dict[str, Any]] = []
@@ -1957,6 +2690,81 @@ def _iter_descendant_dicts(node: dict[str, Any]) -> list[dict[str, Any]]:
         out.append(cur)
         stack.extend(iter_children(cur))
     return out
+
+
+_LAYOUT_CONTAINER_ROLES: frozenset[str] = frozenset(
+    {"layout-container", "composed-region"}
+)
+"""Roles whose ``LayoutNode`` carries a :class:`PrismLayout` (roadmap P4).
+
+Only **structural** containers — the FRAMEs that would otherwise become
+hand-written ``<div>``s — get a Prism layout primitive. Keyed component
+leaves (``component-instance``, ``icon``, and pattern roles like
+``button-group`` / ``stat-list``) are excluded: their internal auto-layout
+belongs to the Prism component itself, not to a wrapper we must replace."""
+
+
+def _attach_prism_layout(
+    parent_node: dict[str, Any],
+    layout_node: LayoutNode,
+    child_pairs: list[tuple[dict[str, Any], str | None]],
+) -> None:
+    """Stamp a compact :class:`PrismLayout` onto ``layout_node`` (P4).
+
+    Runs the existing CSS inference (:func:`analyze_layout`) over the
+    immediate child dicts and maps the result onto a Prism Layout
+    primitive via
+    :func:`prism_mcp.figma.layout.resolve_prism_layout`. No-ops unless the
+    node is a structural container (role in
+    :data:`_LAYOUT_CONTAINER_ROLES`) with children and a real flow
+    direction.
+
+    Deliberately compact: unlike the legacy
+    :func:`_attach_layout_analysis`, it does **not** write per-child
+    ``absolute_pos`` back onto the agenda — that per-row mutation was the
+    output bloat the original disable targeted
+    (``docs/x-ray-walker-investigation.md`` §13). Here we surface only the
+    one-per-container layout primitive the generator needs.
+
+    P4 follow-ups: a page-scale container whose top-level geometry matches a
+    shell gets :attr:`LayoutNode.prism_shell` instead of ``prism_layout``;
+    otherwise the resolved primitive's ``fill_child_ids`` (FlexItem flexGrow)
+    are remapped from child node ids to the bubbled region ids that match
+    :attr:`_WalkContext.agenda`.
+    """
+    if layout_node.role not in _LAYOUT_CONTAINER_ROLES:
+        return
+    if not child_pairs:
+        return
+    immediate_children = [c for c, _ in child_pairs]
+    node_to_region: dict[str, str] = {
+        str(c.get("id", "")): (rid or str(c.get("id", "")))
+        for c, rid in child_pairs
+    }
+
+    # Page shells take precedence on the route-anchoring page-scale frame:
+    # the shell fully describes the top-level arrangement, so we do NOT also
+    # stamp a redundant FlexLayout column on the same node.
+    shell = detect_page_shell(parent_node, immediate_children)
+    if shell is not None:
+        shell.slots = {
+            slot: node_to_region.get(nid, nid)
+            for slot, nid in shell.slots.items()
+        }
+        layout_node.prism_shell = shell
+        return
+
+    analysis = analyze_layout(parent_node, immediate_children)
+    prism_layout = resolve_prism_layout(
+        parent_node, analysis, immediate_children
+    )
+    if prism_layout is not None:
+        if prism_layout.fill_child_ids:
+            prism_layout.fill_child_ids = [
+                node_to_region.get(nid, nid)
+                for nid in prism_layout.fill_child_ids
+            ]
+        layout_node.prism_layout = prism_layout
 
 
 def _attach_layout_analysis(

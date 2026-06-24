@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from prism_mcp.parsers.dts import (
     parse_classes,
+    parse_enums,
     parse_functions,
     parse_interfaces,
 )
@@ -320,3 +321,99 @@ def test_parse_classes_handles_deprecated_jsdoc() -> None:
     cls = parse_classes(source)[0]
 
     assert cls.deprecated is True
+
+
+# -----------------------------------------------------------------------
+# Enum parser (P3 Part B: prop resolution)
+# -----------------------------------------------------------------------
+
+
+def test_parse_enums_string_members() -> None:
+    """``export declare enum`` yields a MEMBER -> value map in order."""
+    source = """
+    export declare enum ButtonTypes {
+        PRIMARY = "primary",
+        SECONDARY = "secondary",
+        DESTRUCTIVE = "destructive"
+    }
+    """
+
+    enums = parse_enums(source)
+
+    assert len(enums) == 1
+    assert enums[0].name == "ButtonTypes"
+    assert enums[0].members == {
+        "PRIMARY": "primary",
+        "SECONDARY": "secondary",
+        "DESTRUCTIVE": "destructive",
+    }
+    # Insertion order is preserved (Figma value -> member lookup relies
+    # on nothing, but stable order keeps the artifact deterministic).
+    assert list(enums[0].members) == ["PRIMARY", "SECONDARY", "DESTRUCTIVE"]
+
+
+def test_parse_enums_ignores_jsdoc_embedded_examples() -> None:
+    """A literal ``enum X { ... }`` *inside* JSDoc is not a declaration.
+
+    Regression guard: the spec-library d.ts files document enums in
+    prose, which naive scanning double-counts as empty enums.
+    """
+    source = """
+    export declare enum BadgeTypes {
+        BADGE = "badge",
+        TAG = "tag"
+    }
+    export interface BadgeProps {
+        /**
+         * Change display to badge or tag style.
+         *
+         * enum BadgeTypes {<br />
+         *   BADGE = 'badge',<br />
+         *   TAG = 'tag'<br />
+         * }
+         */
+        type?: BadgeTypes;
+    }
+    """
+
+    enums = parse_enums(source)
+
+    assert len(enums) == 1
+    assert enums[0].name == "BadgeTypes"
+    assert enums[0].members == {"BADGE": "badge", "TAG": "tag"}
+
+
+def test_parse_enums_const_and_numeric_and_bare() -> None:
+    """``const enum`` works; numeric / bare members fall back to name."""
+    source = """
+    export declare const enum Mixed {
+        A = "alpha",
+        B = 2,
+        C
+    }
+    """
+
+    enums = parse_enums(source)
+
+    assert enums[0].name == "Mixed"
+    # String literal keeps its value; numeric + bare fall back to the
+    # member name (they can never value-match a Figma variant string).
+    assert enums[0].members == {"A": "alpha", "B": "2", "C": "C"}
+
+
+def test_parse_enums_multiple_in_one_file() -> None:
+    """Several enums in one file are each captured independently."""
+    source = """
+    export declare enum A { X = "x" }
+    export declare enum B { Y = "y", Z = "z" }
+    """
+
+    enums = parse_enums(source)
+
+    assert [e.name for e in enums] == ["A", "B"]
+    assert enums[1].members == {"Y": "y", "Z": "z"}
+
+
+def test_parse_enums_absent() -> None:
+    """A file with no enums yields an empty list (not an error)."""
+    assert parse_enums("export interface P { a?: string; }") == []
